@@ -2,37 +2,49 @@ import os
 import socket
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
-app = FastAPI(title="Platform Drill API")
+from app.db import db_is_ok, fetch_items, init_db
 
-APP_VERSION = os.getenv("APP_VERSION", "dev")
-HOSTNAME = socket.gethostname()
+app = FastAPI()
+
+
+@app.on_event("startup")
+def startup():
+    init_db()
 
 
 @app.get("/")
-def root():
+def read_root():
     return {
         "app": "platform-drill-api",
-        "version": APP_VERSION,
-        "hostname": HOSTNAME,
-        "message": "API is running"
+        "version": "dev",
+        "hostname": socket.gethostname(),
+        "message": "API is running",
     }
 
 
 @app.get("/health")
 def health():
+    if not db_is_ok():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "version": "dev",
+                "database": "unreachable",
+            },
+        )
+
     return {
         "status": "ok",
-        "version": APP_VERSION
+        "version": "dev",
     }
 
 
 @app.get("/items")
-def items():
+def read_items():
     return {
-        "source": "in-memory",
-        "items": [
-            {"id": 1, "name": "keyboard"},
-            {"id": 2, "name": "monitor"}
-        ]
+        "source": "postgres",
+        "items": fetch_items(),
     }
