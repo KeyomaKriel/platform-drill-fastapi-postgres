@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-drill-api
+  namespace: depop-drill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: platform-drill-api
+  template:
+    metadata:
+      labels:
+        app: platform-drill-api
+    spec:
+      containers:
+        - name: platform-drill-api
+          image: ghcr.io/keyomakriel/platform-drill-fastapi-postgres:phase5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: platform-drill-api-config
+            - secretRef:
+                name: platform-drill-api-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-drill-api
+  namespace: depop-drill
+spec:
+  selector:
+    app: platform-drill-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000

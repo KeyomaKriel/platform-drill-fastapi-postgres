@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: depop-drill
+data:
+  POSTGRES_DB: platformdrill
+  POSTGRES_USER: platformuser
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: depop-drill
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: platformpass
