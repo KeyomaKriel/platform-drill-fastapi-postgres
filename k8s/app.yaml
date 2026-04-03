@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: platform-drill-api
-          image: 954082487282.dkr.ecr.eu-west-2.amazonaws.com/platform-drill-api:latest
+          image: 954082487282.dkr.ecr.eu-west-2.amazonaws.com/platform-drill-api:004d551
           imagePullPolicy: Always
           ports:
             - name: http
@@ -37,3 +37,16 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-drill-api
+  namespace: depop-drill
+spec:
+  selector:
+    app: platform-drill-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
