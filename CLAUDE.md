@@ -221,6 +221,15 @@ For example, if you want to run `kubectl patch svc platform-drill-api -n drill -
      - Did they fix the root cause or just a symptom?
    - Share what the actual break was.
    - Suggest what they should have said out loud at key decision points (reference the narration examples).
+   - **Write a feedback file.** Save a structured markdown summary of the scenario to `~/code/platform-drill-fastapi-postgres/drills/drill-feedback/`. Create the directory if it doesn't exist. Filename: `scenario-<N>-<failure-domain-slug>.md`, where `<N>` is the scenario number (zero-padded, e.g., `01`) and `<failure-domain-slug>` is a kebab-case slug of the failure domain name from the Failure Domains list (e.g., `networking-service-routing`, `health-probes`, `init-containers-job-dependencies`). Example: `scenario-03-networking-service-routing.md`. The file must contain:
+     - Scenario number and date/time
+     - The vague symptom that was presented
+     - What was actually broken (the injected failure)
+     - Failure domain
+     - Whether the fix succeeded
+     - Evaluation against each of the six feedback priorities: orientation, intentional commands, hypothesis-driven, one fix at a time, end-to-end verification, communication. For each, give a rating (Needs Work / Solid / Strong) and a one-line explanation.
+     - Notable good commands and unnecessary/redundant commands
+     - Suggested narration the user should have said at key decision points
    - Clear the session log: `> ~/code/platform-drill-fastapi-postgres/drill-session.log`
 6. **Restore the cluster to healthy state** before the next scenario. Undo the break cleanly.
 7. **Verify healthy:** All pods Running, endpoints populated, curl tests passing.

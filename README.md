@@ -43,7 +43,7 @@ Open a new terminal tab/window. This is where you'll run all your `kubectl` comm
 Start session logging so Claude Code can review your work:
 
 ```bash
-script -a ~/code/platform-drill-fastapi-postgres/drill-session.log
+script -q -a ~/code/platform-drill-fastapi-postgres/drill-session.log
 ```
 
 Keep this terminal open for the rest of your practice session.

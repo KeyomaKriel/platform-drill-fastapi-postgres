@@ -657,6 +657,8 @@ Check the exit code in `describe pod` under `Last State`:
 | `137` | OOMKilled (out of memory) | Raise resource limits |
 | `139` | Segfault | Image/binary issue |
 
+OOMKilled means the process exceeded the container memory limit. First confirm that in describe pod and compare usage with kubectl top pod. Then decide whether the fix is to increase memory limits/requests or reduce app memory usage. Don’t just raise the limit blindly.
+
 **Fix patterns:**
 
 - fix the app command/args
