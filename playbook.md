@@ -13,6 +13,12 @@ kubectl config current-context
 kubectl get ns
 ```
 
+- set the default namespace for the current context if you want to stop repeating `-n`:
+
+```bash
+kubectl config set-context --current --namespace=<ns>
+```
+
 Once you know the namespace:
 
 ```bash
