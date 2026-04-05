@@ -231,6 +231,16 @@ For example, if you want to run `kubectl patch svc platform-drill-api -n drill -
      - Notable good commands and unnecessary/redundant commands
      - Suggested narration the user should have said at key decision points
    - Clear the session log: `> ~/code/platform-drill-fastapi-postgres/drill-session.log`
+   - **Update the playbook if it failed the user.** Read `playbook.md` and check whether the bucket/sub-branch that applied to this scenario gave the user enough guidance to work through it. Specifically check for these gaps:
+     - **Missing or weak output reading guidance:** Does the playbook tell the user exactly where in the command output to look, what healthy output looks like, and how to spot the broken signal? For example, not just "run `kubectl describe pod`" but "in the `Conditions` section, look for `Ready: False` and check the `Reason` field" or "in the `Events` section at the bottom, look for the most recent warning-type events." If this guidance is missing or too vague, add or rewrite it between the diagnose commands and the fix patterns.
+     - **Missing commands:** Was there a command the user needed that isn't listed in the bucket?
+     - **Missing signals:** Was there an error message, pod status, or event type the user encountered that isn't in the signal table or the bucket's "what to look for" section?
+     - **Missing fix patterns:** Did the user need a fix approach that isn't documented?
+     - **Too-fast jump to fix:** Does the bucket go from "run these commands" straight to "fix patterns" without enough intermediate interpretation? If so, add a "How to read the output" section between diagnose and fix that walks through the output structure step by step.
+     - **Weak or missing narration:** Are the "Say:" prompts at the start of the bucket and the narration examples in the "What to Say Out Loud" section specific enough for this failure type? If the user struggled to articulate their reasoning during the scenario, improve the existing narration or add new examples that model what good narration sounds like for that specific situation. Narration should sound like a real person thinking through a problem, not a textbook.
+     - **Incorrect or misleading content:** If any existing content in the playbook gave wrong guidance, pointed to the wrong diagnostic path, or was misleading for this scenario, rewrite it. Do not preserve content that is wrong just because it exists.
+   - Propose the specific changes to the user. Show exactly what you would add, rewrite, or remove and where. Only update `playbook.md` if the user approves.
+   - **Never** reorganize, restructure, or rename sections. Maintain the existing bucket structure, numbering, and document flow. Changes should be improvements within the existing structure, not a restructure of it.
 6. **Restore the cluster to healthy state** before the next scenario. Undo the break cleanly.
 7. **Verify healthy:** All pods Running, endpoints populated, curl tests passing.
 8. **Wait for the user to say "next scenario"** before introducing the next break.
