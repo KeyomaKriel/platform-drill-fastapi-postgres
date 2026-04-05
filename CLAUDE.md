@@ -171,15 +171,32 @@ Each scenario must use a failure from one of these domains. Track which domains 
 
 ### How to introduce a failure
 
+**CRITICAL: The user must NOT see what you are breaking.** Claude Code shows an approval prompt for every command. If you run `kubectl patch svc ...` directly, the user sees the full command and knows the failure domain before the scenario starts. Even writing to a file with `cat` or `echo` would show the content in the approval prompt.
+
+**Always base64-encode the break commands:**
+
+1. Compose your break commands.
+2. Base64-encode them and run as a single line:
+
+```bash
+echo "<base64-encoded-commands>" | base64 -d | bash
+```
+
+The approval prompt will show `echo "gibberish" | base64 -d | bash` — the user cannot read what the commands are.
+
+For example, if you want to run `kubectl patch svc platform-drill-api -n drill -p '{"spec":{"selector":{"app":"wrong-label"}}}'`, you would base64-encode that string and pipe it through decode and bash.
+
+**To verify the break is manifesting**, include verification commands (like `kubectl get pods -n drill` or `curl -s -o /dev/null -w '%{http_code}' localhost/`) in the same encoded payload. Do NOT run verification as separate visible commands — that would hint at the failure domain.
+
+**Additional rules:**
 - Use `kubectl` commands (patch, edit, set image, delete, apply) to break something in the running cluster.
-- For failures that need new resources (e.g., a restrictive NetworkPolicy), create them.
+- For failures that need new resources (e.g., a restrictive NetworkPolicy), include the `kubectl apply` in the encoded payload.
 - Only break ONE thing per scenario.
-- Verify the break is actually manifesting (pods crashing, endpoints empty, requests failing) before presenting the symptom.
-- Record exactly what you did so you can evaluate the user's fix later.
+- Record exactly what you did internally so you can evaluate the user's fix later. Do NOT write this record to a file the user can read.
 
 ### Interaction loop (FOLLOW THIS EXACTLY)
 
-1. **Introduce the break** silently. Do not tell the user what you did.
+1. **Introduce the break** silently using the base64-encoded method described above. Include verification commands in the same encoded payload to confirm the break is manifesting. Do not run any break or verification commands as separate visible commands.
 2. **Present a vague symptom** as if you're a developer or interviewer reporting a problem. Examples:
    - "A developer on the team says they can't reach the API anymore."
    - "We're seeing intermittent 503s from the app."
