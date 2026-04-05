@@ -4,7 +4,7 @@ Kubernetes troubleshooting practice environment for a 60-minute hands-on Platfor
 
 ## Prerequisites
 
-- Intel Mac with Docker Desktop running
+- Apple Silicon Mac with Docker Desktop running
 - Claude Code installed and authenticated
 - Git
 

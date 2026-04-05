@@ -8,7 +8,7 @@ The candidate is allowed to use a browser and AI during the interview. The inter
 
 ## Environment
 
-- Machine: Intel Mac
+- Machine: Apple Silicon Mac
 - Repo: `~/code/platform-drill-fastapi-postgres`
 - Container runtime: Docker Desktop
 - Local cluster: kind (not EKS)
@@ -25,7 +25,7 @@ FastAPI app with three endpoints:
 
 The app reads Postgres connection details from environment variables: `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`. It creates the `items` table and seeds two rows on startup. If Postgres is unreachable at startup, the app crashes (no retry).
 
-The Dockerfile builds a linux/amd64 image.
+The Dockerfile does not need a `--platform` flag — kind nodes match the host architecture (arm64 on Apple Silicon).
 
 ---
 
@@ -61,7 +61,7 @@ The Dockerfile builds a linux/amd64 image.
    - Verify it's running before proceeding.
 
 5. **Build the app image.**
-   - `docker build --platform linux/amd64 -t platform-drill-api:local .`
+   - `docker build -t platform-drill-api:local .`
    - `kind load docker-image platform-drill-api:local --name drill-cluster`
 
 6. **Create namespace** `drill` (if it doesn't exist).
@@ -99,6 +99,7 @@ The Dockerfile builds a linux/amd64 image.
    - `default-deny-ingress`: deny all ingress traffic in the namespace by default
    - `allow-app-from-ingress`: allow ingress to the app pods from the ingress-nginx namespace
    - `allow-postgres-from-app`: allow ingress to postgres pods from app pods only
+   - `allow-app-to-postgres`: allow egress from app pods to postgres pods on port 5432 (required because `allow-dns` creates an Egress policyType on all pods, which means egress is restricted — without this policy the app and its init container cannot reach postgres)
    - `allow-dns`: allow egress to kube-system for DNS resolution from all pods
 
 8. **Wait and verify everything is healthy.**
