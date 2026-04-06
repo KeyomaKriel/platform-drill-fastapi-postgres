@@ -1126,7 +1126,7 @@ You are done when the host/path rule matches the intended backend and the extern
 
 **Start here if** the app is failing due to setup/configuration rather than routing.
 
-Say: *"I see events or pod errors about a missing ConfigMap or Secret. The pod can't start because it's trying to reference configuration that doesn't exist or is named wrong."*
+Say: *"I see the pod is failing because of configuration. This could be a missing ConfigMap or Secret, a wrong reference name, or a correct reference with a wrong value inside. I need to check what the pod is referencing and whether the actual values match what the app expects."*
 
 #### Diagnose
 
@@ -1158,6 +1158,7 @@ kubectl get secret -n <ns>
 - mounted files missing or at wrong paths
 - volume mount paths wrong
 - app logs complaining about credentials, connection strings, or missing settings
+- ConfigMap or Secret exists and is correctly referenced, but contains a **wrong value** (e.g., wrong database name, wrong hostname, wrong port). The app logs will typically show the exact value that failed — cross-reference that with `kubectl get configmap <cm> -n <ns> -o yaml` to find the mismatch.
 
 If it is a mount issue, inspect `volumes` and `volumeMounts` in the pod YAML carefully.
 
@@ -1165,7 +1166,7 @@ If it is a secret/config ref issue, inspect names character by character.
 
 #### Stop condition
 
-Stop when you identify: missing object, wrong reference name, wrong mount path, or wrong env source.
+Stop when you identify: missing object, wrong reference name, wrong mount path, wrong env source, or **wrong value inside a correctly-referenced ConfigMap or Secret**.
 
 #### Fix patterns
 

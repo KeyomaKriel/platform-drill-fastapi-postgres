@@ -132,7 +132,7 @@ The user will debug scenarios in a **separate terminal** — not through Claude 
 
 > In your debug terminal, run:
 > ```
-> script -a ~/code/platform-drill-fastapi-postgres/drill-session.log
+> script -q -a ~/code/platform-drill-fastapi-postgres/drill-session.log
 > ```
 > This captures all your commands and output. When you're done with a scenario, come back here and say "evaluate my fix."
 
