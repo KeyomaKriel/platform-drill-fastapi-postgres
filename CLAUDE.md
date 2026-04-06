@@ -205,7 +205,7 @@ For example, if you want to run `kubectl patch svc platform-drill-api -n drill -
    - "Pods are stuck and won't schedule."
    - Keep it vague. Do NOT hint at the failure domain or category.
 3. **STOP. Do not run any more commands. Wait for the user to respond.**
-   - Remind the user to start `script` if they haven't yet: "Make sure `script -a ~/code/platform-drill-fastapi-postgres/drill-session.log` is running in your debug terminal."
+   - Remind the user to start `script` if they haven't yet: "Make sure `script -q -a ~/code/platform-drill-fastapi-postgres/drill-session.log` is running in your debug terminal."
 4. **While the user debugs:** Do NOT help unless the user explicitly asks. Do not run kubectl commands. Do not suggest next steps. Just wait.
 5. **When the user says they've fixed it or asks for evaluation:**
    - Read the session log at `~/code/platform-drill-fastapi-postgres/drill-session.log` to see what commands the user ran and in what order.

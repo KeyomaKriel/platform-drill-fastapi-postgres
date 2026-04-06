@@ -464,7 +464,7 @@ Find the strongest signal — from the prompt wording or from command output —
 | What you see or hear | Bucket | Go to |
 |---|---|---|
 | Forbidden / Unauthorized / "service account can't do X" | **RBAC** | [Bucket A](#bucket-a) |
-| Pod status: `ImagePullBackOff` or `ErrImagePull` | **Image / registry** | [Bucket B](#bucket-b) → ImagePull sub-branch |
+| Pod status: `ImagePullBackOff`, `ErrImagePull`, or `ErrImageNeverPull` | **Image / registry** | [Bucket B](#bucket-b) → ImagePull sub-branch |
 | Pod status: `Pending` / "pods won't schedule" | **Scheduling / resources / storage** | [Bucket B](#bucket-b) → Pending sub-branch |
 | Pod status: `CrashLoopBackOff` / "app keeps restarting" | **Pod startup / app crash** | [Bucket B](#bucket-b) → CrashLoop sub-branch |
 | Pod `Running` but READY shows `0/1` | **Readiness probe** | [Bucket B](#bucket-b) → Running-not-Ready sub-branch |
@@ -666,9 +666,11 @@ Now branch based on the pod status:
 
 ---
 
-#### Sub-branch: ImagePullBackOff / ErrImagePull
+#### Sub-branch: ImagePullBackOff / ErrImagePull / ErrImageNeverPull
 
 Say: *"The pod can't pull its container image. I need to check whether it's a wrong image name, a wrong tag, or a registry access issue."*
+
+Note: `ErrImageNeverPull` means `imagePullPolicy: Never` is set but the image doesn't exist locally on the node. Common in kind/minikube clusters where images are loaded directly rather than pulled from a registry.
 
 ```bash
 kubectl describe pod <pod> -n <ns>
@@ -679,6 +681,16 @@ Look for: wrong image name, wrong tag, auth issue, image pull secret missing/wro
 
 **Stop condition:** Stop when the event clearly shows the pull problem — wrong name, wrong tag, or auth failure.
 
+**To find the working image tag** when it was changed and you don't know what it was before:
+
+```bash
+# Check what the old (still running) pod is using
+kubectl get pod <old-pod> -n <ns> -o jsonpath='{.spec.containers[0].image}'
+
+# Or check the old ReplicaSet
+kubectl get rs <old-rs> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].image}'
+```
+
 **Fix patterns:**
 
 - correct the image repository/path
@@ -686,6 +698,8 @@ Look for: wrong image name, wrong tag, auth issue, image pull secret missing/wro
 - add/fix imagePullSecrets
 - fix registry credentials
 - if the image does not exist, push/build the correct image or point to a valid tag
+- `kubectl rollout undo` reverts the entire pod template to the previous revision — use when you want a full rollback
+- `kubectl set image` changes only the image — use when other spec changes in the current revision are intentional
 
 ```bash
 # Fix image name or tag
