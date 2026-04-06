@@ -338,13 +338,13 @@ Now that you have a signal — from triage commands, from the Fast Path, or from
 | What you see or hear | Bucket | Go to |
 |---|---|---|
 | Forbidden / Unauthorized / "service account can't do X" | **RBAC** | [Bucket A](#bucket-a) |
-| Pod status: `ImagePullBackOff`, `ErrImagePull`, or `ErrImageNeverPull` | **Image / registry** | [Bucket B](#bucket-b) → ImagePull sub-branch |
-| Pod status: `Pending` / "pods won't schedule" | **Scheduling / resources / storage** | [Bucket B](#bucket-b) → Pending sub-branch |
-| Pod status: `CrashLoopBackOff` / "app keeps restarting" | **Pod startup / app crash** | [Bucket B](#bucket-b) → CrashLoop sub-branch |
-| Pod `Running` but READY shows `0/1` | **Readiness probe** | [Bucket B](#bucket-b) → Running-not-Ready sub-branch |
-| Pod `Running` + `1/1` but RESTARTS climbing | **Liveness probe** | [Bucket B](#bucket-b) → Liveness sub-branch |
-| Pod status: `Init:CrashLoopBackOff` or `Init:0/1` | **Init container** | [Bucket B](#bucket-b) → Init container sub-branch |
-| Pod exit code 137 / OOMKilled in describe | **Resource limits** | [Bucket B](#bucket-b) → CrashLoop sub-branch (OOMKilled) |
+| Pod status: `ImagePullBackOff`, `ErrImagePull`, or `ErrImageNeverPull` | **Image / registry** | [Bucket B](#bucket-b) → [ImagePull sub-branch](#sub-imagepull) |
+| Pod status: `Pending` / "pods won't schedule" | **Scheduling / resources / storage** | [Bucket B](#bucket-b) → [Pending sub-branch](#sub-pending) |
+| Pod status: `CrashLoopBackOff` / "app keeps restarting" | **Pod startup / app crash** | [Bucket B](#bucket-b) → [CrashLoop sub-branch](#sub-crashloop) |
+| Pod `Running` but READY shows `0/1` | **Readiness probe** | [Bucket B](#bucket-b) → [Readiness sub-branch](#sub-readiness) |
+| Pod `Running` + `1/1` but RESTARTS climbing | **Liveness probe** | [Bucket B](#bucket-b) → [Liveness sub-branch](#sub-liveness) |
+| Pod status: `Init:CrashLoopBackOff` or `Init:0/1` | **Init container** | [Bucket B](#bucket-b) → [Init container sub-branch](#sub-init) |
+| Pod exit code 137 / OOMKilled in describe | **Resource limits** | [Bucket B](#bucket-b) → [CrashLoop sub-branch](#sub-crashloop) (OOMKilled) |
 | Deployment unhealthy but pods not obviously broken / "deploy went out but new version isn't running" | **Deployment / rollout** | [Bucket C](#bucket-c) |
 | Pods healthy but app unreachable through Service | **Service routing** | [Bucket D](#bucket-d) |
 | Service works (port-forward OK) but external URL fails / "users can't reach the app" | **Ingress** | [Bucket E](#bucket-e) |
@@ -561,6 +561,7 @@ Now branch based on the pod status:
 
 ---
 
+<a id="sub-imagepull"></a>
 #### Sub-branch: ImagePullBackOff / ErrImagePull / ErrImageNeverPull
 
 Say: *"The pod can't pull its container image. I need to check whether it's a wrong image name, a wrong tag, or a registry access issue."*
@@ -584,7 +585,13 @@ kubectl get pod <old-pod> -n <ns> -o jsonpath='{.spec.containers[0].image}'
 
 # Or check the old ReplicaSet
 kubectl get rs <old-rs> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Or check rollout history for previous revisions
+kubectl rollout history deploy/<deploy> -n <ns>
+kubectl rollout history deploy/<deploy> -n <ns> --revision=<N>
 ```
+
+Comparison: The Events section of `describe pod` shows the image string it tried to pull (e.g., `Failed to pull image "myapp:badtag"`). Compare that against the image from the old running pod or from a previous rollout revision. The correct value is whichever was last working.
 
 **Fix patterns:**
 
@@ -626,6 +633,7 @@ You are done when the pod pulls successfully and moves past the image pull error
 
 ---
 
+<a id="sub-pending"></a>
 #### Sub-branch: Pending → Scheduling / Resources / Storage
 
 Say: *"The pod is Pending, which means it hasn't been scheduled to a node. I want to find out why — it's usually either a resource constraint, a storage issue, or a node taint/affinity problem."*
@@ -638,6 +646,18 @@ kubectl describe pvc <pvc> -n <ns>
 ```
 
 Look for: insufficient resources, unbound PVC, node taints/selectors, storage class issue.
+
+**If the blocker is resource requests,** compare what the pod asks for against what the node can offer:
+
+```bash
+# What the pod is requesting
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].resources.requests}'
+
+# What the node has available
+kubectl describe node <node> | grep -A 5 Allocatable
+```
+
+Comparison: If the pod's `requests.cpu` or `requests.memory` exceeds the node's `Allocatable`, the pod can never schedule. `Allocatable` is node capacity minus system reservations — it is the ceiling for all pod requests combined.
 
 **Stop condition:** Stop when the scheduler or PVC message clearly identifies the blocker.
 
@@ -683,6 +703,7 @@ You are done when the pod is scheduled and no longer blocked in Pending for the 
 
 ---
 
+<a id="sub-crashloop"></a>
 #### Sub-branch: CrashLoopBackOff / Repeated Restarts
 
 Say: *"The container is starting and then crashing repeatedly. I need to check the logs to understand why it's crashing."*
@@ -707,7 +728,35 @@ Check the exit code in `describe pod` under `Last State`:
 | `137` | OOMKilled (out of memory) | Raise resource limits |
 | `139` | Segfault | Image/binary issue |
 
-OOMKilled means the process exceeded the container memory limit. First confirm that in describe pod and compare usage with kubectl top pod. Then decide whether the fix is to increase memory limits/requests or reduce app memory usage. Don’t just raise the limit blindly.
+**If logs show a dependency error** (connection refused, auth failed, database does not exist, unknown host), find the correct value and compare:
+
+```bash
+# What is the pod actually using at runtime?
+kubectl exec <pod> -n <ns> -- env | sort
+
+# What service hostnames exist?
+kubectl get svc -n <ns>
+
+# What does the ConfigMap say?
+kubectl get configmap <cm> -n <ns> -o yaml
+
+# What does the Secret say?
+kubectl get secret <secret> -n <ns> -o jsonpath=’{.data.<key>}’ | base64 -d
+```
+
+Comparison: Cross-reference the env vars from `kubectl exec -- env` against the actual service names (`kubectl get svc`), ConfigMap values, and decoded Secret values. A mismatch between what the pod has and what actually exists is the root cause. Go to [Bucket F](#bucket-f) or [Bucket H](#bucket-h) depending on whether the pod crashes or just returns errors.
+
+**If exit code is 137 (OOMKilled),** confirm and size the fix:
+
+```bash
+# Current memory limit
+kubectl get pod <pod> -n <ns> -o jsonpath=’{.spec.containers[0].resources.limits.memory}’
+
+# Actual usage before kill (if Metrics API available)
+kubectl top pod <pod> -n <ns>
+```
+
+Comparison: If usage is near or at the limit, raising the limit is the right fix. If usage is far below the limit, the kill may have a different cause — re-read describe output carefully. Don’t just raise the limit blindly.
 
 **Fix patterns:**
 
@@ -752,6 +801,7 @@ You are done when restarts stop climbing, the pod stays up, and the failure no l
 
 ---
 
+<a id="sub-readiness"></a>
 #### Sub-branch: Running but not Ready → Readiness Probe
 
 Say: *"The pod is Running but not Ready — the readiness probe is failing. The pod won't receive traffic until it passes. Let me check what the probe is doing and whether the app actually responds on that path and port."*
@@ -762,16 +812,31 @@ kubectl describe pod <pod> -n <ns>
 
 Look for `Readiness probe failed` messages in Events. Check the probe spec under `Containers: → Readiness:` for the path, port, initialDelaySeconds, and periodSeconds.
 
-Test the probe manually:
+**Read the current probe config directly from the pod spec:**
+
+```bash
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].readinessProbe}'
+```
+
+This gives you the exact path, port, and timing values the probe is using.
+
+**Test what the app actually responds to:**
 
 ```bash
 kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>
-curl -i http://localhost:8080
-curl -i http://localhost:8080/health
-curl -i http://localhost:8080/readyz
+# Then in a second terminal, probe paths the app might serve:
+curl -i http://localhost:8080/
 ```
 
-Look for: does app respond? correct health path? correct port?
+Comparison: Compare `readinessProbe.httpGet.path` and `readinessProbe.httpGet.port` from the pod spec against the paths that return HTTP 200 when you curl the pod directly. If the configured probe path returns 404 but a different path returns 200, the probe path is wrong. If no paths respond at all, the port is wrong or the app itself is unhealthy — go to [Bucket H](#bucket-h).
+
+**If a stuck rollout is in progress** (old pod still running alongside new), check the working pod's probe as the source of truth:
+
+```bash
+kubectl get pod <old-pod> -n <ns> -o jsonpath='{.spec.containers[0].readinessProbe}'
+```
+
+Compare this directly against the failing pod's probe. Any difference is a candidate root cause.
 
 **Stop condition:** Stop when you know whether the probe path is wrong, the probe port is wrong, the timing is too aggressive, or the app is genuinely unhealthy.
 
@@ -802,6 +867,7 @@ You are done when the pod becomes Ready and starts serving traffic normally. End
 
 ---
 
+<a id="sub-liveness"></a>
 #### Sub-branch: Running + Ready but Restarts Climbing → Liveness Probe
 
 Say: *"The pod shows Running and Ready, but the restart count keeps going up. That means the liveness probe is periodically failing and Kubernetes is killing the container. I need to check if the probe is misconfigured or if the app is genuinely becoming unhealthy."*
@@ -811,6 +877,21 @@ kubectl describe pod <pod> -n <ns>
 ```
 
 Look for `Liveness probe failed` in Events. Check the liveness probe spec. Common pattern: the probe endpoint is too slow under load, or the timeout/period is too aggressive.
+
+**Read the current probe config directly:**
+
+```bash
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].livenessProbe}'
+```
+
+**Test the probe path manually:**
+
+```bash
+kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>
+curl -i http://localhost:8080/<probe-path>
+```
+
+Comparison: Compare the probe's `httpGet.path` and `httpGet.port` against what the app actually responds to. If the path returns 404 or the port is wrong, the probe is misconfigured. If the path and port are correct but the app is slow, compare `timeoutSeconds` against actual response time — if the app takes longer than `timeoutSeconds`, Kubernetes counts it as a failure even though the app is healthy.
 
 **Stop condition:** Stop when you know whether the probe path/port is wrong, the timing is too aggressive, or the app has a genuine health issue.
 
@@ -837,6 +918,7 @@ Watch for a few minutes. Restart count should stop climbing.
 
 ---
 
+<a id="sub-init"></a>
 #### Sub-branch: Init Container Failure
 
 Say: *"I see `Init:0/1` which means there's an init container that hasn't completed. The main container won't start until it succeeds. Let me check the init container logs specifically."*
@@ -848,6 +930,23 @@ kubectl describe pod <pod> -n <ns>
 ```
 
 Look under `Init Containers:` for the container name and its state.
+
+**Check what the init container is trying to connect to:**
+
+```bash
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.initContainers[0].command}'
+```
+
+This shows the exact command — usually a loop waiting on a hostname and port. Note the hostname and port.
+
+**Verify the target service exists and has endpoints:**
+
+```bash
+kubectl get svc -n <ns>
+kubectl get endpoints <svc> -n <ns>
+```
+
+Comparison: Compare the hostname in the init container command against the actual service names from `kubectl get svc`. If the name doesn't match any service, the service is missing or misnamed. If the service exists but endpoints are empty, the target pod isn't ready — diagnose the target pod in [Bucket B](#bucket-b) first.
 
 Then check its logs:
 
@@ -938,9 +1037,9 @@ kubectl describe deploy <deploy> -n <ns>
 
 **`kubectl get rs -n <ns>` — DESIRED/CURRENT/READY columns:** Healthy: one RS at `1 1 1`, older RSes at `0 0 0`. Stuck rollout: old RS `1 1 1`, new RS `1 1 0` — new pods never became Ready, old RS still serving.
 
-**`kubectl describe deploy <deploy> -n <ns>` — Image field:** Compare `Containers: → Image:` to expected. Broken: wrong tag or nonexistent image. Also check `Conditions:` for `ProgressDeadlineExceeded`.
+**`kubectl describe deploy <deploy> -n <ns>` — Image field:** Compare `Containers: → Image:` to expected. Broken: wrong tag or nonexistent image. Also check `Conditions:` for `ProgressDeadlineExceeded`. To find the correct image: `kubectl get pod <old-pod> -n <ns> -o jsonpath='{.spec.containers[0].image}'` or `kubectl rollout history deploy/<deploy> -n <ns> --revision=<N>`.
 
-**`kubectl describe deploy <deploy> -n <ns>` — Selector vs Pod Template Labels:** Must match exactly. Broken: selector `app=platform-drill-api` but template labels `app=drill-api` — the Deployment cannot own any pods.
+**`kubectl describe deploy <deploy> -n <ns>` — Selector vs Pod Template Labels:** Must match exactly. Broken: selector `app=platform-drill-api` but template labels `app=drill-api` — the Deployment cannot own any pods. To compare side by side: `kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.selector.matchLabels}'` vs `kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.metadata.labels}'`.
 
 Check the new RS's pods — they usually have a clear error (ImagePullBackOff, CrashLoopBackOff, etc.). If so, go to [**Bucket B**](#bucket-b) to fix the pod issue first. If the issue is update/rollback behavior, stay here.
 
@@ -1002,9 +1101,9 @@ kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>
 
 **`kubectl get endpoints <svc> -n <ns>` — ENDPOINTS column:** Healthy: `10.244.x.x:8000` (one or more pod IPs). Broken: `<none>` — Service selector matches zero Ready pods. This is the single most decisive check in this bucket.
 
-**`kubectl describe svc <svc> -n <ns>` — Selector field:** Compare exactly to `kubectl get pods -n <ns> --show-labels` LABELS column. Healthy: `Selector: app=platform-drill-api` matches pod label `app=platform-drill-api`. Broken: any character difference — `app=api` vs `app=platform-drill-api`.
+**`kubectl describe svc <svc> -n <ns>` — Selector field:** Compare exactly to `kubectl get pods -n <ns> --show-labels` LABELS column. Healthy: `Selector: app=platform-drill-api` matches pod label `app=platform-drill-api`. Broken: any character difference — `app=api` vs `app=platform-drill-api`. To compare side by side: run `kubectl describe svc <svc> -n <ns>` and note the `Selector:` value, then `kubectl get pods -n <ns> --show-labels` and compare the label key=value exactly.
 
-**`kubectl describe svc <svc> -n <ns>` — Port and TargetPort:** Healthy: `Port: 80/TCP`, `TargetPort: 8000/TCP` where 8000 matches the container's actual listening port. Broken: `TargetPort: 8080/TCP` when container listens on 8000 — connections reach the pod but hit a closed port.
+**`kubectl describe svc <svc> -n <ns>` — Port and TargetPort:** Healthy: `Port: 80/TCP`, `TargetPort: 8000/TCP` where 8000 matches the container's actual listening port. Broken: `TargetPort: 8080/TCP` when container listens on 8000 — connections reach the pod but hit a closed port. To find the container's actual listening port: `kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].ports[0].containerPort}'`. Compare against `TargetPort:` — they must match.
 
 **`kubectl get pods -n <ns>` — READY column:** Only pods with `1/1` appear in endpoints. Broken: `0/1` means readiness probe failing → endpoints empty even though pod exists.
 
@@ -1068,7 +1167,7 @@ curl -H "Host: <host>" -i http://<ingress-ip>
 
 **`kubectl describe ingress <ing> -n <ns>` — IngressClass:** Healthy: `nginx` (or matching installed controller). Broken: empty, `<none>`, or wrong class name. Find correct class: `kubectl get ingressclass`.
 
-**`kubectl describe ingress <ing> -n <ns>` — Rules > Backends:** Healthy: `<svc>:80` with populated endpoints shown inline. Broken: wrong service name (compare to `kubectl get svc -n <ns>`), or wrong port — the Ingress must reference the Service's `port:` (not `targetPort`).
+**`kubectl describe ingress <ing> -n <ns>` — Rules > Backends:** Healthy: `<svc>:80` with populated endpoints shown inline. Broken: wrong service name or wrong port. To verify: `kubectl get svc -n <ns>` — compare NAME column against the backend service name character-for-character. To find the correct backend port: `kubectl get svc <svc> -n <ns> -o jsonpath='{.spec.ports[0].port}'` — the ingress backend port must match the service `port:`, not the `targetPort:`.
 
 **`kubectl describe ingress <ing> -n <ns>` — Host and Path:** If `Host:` is set, requests need a matching Host header. Broken: host `api.example.com` but you're curling `localhost`. Path `pathType: Exact` with `/api` won't match `/`.
 
@@ -1134,9 +1233,9 @@ kubectl get deployment <deploy> -n <ns> -o yaml | grep -A2 -E 'configMapRef|secr
 
 **`kubectl describe pod <pod> -n <ns>` — Environment block:** Each env var sourced from a ConfigMap/Secret shows the source name. Compare to `kubectl get configmap -n <ns>` / `kubectl get secret -n <ns>` — names must match character-for-character.
 
-**`kubectl get pod <pod> -n <ns> -o yaml` — `envFrom[].configMapRef.name` and `secretRef.name`:** Healthy: names match existing objects. Broken: typo (e.g., `app-configs` vs `app-config`).
+**`kubectl get pod <pod> -n <ns> -o yaml` — `envFrom[].configMapRef.name` and `secretRef.name`:** Healthy: names match existing objects. Broken: typo (e.g., `app-configs` vs `app-config`). To compare: `kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].envFrom}'` shows what the pod references; `kubectl get configmap -n <ns>` and `kubectl get secret -n <ns>` show what actually exists. Compare character by character.
 
-**`kubectl get configmap <cm> -n <ns> -o yaml` — `data` block:** Healthy: key names and values match what app expects (e.g., `POSTGRES_HOST: postgres`). Broken: value is wrong (e.g., `POSTGRES_DB: platformdrill_v2` when DB is `platformdrill`). App logs typically print the bad value — cross-reference.
+**`kubectl get configmap <cm> -n <ns> -o yaml` — `data` block:** Healthy: key names and values match what app expects. Broken: value is wrong (e.g., `POSTGRES_DB: platformdrill_v2` when DB is `platformdrill`). App logs typically print the bad value. To compare against the authoritative source: for hostnames, compare against `kubectl get svc -n <ns>` NAME column; for DB name/user, compare against the database's own ConfigMap; for passwords, decode and compare: `kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d`.
 
 **`kubectl get secret <secret> -n <ns> -o yaml` — `data` block (base64-encoded):** Decode with `echo "<value>" | base64 -d`. Healthy: decoded value matches expected credential. Broken: wrong password, or value was double-encoded.
 
@@ -1268,6 +1367,8 @@ kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d
 | `Name or service not known` | DNS can't resolve hostname | `kubectl exec <pod> -- nslookup <hostname>` | `kubectl get svc -n <ns>` — use exact Service name |
 | `ECONNREFUSED` | Wrong port or target service down | `kubectl exec <pod> -- env \| grep POSTGRES_PORT`; `kubectl get endpoints <svc> -n <ns>` | Service port from `kubectl describe svc` |
 
+For every application error, the diagnostic pattern is the same: (1) `kubectl exec <pod> -n <ns> -- env | sort` to see what the pod is actually using at runtime, (2) compare each value against the authoritative source — `kubectl get svc -n <ns>` for hostname, `kubectl get configmap <cm> -n <ns> -o yaml` for DB name and user, `kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d` for password. The pod's runtime env is the ground truth; the ConfigMap/Secret is the source of what it should be. Mismatches mean a rollout is needed after fixing.
+
 #### Stop condition
 
 Say: *"The app is failing because `<env-var>` is set to `<wrong-value>` but the actual [service/database/credential] expects `<correct-value>`. I'm going to fix the [ConfigMap/Secret] and restart."*
@@ -1323,7 +1424,7 @@ kubectl describe networkpolicy -n <ns>
 - Broken: default-deny exists but allow rule has wrong `podSelector` (e.g., `app: platform-drill-api-v2` when pods have `app: platform-drill-api`) — the allow matches nothing, deny blocks everything
 
 **Common broken patterns:**
-- Allow rule `podSelector` label doesn't match any running pods — check character-for-character against `kubectl get pods --show-labels`
+- Allow rule `podSelector` label doesn't match any running pods — compare `kubectl describe networkpolicy <policy> -n <ns>` Pod Selector against `kubectl get pods -n <ns> --show-labels` LABELS column. For `namespaceSelector`, compare against `kubectl get ns <target-ns> --show-labels`
 - Allow rule `namespaceSelector` wrong — for ingress-nginx traffic, need `kubernetes.io/metadata.name: ingress-nginx`; find with `kubectl get ns ingress-nginx --show-labels`
 - Allow rule missing port spec — some CNIs require explicit port even when podSelector is correct
 - No DNS egress rule — pods can't resolve hostnames; produces silent connection failures that look like networking issues
@@ -1456,6 +1557,8 @@ kubectl describe pod <pod> -n <ns>
 | Access mode mismatch | PVC requests `ReadWriteMany`, PV offers `ReadWriteOnce` | Compare `Access Modes` in both `describe pvc` and `describe pv` |
 | PV already bound | PV claimed by different PVC | `kubectl get pv` — STATUS `Bound`, CLAIM column shows different PVC |
 
+To compare StorageClass: `kubectl get pvc <pvc> -n <ns> -o jsonpath='{.spec.storageClassName}'` vs `kubectl get storageclass` NAME column. To compare access modes: `kubectl get pvc <pvc> -n <ns> -o jsonpath='{.spec.accessModes}'` vs `kubectl get pv <pv> -o jsonpath='{.spec.accessModes}'`. Both must match for binding to succeed.
+
 **`kubectl describe pod <pod> -n <ns>` — Mounts section:** Check `volumeMounts[].mountPath`. Broken: mount path is `/data` but app expects `/var/lib/postgresql/data`.
 
 #### Stop condition
@@ -1523,7 +1626,7 @@ kubectl config view --minify | grep namespace
 
 #### What to look for
 
-**`kubectl get all -A` — NAMESPACE column:** Scan for your expected resources. Healthy: all app resources in the expected namespace. Broken: resources in `default` or a similarly-named but wrong namespace (e.g., `drill-app` vs `drill`).
+**`kubectl get all -A` — NAMESPACE column:** Scan for your expected resources. Healthy: all app resources in the expected namespace. Broken: resources in `default` or a similarly-named but wrong namespace (e.g., `drill-app` vs `drill`). To find where a specific resource lives: `kubectl get deploy -A | grep <deploy>`. Compare the NAMESPACE column against where your commands are targeting (`kubectl config view --minify | grep namespace`).
 
 **`kubectl get ns` — NAME column:** Healthy: one namespace matches. Broken: two similar names exist and resources are split between them.
 
@@ -1795,19 +1898,19 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 
 | Code | Meaning | Kubernetes / Interview Context |
 |---|---|---|
-| 200 | OK | Expected response from healthy endpoints (`/health`, `/`, `/items`). |
-| 301 | Moved Permanently | Permanent redirect. May appear from nginx Ingress path rewrites. |
-| 302 | Found (Temporary Redirect) | Temporary redirect. Check Ingress path rules or app-level redirects. |
-| 400 | Bad Request | Malformed request. Usually app-level — check request format, not K8s config. |
-| 401 | Unauthorized | Authentication missing or invalid. Check auth headers, tokens, or ServiceAccount. |
-| 403 | Forbidden | Authenticated but not permitted. Check RBAC Role/RoleBinding, `kubectl auth can-i`. |
-| 404 | Not Found | Route doesn't exist. Check Ingress path rules, backend service name, app routes. |
-| 408 | Request Timeout | Client timed out waiting. Check app logs, Ingress timeout config. |
-| 429 | Too Many Requests | Rate limited. Check Ingress rate-limit annotations or API gateway config. |
-| 500 | Internal Server Error | App crashed processing request. Check pod logs for stack trace. |
-| 502 | Bad Gateway | Proxy received invalid response from upstream. Check endpoints, pod readiness, targetPort. |
-| 503 | Service Unavailable | No healthy backend. From nginx Ingress: check pod readiness, service selector, endpoints, backend port. |
-| 504 | Gateway Timeout | Proxy timed out waiting for upstream. Check app performance, resource limits, Ingress timeout settings. |
+| 200 | OK | Expected response from healthy endpoints. |
+| 301 | Moved Permanently | Permanent redirect. May appear from nginx Ingress path rewrites. → [Bucket E](#bucket-e) |
+| 302 | Found (Temporary Redirect) | Temporary redirect. Check Ingress path rules or app-level redirects. → [Bucket E](#bucket-e) |
+| 400 | Bad Request | Malformed request. Usually app-level — check request format, not K8s config. → [Bucket H](#bucket-h) |
+| 401 | Unauthorized | Authentication missing or invalid. Check auth headers, tokens, or ServiceAccount. → [Bucket A](#bucket-a) |
+| 403 | Forbidden | Authenticated but not permitted. Check RBAC Role/RoleBinding, `kubectl auth can-i`. → [Bucket A](#bucket-a) |
+| 404 | Not Found | Route doesn't exist. → [Readiness probe](#sub-readiness) (if probe path wrong) · [Bucket E](#bucket-e) (if Ingress path wrong) |
+| 408 | Request Timeout | Client timed out waiting. Check app logs, Ingress timeout config. → [Bucket H](#bucket-h) · [Bucket E](#bucket-e) |
+| 429 | Too Many Requests | Rate limited. Check Ingress rate-limit annotations or API gateway config. → [Bucket E](#bucket-e) |
+| 500 | Internal Server Error | App crashed processing request. Check pod logs for stack trace. → [Bucket H](#bucket-h) |
+| 502 | Bad Gateway | Proxy received invalid response from upstream. Check endpoints, pod readiness, targetPort. → [Bucket D](#bucket-d) · [Bucket E](#bucket-e) |
+| 503 | Service Unavailable | No healthy backend. Check pod readiness, service selector, endpoints, backend port. → [Bucket D](#bucket-d) · [Bucket E](#bucket-e) |
+| 504 | Gateway Timeout | Proxy timed out waiting for upstream. Check app performance, resource limits, Ingress timeout. → [Bucket H](#bucket-h) · [Bucket E](#bucket-e) |
 
 ---
 
@@ -1820,16 +1923,16 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 
 | Code | Meaning | Typical Cause | Next Step |
 |---|---|---|---|
-| 0 | Success | Container completed normally | Expected for init containers and Jobs. If unexpected for a long-running app, check command/args. |
-| 1 | Generic application error | Unhandled exception, config error, bad startup | `kubectl logs <pod> --previous` |
-| 2 | Misuse of shell builtins | Bad shell command in `command` or `args` | Check pod spec `command`/`args` syntax |
-| 3 | Application-defined exit | App uses code 3 for specific error (e.g., Python/uvicorn unhandled exception) | Check app logs |
-| 126 | Command not executable | Script/binary not executable | Check file permissions inside the image |
-| 127 | Command not found | Binary missing from container image | Verify image contents with `kubectl exec` |
-| 128 | Invalid argument to exit | Shell received signal or invalid exit call | Check entrypoint/cmd scripting |
-| 137 | OOMKilled (128 + 9) | Container exceeded memory limit | `kubectl describe pod` last state; increase memory limit |
-| 139 | Segfault (128 + 11) | Memory access violation | Application bug or corrupted binary |
-| 143 | Graceful SIGTERM (128 + 15) | Normal shutdown, preStop hook, or pod deletion | Usually expected. If unexpected, check liveness probe. |
+| 0 | Success | Container completed normally | Expected for init containers and [Jobs](#bucket-g). If unexpected for a long-running app, check command/args. |
+| 1 | Generic application error | Unhandled exception, config error, bad startup | `kubectl logs <pod> --previous` → [CrashLoop sub-branch](#sub-crashloop) |
+| 2 | Misuse of shell builtins | Bad shell command in `command` or `args` | Check pod spec `command`/`args` syntax → [CrashLoop sub-branch](#sub-crashloop) |
+| 3 | Application-defined exit | App uses code 3 for specific error (e.g., Python/uvicorn unhandled exception) | Check app logs → [CrashLoop sub-branch](#sub-crashloop) |
+| 126 | Command not executable | Script/binary not executable | Check file permissions inside the image → [CrashLoop sub-branch](#sub-crashloop) |
+| 127 | Command not found | Binary missing from container image | Verify image contents with `kubectl exec` → [CrashLoop sub-branch](#sub-crashloop) |
+| 128 | Invalid argument to exit | Shell received signal or invalid exit call | Check entrypoint/cmd scripting → [CrashLoop sub-branch](#sub-crashloop) |
+| 137 | OOMKilled (128 + 9) | Container exceeded memory limit | `kubectl describe pod` last state; increase memory limit → [CrashLoop sub-branch](#sub-crashloop) |
+| 139 | Segfault (128 + 11) | Memory access violation | Application bug or corrupted binary → [CrashLoop sub-branch](#sub-crashloop) |
+| 143 | Graceful SIGTERM (128 + 15) | Normal shutdown, preStop hook, or pod deletion | Usually expected. If unexpected, check [liveness probe](#sub-liveness). |
 
 ---
 
@@ -1837,20 +1940,20 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 
 | Status | Meaning | Next Step |
 |---|---|---|
-| Running | Containers started, at least one still running | Check Ready column — Running but 0/1 means readiness probe failing |
-| Pending | Pod accepted but not scheduled or containers not started | `kubectl describe pod` — look for FailedScheduling (resources, taints, PVC) |
-| CrashLoopBackOff | Container keeps crashing, K8s backing off restarts | `kubectl logs <pod> --previous` for last crash output |
-| ImagePullBackOff | Repeated image pull failures | `kubectl describe pod` — check image name/tag, registry, pull secrets |
-| ErrImagePull | One-time image pull failure | Same as above — check Events for specific error |
-| OOMKilled | Container exceeded memory limit | Increase memory limit or reduce usage; `kubectl describe pod` last state |
-| Error | Container exited with non-zero code | `kubectl logs <pod> --previous` — check exit code in describe |
-| Init:CrashLoopBackOff | Init container crashing | `kubectl logs <pod> -c <init-container>` |
-| Init:0/1 | Init container not yet completed | `kubectl logs <pod> -c <init-container>` — may be waiting on dependency |
-| Completed | All containers exited with 0 | Normal for Jobs. Unexpected for Deployments — check restart policy |
+| Running | Containers started, at least one still running | Check Ready column — Running but 0/1 → [Readiness sub-branch](#sub-readiness) |
+| Pending | Pod accepted but not scheduled or containers not started | `kubectl describe pod` — look for FailedScheduling → [Pending sub-branch](#sub-pending) |
+| CrashLoopBackOff | Container keeps crashing, K8s backing off restarts | `kubectl logs <pod> --previous` → [CrashLoop sub-branch](#sub-crashloop) |
+| ImagePullBackOff | Repeated image pull failures | `kubectl describe pod` — check image name/tag → [ImagePull sub-branch](#sub-imagepull) |
+| ErrImagePull | One-time image pull failure | Same as above → [ImagePull sub-branch](#sub-imagepull) |
+| OOMKilled | Container exceeded memory limit | Increase memory limit; `kubectl describe pod` last state → [CrashLoop sub-branch](#sub-crashloop) |
+| Error | Container exited with non-zero code | `kubectl logs <pod> --previous` — check exit code → [CrashLoop sub-branch](#sub-crashloop) |
+| Init:CrashLoopBackOff | Init container crashing | `kubectl logs <pod> -c <init-container>` → [Init container sub-branch](#sub-init) |
+| Init:0/1 | Init container not yet completed | `kubectl logs <pod> -c <init-container>` — may be waiting on dependency → [Init container sub-branch](#sub-init) |
+| Completed | All containers exited with 0 | Normal for [Jobs](#bucket-g). Unexpected for Deployments — check restart policy |
 | Terminating | Pod being deleted | Check for stuck finalizers; may need force delete |
 | Unknown | Node unreachable | Check node health — `kubectl get nodes`, `kubectl describe node` |
-| ContainerCreating | Image pulling or volume mounting | If stuck: `kubectl describe pod` for mount/pull events |
-| PodInitializing | Init containers running | Normal transitional state — check init container logs if stuck |
+| ContainerCreating | Image pulling or volume mounting | If stuck: `kubectl describe pod` for mount/pull events → [Bucket J](#bucket-j) |
+| PodInitializing | Init containers running | Normal — check init container logs if stuck → [Init container sub-branch](#sub-init) |
 
 ---
 
@@ -1862,19 +1965,19 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 | Pulled | Image pulled from registry | Normal |
 | Created | Container created | Normal |
 | Started | Container started | Normal |
-| Killing | Container being killed | If unexpected: check liveness probe config |
-| BackOff | Backing off restart or pull | Check logs (CrashLoopBackOff) or image (ImagePullBackOff) |
-| FailedScheduling | No suitable node found | `kubectl describe pod` — insufficient CPU/memory, taints, node selectors |
-| FailedMount | Volume could not be mounted | Check PVC name, StorageClass, volume mount path |
-| FailedAttachVolume | PVC exists but can't attach to node | Check PVC bound status, StorageClass provisioner |
-| Unhealthy | Readiness or liveness probe failed | `kubectl describe pod` shows which probe and response |
-| FailedCreate | ReplicaSet couldn't create pod | `kubectl describe rs` — quota exceeded or invalid spec |
+| Killing | Container being killed | If unexpected: check [liveness probe](#sub-liveness) config |
+| BackOff | Backing off restart or pull | → [CrashLoop sub-branch](#sub-crashloop) or [ImagePull sub-branch](#sub-imagepull) |
+| FailedScheduling | No suitable node found | `kubectl describe pod` — insufficient CPU/memory, taints → [Pending sub-branch](#sub-pending) · [Bucket J](#bucket-j) |
+| FailedMount | Volume could not be mounted | Check PVC name, StorageClass, mount path → [Bucket F](#bucket-f) · [Bucket J](#bucket-j) |
+| FailedAttachVolume | PVC exists but can't attach to node | Check PVC bound status, provisioner → [Bucket J](#bucket-j) |
+| Unhealthy | Readiness or liveness probe failed | `kubectl describe pod` shows which probe → [Readiness](#sub-readiness) · [Liveness](#sub-liveness) |
+| FailedCreate | ReplicaSet couldn't create pod | `kubectl describe rs` — quota or invalid spec → [Bucket C](#bucket-c) |
 | SuccessfulCreate | Pod created by ReplicaSet | Normal |
 | SuccessfulDelete | Pod deleted during scale-down/rollout | Normal |
 | RELOAD | nginx Ingress controller reloaded config | Normal — happens when Ingress resources change |
 | Sync | Ingress controller synced state | Normal |
-| Forbidden | RBAC denied an action | Check ServiceAccount, Role, RoleBinding — `kubectl auth can-i` |
-| Evicted | Pod evicted due to resource pressure | Check node resources — `kubectl describe node` |
+| Forbidden | RBAC denied an action | `kubectl auth can-i` → [Bucket A](#bucket-a) |
+| Evicted | Pod evicted due to resource pressure | `kubectl describe node` → [Pending sub-branch](#sub-pending) |
 | NodeNotReady | Pod's node entered NotReady state | `kubectl get nodes`, `kubectl describe node` |
-| InsufficientMemory | Node lacks memory to schedule pod | Reduce memory request or add capacity |
-| InsufficientCPU | Node lacks CPU to schedule pod | Reduce CPU request or add capacity |
+| InsufficientMemory | Node lacks memory to schedule pod | Reduce memory request → [Pending sub-branch](#sub-pending) |
+| InsufficientCPU | Node lacks CPU to schedule pod | Reduce CPU request → [Pending sub-branch](#sub-pending) |
