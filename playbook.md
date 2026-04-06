@@ -18,9 +18,6 @@
   - [Bucket I: Network Policies](#bucket-i)
   - [Bucket J: Storage](#bucket-j)
   - [Bucket K: Namespace Confusion](#bucket-k)
-- [When to Stop Triaging and Commit](#when-to-stop-triaging)
-- [Fix Discipline](#fix-discipline)
-- [What to Say Out Loud (Interview)](#what-to-say-out-loud)
 - [Quick Reference — Most Useful Commands](#quick-reference)
 - [The Process (Summary)](#process-summary)
 - [Appendix A: Linux / Bash / Zsh Commands](#appendix-linux)
@@ -502,6 +499,8 @@ Say: *"I see a Forbidden error, so this is an RBAC problem. I need to check the 
 
 #### Diagnose
 
+Say: *"I'm entering the RBAC bucket because the signal is a Forbidden or Unauthorized error — that always means a missing or misconfigured permission grant. I'll walk the full chain: ServiceAccount exists, RoleBinding points to the right SA, and the Role actually grants the right verbs."*
+
 ```bash
 kubectl auth can-i --list
 kubectl get sa,role,rolebinding,clusterrole,clusterrolebinding -A
@@ -519,23 +518,34 @@ kubectl get rolebinding <binding> -n <ns> -o yaml
 
 #### What to look for
 
-**In `kubectl auth can-i`:** yes or no. If no, keep going in this bucket. Do not leave this bucket yet.
+**`kubectl auth can-i --as=system:serviceaccount:<ns>:<sa> <verb> <resource> -n <ns>`**
+- Healthy: `yes`
+- Broken: `no` — the permission chain is broken somewhere; use the SA, Role, and RoleBinding steps below to find the gap.
 
-**In the ServiceAccount YAML:** exact name, namespace.
+**`kubectl get sa <sa> -n <ns> -o yaml` — check that the ServiceAccount exists**
+- Healthy: the SA is returned with the correct `metadata.name` and `metadata.namespace`
+- Broken: `Error from server (NotFound)` — the SA was never created, or the Deployment references a different name; check `kubectl get pod <pod> -n <ns> -o yaml` field `spec.serviceAccountName` and compare to what exists
 
-**In the RoleBinding YAML:**
+**`kubectl get rolebinding <binding> -n <ns> -o yaml` — check `subjects` and `roleRef`**
 
-- `subjects[].kind` should match expectation (often ServiceAccount)
-- `subjects[].name` exact match
-- `subjects[].namespace` exact match
-- `roleRef.name` exact match
-- `roleRef.kind` correct (Role vs ClusterRole)
+`subjects` field:
+- `kind` — Healthy: `ServiceAccount`. Broken: `User` or `Group` when a ServiceAccount is expected
+- `name` — Healthy: exact match to the SA name. Broken: any typo or case difference (e.g. `app` when SA is `app-sa`)
+- `namespace` — Healthy: matches the namespace where the SA lives. Broken: wrong namespace or field omitted — the binding silently won't match
 
-**In the Role YAML:**
+`roleRef` field:
+- `name` — Healthy: exact match to the Role name. Broken: points to a role that doesn't exist; `kubectl get role -n <ns>` to see what actually exists
+- `kind` — Healthy: `Role` for namespace-scoped, `ClusterRole` for cluster-wide. Broken: kind mismatch causes silent failure
 
-- right resources
-- right verbs
-- right apiGroups
+**`kubectl get role <role> -n <ns> -o yaml` — check `rules`**
+
+Each rule has three fields — all three must be correct:
+
+| Field | Healthy example | Broken example |
+|---|---|---|
+| `apiGroups` | `[""]` for core resources (pods, services, secrets); `["apps"]` for Deployments | `["v1"]` — wrong; core API group is `""` not `"v1"` |
+| `resources` | `["pods","services"]` | `["pod"]` — singular form is not accepted; must be plural |
+| `verbs` | `["get","list","watch"]` | `["read"]` — `read` is not a valid verb |
 
 If unsure about API group:
 
@@ -546,64 +556,49 @@ kubectl explain <resource>
 
 **Common apiGroup reference:**
 
-- `deployments` → apiGroups: `["apps"]`
-- `pods`, `services`, `configmaps`, `secrets` → apiGroups: `[""]`
-- `ingresses` → apiGroups: `["networking.k8s.io"]`
+- `deployments`, `replicasets`, `statefulsets` → apiGroups: `["apps"]`
+- `pods`, `services`, `configmaps`, `secrets`, `serviceaccounts` → apiGroups: `[""]`
+- `ingresses`, `networkpolicies` → apiGroups: `["networking.k8s.io"]`
 - `jobs`, `cronjobs` → apiGroups: `["batch"]`
 
 #### Stop condition
 
-Stop this bucket when you can point to the exact broken RBAC link, or `kubectl auth can-i ...` returns yes.
+Stop when `kubectl auth can-i` returns `yes` for all required permissions AND there are no Forbidden errors in pod logs.
+
+Say: *"I've confirmed the issue is [subject name mismatch / missing verb / wrong apiGroup]. Here's my fix plan: I'm going to [edit the RoleBinding / edit the Role / delete and recreate the binding]."*
 
 #### Fix patterns
 
-- fix the RoleBinding subject: wrong name, wrong namespace, wrong kind
-- fix the roleRef: wrong name, wrong kind
-- fix the Role rules: wrong apiGroups, wrong resources, wrong verbs
-- if the ServiceAccount itself is wrong or missing: create it or rename references to match
-- if the scenario expects namespace-scoped access, use a Role + RoleBinding
-- if it expects cluster-wide access, you may need ClusterRole + ClusterRoleBinding
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-**Important:** You cannot edit the `roleRef` on a RoleBinding. You must delete and recreate it.
+**Subject name or namespace wrong in RoleBinding:** Find the correct SA name with `kubectl get pod <pod> -n <ns> -o yaml | grep serviceAccountName`. Fix with `kubectl edit rolebinding <binding> -n <ns>` — correct `subjects[].name` and `subjects[].namespace`. Verify: `kubectl auth can-i --as=system:serviceaccount:<ns>:<sa> <verb> <resource> -n <ns>` returns `yes`.
+
+**RoleRef name wrong (binding points to nonexistent Role):** Find the correct Role name from `kubectl get role -n <ns>`. Note: `roleRef` is immutable — you must delete and recreate:
 
 ```bash
-# Fix a Role (wrong verbs, resources, or apiGroups)
-kubectl edit role <role> -n <ns>
-
-# Fix a RoleBinding (wrong subject)
-kubectl edit rolebinding <binding> -n <ns>
-
-# Delete and recreate RoleBinding (if roleRef is wrong)
 kubectl delete rolebinding <binding> -n <ns>
-kubectl create rolebinding <n> \
-  --role=<role> \
+kubectl create rolebinding <binding> \
+  --role=<correct-role> \
   --serviceaccount=<ns>:<sa> \
   -n <ns>
-
-# Create a missing ClusterRoleBinding
-kubectl create clusterrolebinding <n> \
-  --clusterrole=<clusterrole> \
-  --serviceaccount=<ns>:<sa>
-
-# Or apply from file
-kubectl apply -f <file>.yaml
 ```
+
+Verify: `kubectl auth can-i` returns `yes`.
+
+**Role rules missing verb, resource, or apiGroup:** Find the required verb/resource from the error message in pod logs (e.g. `cannot list resource "deployments" in API group "apps"`). Fix with `kubectl edit role <role> -n <ns>` — add the missing entry to `rules[]`. Verify: `kubectl auth can-i` returns `yes`.
+
+**ServiceAccount does not exist:** Fix with `kubectl create serviceaccount <sa> -n <ns>`. If a RoleBinding is also missing: `kubectl create rolebinding <binding> --role=<role> --serviceaccount=<ns>:<sa> -n <ns>`. Verify: `kubectl get sa <sa> -n <ns>` returns the SA; `kubectl auth can-i` returns `yes`.
 
 #### Verify
 
 ```bash
 kubectl auth can-i --as=system:serviceaccount:<ns>:<sa> <verb> <resource> -n <ns>
-kubectl get rolebinding <binding> -n <ns> -o yaml
-kubectl get role <role> -n <ns> -o yaml
+# Expected: yes
+kubectl get sa,role,rolebinding -n <ns>
+# Expected: all three objects present with correct names
 ```
 
-You are done when:
-
-- `can-i` returns yes for the required action
-- the YAML now reflects the intended RBAC chain
-- the original forbidden action succeeds
-
-If `can-i` is now yes but the scenario still fails, only then leave this bucket.
+Say: *"Permission check returns yes, the RBAC chain is consistent, and there are no Forbidden errors in the application logs. RBAC is healthy."*
 
 ---
 
@@ -617,6 +612,8 @@ If `can-i` is now yes but the scenario still fails, only then leave this bucket.
 Say: *"I see a pod in [status]. Let me describe it and check logs to understand what's happening."*
 
 #### Diagnose
+
+Say: *"I'm entering the pod health bucket because the signal is at the pod level — a bad status, restart count climbing, or an event pointing here. Before I branch into a sub-problem I want the full picture from describe and logs so I'm not guessing at the cause."*
 
 ```bash
 kubectl get pods -n <ns>
@@ -636,31 +633,52 @@ kubectl describe pod <pod> -n <ns>   # check initContainerStatuses section
 
 #### What to look for
 
-**In `describe pod`**, go straight to:
+**`kubectl get pods -n <ns>` — STATUS and RESTARTS columns**
 
-- container state (and init container state)
-- restart count
-- last termination reason (especially OOMKilled)
-- probes (liveness, readiness, startup)
-- env/config/secret refs
-- Events section at bottom
+| STATUS | What it signals | Branch to |
+|---|---|---|
+| `Pending` | Not scheduled — resource pressure, unbound PVC, or node taint | Pending sub-branch |
+| `Init:0/1` or `Init:CrashLoopBackOff` | Init container has not completed or is failing | Init Container sub-branch |
+| `ImagePullBackOff` / `ErrImagePull` / `ErrImageNeverPull` | Image cannot be pulled | ImagePull sub-branch |
+| `CrashLoopBackOff` | Container starts and immediately exits repeatedly | CrashLoop sub-branch |
+| `Running` but READY shows `0/1` | Container is up but failing readiness probe | Readiness sub-branch |
+| `Running` with RESTARTS climbing | Container killed and restarted by liveness probe | Liveness sub-branch |
 
-Signal map:
+Healthy: `Running` with READY `1/1` and RESTARTS `0` (or stable low number not climbing).
 
-- FailedScheduling → scheduling/resources/PVC
-- FailedMount → volume/config/secret problem
-- Unhealthy → probe problem
-- image pull errors → image/registry problem
-- OOMKilled → resource limits too low or memory leak
+**`kubectl describe pod <pod> -n <ns>` — `State` and `Last State` under each container**
 
-**In logs**, look for:
+- Healthy `State`: `Running` with a recent `Started` timestamp
+- Broken `State`: `Waiting` with `Reason: CrashLoopBackOff` or `Reason: ImagePullBackOff`
+- `Last State` exit codes: `0` = clean exit (unexpected for long-running app), `1` = application error (check logs), `137` = OOMKill (check memory limits), `143` = SIGTERM (usually liveness probe kill)
 
-- app startup exceptions
-- connection refused to DB / dependency
-- missing environment variables
-- migration failures
-- bind/listen port mismatch
-- permission errors (filesystem, network)
+**`kubectl describe pod <pod> -n <ns>` — `Conditions` section**
+
+- Healthy: all conditions `True` (`PodScheduled`, `Initialized`, `ContainersReady`, `Ready`)
+- Broken: any condition `False` with a `Message` — read the message before going further
+
+**`kubectl describe pod <pod> -n <ns>` — `Events` section (bottom)**
+
+| Event reason | Meaning |
+|---|---|
+| `FailedScheduling` | Cannot place pod — check message for `Insufficient cpu/memory`, `untolerated taint`, or `no persistent volumes` |
+| `FailedMount` | Volume cannot attach — PVC unbound, wrong StorageClass, or missing ConfigMap/Secret |
+| `BackOff` | Container restarting repeatedly |
+| `Pulling` / `Pulled` | Image pull in progress or completed; absence of `Pulled` with a `Failed` event = ImagePull problem |
+| `Unhealthy` | Probe failed — message says which probe and the exact error |
+| `Killing` | Liveness probe killed the container — repeating = probe too aggressive or wrong target |
+
+**`kubectl describe pod <pod> -n <ns>` — `Limits` and `Requests`**
+
+- Check when pod is Pending or exit code is 137
+- Broken: requests higher than node allocatable (causes Pending), or limits too low (causes OOMKill)
+- Node capacity: `kubectl describe node | grep -A 5 Allocatable`
+
+**`kubectl logs <pod> -n <ns>` and `--previous`**
+
+- Use `--previous` when container has already exited — `logs` without it returns nothing for a crashed container
+- Healthy: clean startup messages, no stack traces
+- Broken: `connection refused` (dependency down → [Bucket H](#bucket-h)), `auth failed` (wrong credentials → [Bucket F](#bucket-f)), missing env var (→ [Bucket F](#bucket-f)), panic/stack trace (app bug)
 
 Now branch based on the pod status:
 
@@ -1024,76 +1042,59 @@ Say: *"The deployment exists but new pods aren't appearing or the rollout seems 
 
 #### Diagnose
 
+Say: *"I'm checking the deployment and rollout state — I want to see if there are multiple ReplicaSets, which one is active, and whether the rollout is stuck or failing."*
+
 ```bash
 kubectl get deploy -n <ns>
-kubectl describe deploy <deploy> -n <ns>
 kubectl rollout status deploy/<deploy> -n <ns>
 kubectl rollout history deploy/<deploy> -n <ns>
 kubectl get rs -n <ns>
 kubectl get pods -n <ns> --show-labels
+kubectl describe deploy <deploy> -n <ns>
 ```
 
 #### What to look for
 
-- desired vs available replicas
-- rollout events
-- image version/tag
-- selector labels vs pod template labels (must match)
-- revision history
-- old ReplicaSets still running
+**`kubectl get deploy -n <ns>` — READY column:** Healthy: `1/1`. Broken: `0/1` or `1/2` — available count is less than desired.
 
-A stuck rollout typically shows:
-- Old RS: desired=1, ready=1
-- New RS: desired=1, ready=0
+**`kubectl rollout status deploy/<deploy> -n <ns>`:** Healthy: `successfully rolled out`. Broken: `Waiting for deployment rollout to finish: 1 old replicas are pending termination` or `exceeded its progress deadline`.
 
-Check the new RS's pods — they usually have a clear error (ImagePullBackOff, CrashLoopBackOff, etc.). If so, go to [**Bucket B**](#bucket-b) to fix the pod issue first.
+**`kubectl get rs -n <ns>` — DESIRED/CURRENT/READY columns:** Healthy: one RS at `1 1 1`, older RSes at `0 0 0`. Stuck rollout: old RS `1 1 1`, new RS `1 1 0` — new pods never became Ready, old RS still serving.
 
-If the issue is update/rollback behavior, stay here.
+**`kubectl describe deploy <deploy> -n <ns>` — Image field:** Compare `Containers: → Image:` to expected. Broken: wrong tag or nonexistent image. Also check `Conditions:` for `ProgressDeadlineExceeded`.
+
+**`kubectl describe deploy <deploy> -n <ns>` — Selector vs Pod Template Labels:** Must match exactly. Broken: selector `app=platform-drill-api` but template labels `app=drill-api` — the Deployment cannot own any pods.
+
+Check the new RS's pods — they usually have a clear error (ImagePullBackOff, CrashLoopBackOff, etc.). If so, go to [**Bucket B**](#bucket-b) to fix the pod issue first. If the issue is update/rollback behavior, stay here.
 
 #### Stop condition
 
-Stop when you know whether the rollout problem is: bad image, bad labels, bad pod template, or partial rollout needing rollback.
+Stop when you can name which ReplicaSet is stuck, why its pods aren't becoming ready, and the specific field/event that confirms it.
+
+Say: *"I've confirmed the rollout is stuck because [bad image tag / failing probes / bad config]. The new RS pods show [specific status]. I'm going to [fix the image / roll back / fix the config]."*
 
 #### Fix patterns
 
-- correct the image/tag in the Deployment
-- fix the Deployment selector or pod template labels
-- fix the pod template environment/config
-- roll back to the previous good revision
-- scale appropriately if replica count is wrong for the scenario
-- if the Deployment spec is malformed, re-apply the corrected manifest
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-```bash
-# Rollback to previous revision
-kubectl rollout undo deploy/<deploy> -n <ns>
+**Bad image tag:** Find correct image from old running pod: `kubectl get pod <old-pod> -n <ns> -o jsonpath='{.spec.containers[0].image}'`. Fix: `kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>`. Verify: `kubectl rollout status deploy/<deploy> -n <ns>` returns `successfully rolled out`.
 
-# Rollback to a specific revision
-kubectl rollout undo deploy/<deploy> -n <ns> --to-revision=<N>
+**Roll back to previous revision:** `kubectl rollout undo deploy/<deploy> -n <ns>`. For specific revision: `kubectl rollout undo deploy/<deploy> -n <ns> --to-revision=<N>`. Find revision numbers: `kubectl rollout history deploy/<deploy> -n <ns>`. Verify: `kubectl rollout status` succeeds and pods are Running.
 
-# Fix image
-kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>
+**Bad pod template config:** Fix the underlying ConfigMap/Secret/env (see [Bucket F](#bucket-f)), then `kubectl rollout restart deploy/<deploy> -n <ns>`. Verify: new pods Running and Ready, logs clean.
 
-# Fix label mismatch between selector and pod template
-kubectl edit deploy <deploy> -n <ns>
-# Ensure spec.selector.matchLabels matches spec.template.metadata.labels
-
-# Scale if needed
-kubectl scale deploy/<deploy> --replicas=<N> -n <ns>
-
-# Restart all pods (force new rollout)
-kubectl rollout restart deploy/<deploy> -n <ns>
-```
+**Replica count wrong:** `kubectl scale deploy/<deploy> --replicas=<N> -n <ns>`. Verify: `kubectl get deploy <deploy> -n <ns>` READY shows `N/N`.
 
 #### Verify
 
 ```bash
 kubectl rollout status deploy/<deploy> -n <ns>
-kubectl get deploy <deploy> -n <ns>
 kubectl get rs -n <ns>
 kubectl get pods -n <ns>
+curl -s localhost/
 ```
 
-You are done when the rollout completes successfully and the desired replicas are available.
+Healthy: rollout `successfully rolled out`, one RS at desired count, all pods Running `1/1`, curl returns valid response.
 
 ---
 
@@ -1108,94 +1109,56 @@ Say: *"Pods are Running and Ready, but I can't reach the app through the Service
 
 #### Diagnose
 
+Say: *"I'm checking whether the service has endpoints — if endpoints are empty, the selector is broken. If endpoints exist but the app is unreachable, I need to check ports or NetworkPolicies."*
+
 ```bash
 kubectl get svc -n <ns>
 kubectl describe svc <svc> -n <ns>
 kubectl get endpoints <svc> -n <ns>
 kubectl get pods -n <ns> --show-labels
 kubectl get networkpolicy -n <ns>
-```
-
-Then test it:
-
-```bash
 kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>
-curl -i http://localhost:8080
+# Then: curl -i http://localhost:8080
 ```
 
 #### What to look for
 
-**In `describe svc`:** selector, service port, targetPort.
+**`kubectl get endpoints <svc> -n <ns>` — ENDPOINTS column:** Healthy: `10.244.x.x:8000` (one or more pod IPs). Broken: `<none>` — Service selector matches zero Ready pods. This is the single most decisive check in this bucket.
 
-**In `get endpoints`:** whether backend pod IPs exist.
+**`kubectl describe svc <svc> -n <ns>` — Selector field:** Compare exactly to `kubectl get pods -n <ns> --show-labels` LABELS column. Healthy: `Selector: app=platform-drill-api` matches pod label `app=platform-drill-api`. Broken: any character difference — `app=api` vs `app=platform-drill-api`.
 
-**If endpoints are empty:**
+**`kubectl describe svc <svc> -n <ns>` — Port and TargetPort:** Healthy: `Port: 80/TCP`, `TargetPort: 8000/TCP` where 8000 matches the container's actual listening port. Broken: `TargetPort: 8080/TCP` when container listens on 8000 — connections reach the pod but hit a closed port.
 
-- stay in this bucket
-- compare service selector to pod labels (exact match required)
-- check pod readiness (only Ready pods appear in endpoints)
+**`kubectl get pods -n <ns>` — READY column:** Only pods with `1/1` appear in endpoints. Broken: `0/1` means readiness probe failing → endpoints empty even though pod exists.
 
-**If endpoints exist but curl fails:**
-
-- compare targetPort with the port the app is actually listening on
-- check for NetworkPolicy blocking traffic → go to [**Bucket I**](#bucket-i)
-- maybe shift back to [Bucket B](#bucket-b) if app is unhealthy
-
-**NetworkPolicy check** (often missed):
-
-```bash
-kubectl get networkpolicy -n <ns>
-kubectl describe networkpolicy <policy> -n <ns>
-```
-
-Look for: ingress/egress rules that block traffic between pods or from the service.
+**Port-forward test:** If `kubectl port-forward svc/<svc>` + `curl` succeeds but `curl localhost/` fails → problem is Ingress or NetworkPolicy, not Service.
 
 #### Stop condition
 
-Stop when you know whether the problem is: selector mismatch, no ready pods, wrong targetPort, NetworkPolicy blocking traffic, or app behind service still unhealthy.
+Say: *"I've confirmed the root cause — [empty endpoints from selector mismatch / wrong targetPort / NetworkPolicy blocking]. Endpoints are [empty/populated]. I'm going to fix [the selector / the port / the policy]."*
 
 #### Fix patterns
 
-- fix the Service selector to match the pod labels
-- fix the pod labels to match the Service selector
-- correct targetPort to match the port the container actually listens on
-- correct the service port if the scenario expects a different one
-- fix readiness so healthy pods actually become endpoints
-- fix or delete a blocking NetworkPolicy
-- if the service points to the wrong namespace's assumptions, make sure you are checking the correct namespace rather than patching the wrong object
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-```bash
-# Fix selector mismatch or targetPort
-kubectl edit svc <svc> -n <ns>
+**Selector mismatch (endpoints empty):** Find correct label: `kubectl get pods -n <ns> --show-labels`. Fix: `kubectl patch svc <svc> -n <ns> -p '{"spec":{"selector":{"app":"<correct-label>"}}}'`. Verify: `kubectl get endpoints <svc> -n <ns>` shows pod IPs.
 
-# Fix pod labels to match service selector
-kubectl edit deploy <deploy> -n <ns>
+**Wrong targetPort:** Find correct port: `kubectl describe pod <pod> -n <ns>` → `Containers: → Ports: → ContainerPort`. Fix: `kubectl patch svc <svc> -n <ns> -p '{"spec":{"ports":[{"port":<svc-port>,"targetPort":<correct-port>}]}}'`. Verify: `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl localhost:8080/` returns valid response.
 
-# Fix or delete blocking NetworkPolicy
-kubectl edit networkpolicy <policy> -n <ns>
-kubectl delete networkpolicy <policy> -n <ns>
+**Readiness probe failing (pods not Ready → empty endpoints):** Fix the probe in [Bucket B](#bucket-b) first — once pods become Ready, endpoints auto-populate.
 
-# Create a missing service
-kubectl expose deploy <deploy> --port=<svc-port> --target-port=<container-port> -n <ns>
-
-# Or apply from file
-kubectl apply -f <service-file>.yaml
-```
+**NetworkPolicy blocking traffic:** Confirm by temporarily deleting suspect policy: `kubectl delete networkpolicy <policy> -n <ns>` then `curl localhost/`. If traffic works, re-apply a corrected policy. See [Bucket I](#bucket-i).
 
 #### Verify
 
 ```bash
 kubectl get endpoints <svc> -n <ns>
-kubectl describe svc <svc> -n <ns>
 kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>
 curl -i http://localhost:8080
+curl -s localhost/
 ```
 
-You are done when:
-
-- endpoints are populated with the correct backends
-- curl through the service works
-- the service now routes to the intended pods
+Healthy: endpoints populated, port-forward curl returns valid JSON, external curl works.
 
 ---
 
@@ -1212,65 +1175,57 @@ Say: *"I can reach the app through port-forward, so the Service and pods are fin
 
 #### Diagnose
 
+Say: *"I'm checking the Ingress resource — I want to see if it has an address assigned, whether the backend service name and port match what actually exists, and whether the IngressClass is correct."*
+
 ```bash
 kubectl get ingress -n <ns>
 kubectl describe ingress <ing> -n <ns>
 kubectl get svc -n <ns>
 kubectl get endpoints <svc> -n <ns>
-```
-
-Then test:
-
-```bash
 curl -H "Host: <host>" -i http://<ingress-ip>
-curl -H "Host: <host>" -i http://<ingress-ip>/<path>
 ```
 
 #### What to look for
 
-- correct host
-- correct path and pathType
-- correct backend service name
-- correct backend port (number or name)
-- ingress class annotation or `spec.ingressClassName`
-- address assigned (if blank, ingress controller may not be running)
+**`kubectl get ingress -n <ns>` — ADDRESS column:** Healthy: an IP or hostname (e.g. `localhost`). Broken: blank — ingress controller hasn't admitted this resource (wrong IngressClass or controller not running).
+
+**`kubectl describe ingress <ing> -n <ns>` — IngressClass:** Healthy: `nginx` (or matching installed controller). Broken: empty, `<none>`, or wrong class name. Find correct class: `kubectl get ingressclass`.
+
+**`kubectl describe ingress <ing> -n <ns>` — Rules > Backends:** Healthy: `<svc>:80` with populated endpoints shown inline. Broken: wrong service name (compare to `kubectl get svc -n <ns>`), or wrong port — the Ingress must reference the Service's `port:` (not `targetPort`).
+
+**`kubectl describe ingress <ing> -n <ns>` — Host and Path:** If `Host:` is set, requests need a matching Host header. Broken: host `api.example.com` but you're curling `localhost`. Path `pathType: Exact` with `/api` won't match `/`.
+
+**`kubectl get pods -n ingress-nginx` — controller health:** Healthy: `Running` and `1/1`. Broken: `CrashLoopBackOff` or absent — no controller = no address on any Ingress.
 
 #### Stop condition
 
-Stop when you can say: host/path mismatch, wrong backend service, wrong backend port, or ingress class/address issue.
+Say: *"I've confirmed the root cause — [wrong backend port / wrong service name / missing IngressClass / controller down]. I can see it in [describe ingress Backends field / ADDRESS column]. The underlying service has healthy endpoints, so fixing the Ingress should restore access."*
 
 #### Fix patterns
 
-- correct the host rule
-- correct the path rule
-- correct the backend service name
-- correct the backend service port
-- fix or add the correct ingress class annotation/spec field
-- if ingress has no address because the controller is not functioning, confirm controller health before editing the Ingress blindly
-- if external routing is fine but the service is broken, stop here and go back to [Bucket D](#bucket-d)
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-```bash
-# Fix host, path, backend service, or backend port
-kubectl edit ingress <ing> -n <ns>
+**Wrong backend port:** Find correct port from `kubectl get svc <svc> -n <ns>` PORT(S) column. Fix: `kubectl patch ingress <ing> -n <ns> --type=json -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/port/number","value":<correct-port>}]'`. Verify: `curl -s localhost/` returns valid response.
 
-# Or apply from file
-kubectl apply -f <ingress-file>.yaml
+**Wrong backend service name:** Find correct name from `kubectl get svc -n <ns>`. Fix: `kubectl patch ingress <ing> -n <ns> --type=json -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/name","value":"<correct-svc>"}]'`. Verify: `kubectl describe ingress <ing> -n <ns>` shows populated endpoints under Backends.
 
-# If ingress controller is not running
-kubectl get pods -n ingress-nginx   # or the relevant namespace
-kubectl describe deploy -n ingress-nginx
-```
+**Wrong IngressClass (no address):** Find correct class: `kubectl get ingressclass`. Fix: `kubectl patch ingress <ing> -n <ns> -p '{"spec":{"ingressClassName":"nginx"}}'`. Verify: `kubectl get ingress -n <ns>` ADDRESS populates within seconds.
+
+**Controller not running:** Fix controller first: `kubectl get pods -n ingress-nginx`, then `kubectl rollout restart deploy/ingress-nginx-controller -n ingress-nginx`. Verify: controller Running and `1/1`, then re-check `kubectl get ingress -n <ns>` for ADDRESS.
+
+**Service underneath is broken:** Stop — go to [Bucket D](#bucket-d). Don't edit Ingress when the problem is below it.
 
 #### Verify
 
 ```bash
+kubectl get ingress -n <ns>
 kubectl describe ingress <ing> -n <ns>
-curl -H "Host: <host>" -i http://<ingress-ip>
-kubectl get svc -n <ns>
-kubectl get endpoints <svc> -n <ns>
+curl -s localhost/
+curl -s localhost/health
+curl -s localhost/items
 ```
 
-You are done when the host/path rule matches the intended backend and the external request behaves correctly.
+Healthy: ADDRESS populated, Backends show correct service with endpoints, all three curl responses return valid JSON.
 
 ---
 
@@ -1285,88 +1240,58 @@ Say: *"I see the pod is failing because of configuration. This could be a missin
 
 #### Diagnose
 
+Say: *"I'm checking whether the pod can resolve all its config — configmaps, secrets, and volume mounts. I want to see if Kubernetes is reporting missing references before I look at app logs."*
+
 ```bash
 kubectl get configmap -n <ns>
 kubectl get secret -n <ns>
 kubectl describe pod <pod> -n <ns>
 kubectl logs <pod> -n <ns>
 kubectl get pod <pod> -n <ns> -o yaml
-```
-
-Check what the Deployment references:
-
-```bash
-kubectl get deployment <deploy> -n <ns> -o yaml | grep -A 3 "configMapRef\|secretRef\|configMapKeyRef\|secretKeyRef\|volumes"
-```
-
-Check what actually exists:
-
-```bash
-kubectl get configmap -n <ns>
-kubectl get secret -n <ns>
+kubectl get deployment <deploy> -n <ns> -o yaml | grep -A2 -E 'configMapRef|secretRef'
 ```
 
 #### What to look for
 
-- missing secret/configmap refs (events will say "not found")
-- env vars referencing wrong configmap/secret names
-- mounted files missing or at wrong paths
-- volume mount paths wrong
-- app logs complaining about credentials, connection strings, or missing settings
-- ConfigMap or Secret exists and is correctly referenced, but contains a **wrong value** (e.g., wrong database name, wrong hostname, wrong port). The app logs will typically show the exact value that failed — cross-reference that with `kubectl get configmap <cm> -n <ns> -o yaml` to find the mismatch.
+**`kubectl describe pod <pod> -n <ns>` — Events section:** Healthy: no warnings about missing objects. Broken: `Warning  Failed  ... Error: configmap "<cm>" not found` or `secret "<secret>" not found`. The event names the exact missing resource.
 
-If it is a mount issue, inspect `volumes` and `volumeMounts` in the pod YAML carefully.
+**`kubectl describe pod <pod> -n <ns>` — Environment block:** Each env var sourced from a ConfigMap/Secret shows the source name. Compare to `kubectl get configmap -n <ns>` / `kubectl get secret -n <ns>` — names must match character-for-character.
 
-If it is a secret/config ref issue, inspect names character by character.
+**`kubectl get pod <pod> -n <ns> -o yaml` — `envFrom[].configMapRef.name` and `secretRef.name`:** Healthy: names match existing objects. Broken: typo (e.g., `app-configs` vs `app-config`).
+
+**`kubectl get configmap <cm> -n <ns> -o yaml` — `data` block:** Healthy: key names and values match what app expects (e.g., `POSTGRES_HOST: postgres`). Broken: value is wrong (e.g., `POSTGRES_DB: platformdrill_v2` when DB is `platformdrill`). App logs typically print the bad value — cross-reference.
+
+**`kubectl get secret <secret> -n <ns> -o yaml` — `data` block (base64-encoded):** Decode with `echo "<value>" | base64 -d`. Healthy: decoded value matches expected credential. Broken: wrong password, or value was double-encoded.
+
+**`kubectl logs <pod> -n <ns>`:** Look for `KeyError`, `undefined variable`, `could not parse config`, connection/auth failures. These point to which specific key or value is wrong.
 
 #### Stop condition
 
-Stop when you identify: missing object, wrong reference name, wrong mount path, wrong env source, or **wrong value inside a correctly-referenced ConfigMap or Secret**.
+Say: *"The root cause is [missing ConfigMap / wrong reference name / wrong value in key X]. I can see it in [Events / ConfigMap data / app logs]. I'm going to [create the missing resource / fix the reference / correct the value]."*
 
 #### Fix patterns
 
-- create the missing ConfigMap or Secret
-- correct the referenced object name in the pod/deployment spec
-- fix the key name used by env or envFrom
-- correct the mount path
-- correct the volume name / volumeMount linkage
-- restart/roll out the workload if the config change requires a new pod
-- if the config object exists in a different namespace, stop and correct namespace assumptions rather than duplicating blindly unless the scenario requires duplication
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-```bash
-# Create a missing ConfigMap
-kubectl create configmap <n> --from-literal=<key>=<value> -n <ns>
-kubectl create configmap <n> --from-file=<path> -n <ns>
+**Missing ConfigMap or Secret (event says "not found"):** Find the expected name from `kubectl get deploy <deploy> -n <ns> -o yaml | grep configMapRef`. Create: `kubectl create configmap <cm> --from-literal=<key>=<value> -n <ns>` or `kubectl create secret generic <secret> --from-literal=<key>=<value> -n <ns>`. Verify: `kubectl describe pod <pod> -n <ns>` — no more "not found" events.
 
-# Create a missing Secret
-kubectl create secret generic <n> --from-literal=<key>=<value> -n <ns>
+**Wrong reference name in Deployment:** Find correct name: `kubectl get configmap -n <ns>`. Fix: `kubectl edit deploy <deploy> -n <ns>` — correct `envFrom[].configMapRef.name` or `secretRef.name`. Verify: new pod starts without config errors.
 
-# Fix a wrong env var reference or mount path
-kubectl edit deploy <deploy> -n <ns>
-# Correct env[].valueFrom.configMapKeyRef.name/.key or volumeMounts[].mountPath
+**Wrong value in ConfigMap:** Find correct value by cross-referencing (e.g., `kubectl get svc -n <ns>` for hostname, or the Postgres ConfigMap for DB name). Fix: `kubectl edit configmap <cm> -n <ns>`, then `kubectl rollout restart deploy/<deploy> -n <ns>` (pods don't auto-reload). Verify: `kubectl exec <pod> -n <ns> -- env | grep <KEY>` shows correct value; `curl localhost/health` returns 200.
 
-# Fix a ConfigMap or Secret value
-kubectl edit configmap <cm> -n <ns>
-kubectl edit secret <secret> -n <ns>
+**Wrong value in Secret:** Decode current: `kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d`. Fix: `kubectl edit secret <secret> -n <ns>` (values must be base64-encoded). Then `kubectl rollout restart deploy/<deploy> -n <ns>`. Verify: app logs show no auth failure.
 
-# Decode a secret value to check it
-kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d
-
-# After editing a ConfigMap or Secret, restart to pick up changes
-kubectl rollout restart deploy/<deploy> -n <ns>
-```
+**Wrong volume mount path:** Find correct path from app documentation or image defaults. Fix: `kubectl edit deploy <deploy> -n <ns>` — correct `volumeMounts[].mountPath`. Verify: `kubectl exec <pod> -n <ns> -- ls <correct-path>` shows expected files.
 
 #### Verify
 
 ```bash
-kubectl get configmap -n <ns>
-kubectl get secret -n <ns>
-kubectl describe pod <pod> -n <ns>
-kubectl logs <pod> -n <ns>
-kubectl exec <pod> -n <ns> -- env | grep <expected-var>
+kubectl rollout status deploy/<deploy> -n <ns>
+kubectl describe pod <pod> -n <ns>          # no Warning events
+kubectl exec <pod> -n <ns> -- env | grep <KEY>   # correct values
+kubectl logs <pod> -n <ns>                  # clean startup
+curl -s localhost/health                    # 200
 ```
-
-You are done when the references are correct, mounts/env are present, and the app stops failing for that missing-config reason.
 
 ---
 
@@ -1381,66 +1306,56 @@ Say: *"This is a Job or CronJob issue. I need to check whether the job itself is
 
 #### Diagnose
 
+Say: *"I'm checking the Job or CronJob status — I want to see completions vs desired, whether any pods failed, and what the pod logs say."*
+
 ```bash
-kubectl get jobs -A
-kubectl get cronjobs -A
+kubectl get jobs -n <ns>
+kubectl get cronjobs -n <ns>
 kubectl describe job <job> -n <ns>
 kubectl describe cronjob <cj> -n <ns>
-kubectl get pods -n <ns>
+kubectl get pods -n <ns> --selector=job-name=<job>
 kubectl logs <job-pod> -n <ns>
 ```
 
 #### What to look for
 
-- job completions vs desired
-- backoffLimit reached
-- failed pods
-- schedule syntax (cron format)
-- suspend field (is the CronJob paused?)
-- concurrencyPolicy
-- pod logs for runtime errors
+**`kubectl get jobs -n <ns>` — COMPLETIONS column:** Healthy: `1/1`. Broken: `0/1` after sufficient time — pod is failing or never started.
+
+**`kubectl describe job <job> -n <ns>` — Events section:** Healthy: no `BackoffLimitExceeded`. Broken: `Warning BackoffLimitExceeded Job has reached the specified backoff limit` — Job will not retry further.
+
+**`kubectl get pods --selector=job-name=<job> -n <ns>` — STATUS:** Healthy: `Completed`. Broken: `Error`, `OOMKilled`, `CrashLoopBackOff`. Use `kubectl logs <pod> --previous` for crash output.
+
+**`kubectl get cronjobs -n <ns>` — SUSPEND and LAST SCHEDULE columns:** Healthy: `SUSPEND: False`, `LAST SCHEDULE` recent. Broken: `SUSPEND: True` (paused, won't fire), or `LAST SCHEDULE: <none>` (bad schedule syntax — never fires).
+
+**`kubectl describe cronjob <cj> -n <ns>` — Schedule field:** Healthy: valid 5-field cron (e.g., `*/5 * * * *`). Broken: only 4 fields, or invalid syntax — Kubernetes accepts it silently but never fires.
+
+**`kubectl describe cronjob <cj> -n <ns>` — Active count:** If high and not decreasing, a `concurrencyPolicy: Forbid` or `Allow` may be causing stale runs to pile up.
 
 #### Stop condition
 
-Stop when you know whether it is: job pod failing, schedule misconfigured, concurrency issue, or image/config/runtime issue inside the job.
+Say: *"The root cause is [backoffLimit reached / CronJob suspended / bad schedule syntax / pod failing with specific error]. I'm going to [fix the underlying pod issue and recreate the Job / unsuspend / fix the schedule]."*
 
 #### Fix patterns
 
-- correct the Job image/command/args
-- fix environment/config/secrets used by the Job
-- correct the CronJob schedule
-- fix restart/backoff behavior if the task should retry differently
-- remove/recreate or re-run the Job if the scenario requires a fresh execution after fixing the spec
-- if the Job pods are failing for the same reasons as normal app pods, reuse [Bucket B](#bucket-b) or [Bucket F](#bucket-f) fix patterns
+Change one thing at a time. Verify after each change before moving to the next fix. Jobs are immutable after creation — you must delete and recreate to change the spec.
 
-```bash
-# Fix schedule syntax or unsuspend
-kubectl edit cronjob <cj> -n <ns>
-# Correct spec.schedule (standard cron: "*/5 * * * *")
+**Pod failing (image/command/config):** Fix the root cause ([Bucket B](#bucket-b) or [Bucket F](#bucket-f)), then recreate: `kubectl delete job <job> -n <ns> && kubectl apply -f <job-manifest>.yaml`. Verify: `kubectl get jobs -n <ns>` shows `1/1`.
 
-# Unsuspend a CronJob
-kubectl patch cronjob <cj> -n <ns> -p '{"spec":{"suspend":false}}'
+**BackoffLimit reached:** Delete and recreate after fixing root cause: `kubectl delete job <job> -n <ns> && kubectl apply -f <job-manifest>.yaml`. Verify: new pod reaches `Completed`.
 
-# Manually trigger a CronJob to test
-kubectl create job --from=cronjob/<cj> <manual-job-name> -n <ns>
+**CronJob suspended:** Fix: `kubectl patch cronjob <cj> -n <ns> -p '{"spec":{"suspend":false}}'`. Verify: `kubectl get cronjobs -n <ns>` SUSPEND shows `False`. Test immediately: `kubectl create job <job>-test --from=cronjob/<cj> -n <ns>`.
 
-# Delete a stuck/failed job to re-run
-kubectl delete job <job> -n <ns>
+**Bad schedule syntax:** Find correct expression (validate at crontab.guru). Fix: `kubectl patch cronjob <cj> -n <ns> -p '{"spec":{"schedule":"<correct-cron>"}}'`. Verify: manually trigger `kubectl create job <job>-test --from=cronjob/<cj> -n <ns>` and confirm completion.
 
-# Fix image or command
-kubectl edit job <job> -n <ns>
-```
+**Stale active Job blocking new runs:** Delete stale Job: `kubectl delete job <stale-job> -n <ns>`. Verify: next scheduled run creates a new Job.
 
 #### Verify
 
 ```bash
-kubectl get jobs -n <ns>
-kubectl describe job <job> -n <ns>
-kubectl get pods -n <ns>
-kubectl logs <job-pod> -n <ns>
+kubectl get jobs -n <ns>                              # COMPLETIONS 1/1
+kubectl get pods --selector=job-name=<job> -n <ns>    # Completed
+kubectl logs <job-pod> -n <ns>                        # clean exit
 ```
-
-You are done when the Job completes successfully or the CronJob produces successful runs on the corrected schedule.
 
 ---
 
@@ -1455,70 +1370,49 @@ Say: *"Everything looks healthy from a Kubernetes perspective — pods are Runni
 
 #### Diagnose
 
+Say: *"Pods are running and Kubernetes looks healthy — no probe failures, endpoints populated. This is an application-level problem. I'm going to read the logs first, then cross-reference the config the app is actually using."*
+
 ```bash
 kubectl logs <pod> -n <ns>
-kubectl logs <pod> -n <ns> --tail=50
-```
-
-Check what environment the app is actually seeing:
-
-```bash
+kubectl logs <pod> -n <ns> --previous
 kubectl exec <pod> -n <ns> -- env | sort
-```
-
-Cross-reference with what the ConfigMap and Secret contain:
-
-```bash
 kubectl get configmap <cm> -n <ns> -o yaml
-kubectl get secret <secret> -n <ns> -o jsonpath='{.data}' | jq 'to_entries[] | {key: .key, value: (.value | @base64d)}'
-```
-
-If `jq` isn't available:
-
-```bash
-kubectl get secret <secret> -n <ns> -o yaml
-# Decode values manually:
-echo "<base64-value>" | base64 -d
+kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d
 ```
 
 #### What to look for
 
-| Log message | Cause | Fix |
-|---|---|---|
-| `connection refused` to DB host | Wrong hostname or DB not running | Check the hostname in ConfigMap, check DB pod status |
-| `password authentication failed` | Wrong credentials | Fix the Secret |
-| `database "X" does not exist` | Wrong database name in config | Fix the ConfigMap |
-| `relation "X" does not exist` | DB schema not initialized | Check if init ran, check DB connectivity during startup |
-| `Name or service not known` | DNS can't resolve the hostname | Check the service name, check if DB service exists |
-| `connect ECONNREFUSED` | App can reach host but port is wrong or service is down | Check port in config, check target pod |
+| Log message | Cause | How to diagnose | How to find correct value |
+|---|---|---|---|
+| `connection refused` to DB host | Wrong hostname or DB not running | `kubectl exec <pod> -- env \| grep POSTGRES_HOST`; `kubectl get svc -n <ns>` — compare names | Service NAME column = correct hostname |
+| `password authentication failed` | Wrong credentials | `kubectl get secret <secret> -n <ns> -o jsonpath='{.data.POSTGRES_PASSWORD}' \| base64 -d` | Compare to authoritative Secret (e.g., postgres-secret) |
+| `database "X" does not exist` | Wrong DB name in config | `kubectl exec <pod> -- env \| grep POSTGRES_DB`; `kubectl get configmap <cm> -n <ns> -o yaml` | Compare to Postgres ConfigMap's `POSTGRES_DB` |
+| `relation "X" does not exist` | Schema not initialized | Check logs for migration output; check if init Job completed | App may need clean restart after fixing config |
+| `Name or service not known` | DNS can't resolve hostname | `kubectl exec <pod> -- nslookup <hostname>` | `kubectl get svc -n <ns>` — use exact Service name |
+| `ECONNREFUSED` | Wrong port or target service down | `kubectl exec <pod> -- env \| grep POSTGRES_PORT`; `kubectl get endpoints <svc> -n <ns>` | Service port from `kubectl describe svc` |
 
 #### Stop condition
 
-Stop when you can identify the exact config value or dependency that's causing the application error from the logs.
+Say: *"The app is failing because `<env-var>` is set to `<wrong-value>` but the actual [service/database/credential] expects `<correct-value>`. I'm going to fix the [ConfigMap/Secret] and restart."*
 
 #### Fix patterns
 
-```bash
-# Fix ConfigMap values
-kubectl edit configmap <cm> -n <ns>
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-# Fix Secret values
-kubectl edit secret <secret> -n <ns>
+**Wrong ConfigMap value (hostname, DB name, port, user):** Find correct value by cross-referencing (`kubectl get svc -n <ns>` for hostname, Postgres ConfigMap for DB name). Fix: `kubectl edit configmap <cm> -n <ns>`, then `kubectl rollout restart deploy/<deploy> -n <ns>`. Verify: `kubectl exec <pod> -n <ns> -- env | grep <KEY>` shows correct value; `curl localhost/health` returns 200.
 
-# After editing config, restart the pods to pick up the change
-kubectl rollout restart deployment/<deploy> -n <ns>
-```
+**Wrong Secret value (password, credentials):** Decode current: `kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d`. Find correct value from authoritative source. Fix: `kubectl edit secret <secret> -n <ns>` (values must be base64-encoded), then `kubectl rollout restart deploy/<deploy> -n <ns>`. Verify: app logs show clean connection.
+
+**Schema not initialized:** If app runs migrations on startup, it may need a clean restart after fixing config: `kubectl rollout restart deploy/<deploy> -n <ns>`. Watch logs: `kubectl logs -f <pod> -n <ns>` for table creation output.
 
 #### Verify
 
 ```bash
-kubectl get pods -n <ns> -w
-kubectl logs <pod> -n <ns>
-curl http://localhost/health
-curl http://localhost/items
+kubectl logs <pod> -n <ns>                   # no connection or auth errors
+kubectl exec <pod> -n <ns> -- env | sort     # env vars correct
+curl -s localhost/health                     # 200
+curl -s localhost/items                      # expected data
 ```
-
-You are done when the app responds correctly and logs show no errors.
 
 ---
 
@@ -1533,37 +1427,37 @@ Say: *"Everything looks healthy but traffic is failing silently. When all the ob
 
 #### Diagnose
 
+Say: *"Everything looks healthy but traffic is failing silently. My working theory is a NetworkPolicy blocking legitimate traffic. Let me map all policies in this namespace."*
+
 ```bash
 kubectl get networkpolicy -n <ns>
 kubectl describe networkpolicy -n <ns>
 ```
 
-Read each policy carefully. Check:
-
-- `podSelector`: which pods does this policy apply to?
-- `policyTypes`: is it Ingress, Egress, or both?
-- `ingress` rules: who is allowed to send traffic TO the selected pods?
-- `egress` rules: where are the selected pods allowed to send traffic?
-
 #### What to look for
 
-A NetworkPolicy with an empty `podSelector` (`{}`) applies to ALL pods in the namespace.
+**`kubectl get networkpolicy -n <ns>` — POD-SELECTOR column:** Shows which pods each policy targets. `<none>` means empty `podSelector: {}` — applies to ALL pods. Compare each selector value to actual pod labels with `kubectl get pods -n <ns> --show-labels`.
 
-If `policyTypes` includes `Ingress` or `Egress`, then any traffic not explicitly allowed by a rule is **denied**.
+**`kubectl describe networkpolicy <policy> -n <ns>` — Policy Types, Ingress/Egress rules:**
 
-Common problems:
-- Default deny policy exists but no matching allow rule for the traffic flow you need
-- Allow rule has wrong `podSelector` or `namespaceSelector`
-- Allow rule is missing the port specification
-- Egress policy blocks DNS (must allow egress to kube-system on port 53 TCP and UDP)
+- If `Policy Types: Ingress` is listed, any inbound traffic not explicitly allowed is **denied**
+- If `Policy Types: Egress` is listed, any outbound traffic not explicitly allowed is **denied**
+- Healthy: a default-deny exists AND matching allow rules exist for all legitimate traffic flows
+- Broken: default-deny exists but allow rule has wrong `podSelector` (e.g., `app: platform-drill-api-v2` when pods have `app: platform-drill-api`) — the allow matches nothing, deny blocks everything
+
+**Common broken patterns:**
+- Allow rule `podSelector` label doesn't match any running pods — check character-for-character against `kubectl get pods --show-labels`
+- Allow rule `namespaceSelector` wrong — for ingress-nginx traffic, need `kubernetes.io/metadata.name: ingress-nginx`; find with `kubectl get ns ingress-nginx --show-labels`
+- Allow rule missing port spec — some CNIs require explicit port even when podSelector is correct
+- No DNS egress rule — pods can't resolve hostnames; produces silent connection failures that look like networking issues
 
 #### Stop condition
 
-Stop when you identify which NetworkPolicy is blocking which traffic flow, or confirm that NetworkPolicies are not the issue.
+Say: *"Traffic was being dropped by `<policy-name>`. The allow rule [was missing / had a wrong podSelector]. I'm going to [create the missing allow / fix the selector] rather than leave the namespace unprotected."*
 
 #### Quick test — temporarily remove policies
 
-If you suspect a NetworkPolicy but can't tell which one, delete one at a time and test after each:
+Delete one at a time and test after each — do NOT delete all at once:
 
 ```bash
 kubectl get networkpolicy -n <ns> -o name
@@ -1571,13 +1465,15 @@ kubectl delete networkpolicy <policy-name> -n <ns>
 curl http://localhost/
 ```
 
-If traffic works after deleting a specific policy, that was the blocker. Now you know what to fix.
+If traffic works after deleting a specific policy, that was the blocker.
 
 #### Fix patterns
 
-**Add a missing allow rule:**
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-Example — allow app to reach postgres:
+**Wrong podSelector in allow rule:** Find correct labels: `kubectl get pods -n <ns> --show-labels`. Fix: `kubectl edit networkpolicy <policy> -n <ns>` — correct `podSelector.matchLabels` to match actual pod labels. Verify: `curl -s localhost/` returns valid response.
+
+**Missing allow rule for app-to-database egress:** Find app and DB labels from `kubectl get pods -n <ns> --show-labels`.
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -1603,7 +1499,7 @@ spec:
 EOF
 ```
 
-Example — allow DNS:
+**Missing DNS egress rule:** Find kube-system namespace label: `kubectl get ns kube-system --show-labels`.
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -1635,21 +1531,16 @@ EOF
 kubectl edit networkpolicy <policy-name> -n <ns>
 ```
 
-**Delete a blocking policy:**
-
-```bash
-kubectl delete networkpolicy <policy-name> -n <ns>
-```
-
 #### Verify
 
 ```bash
 kubectl get networkpolicy -n <ns>
-curl http://localhost/
-kubectl exec <app-pod> -n <ns> -- curl -s http://<svc>:<port>
+curl -s localhost/
+curl -s localhost/health
+curl -s localhost/items
 ```
 
-You are done when traffic flows correctly between the expected services.
+All policies present, all curl responses return expected data.
 
 ---
 
@@ -1664,33 +1555,41 @@ Say: *"I see a PVC stuck in Pending. That means it can't bind to a PersistentVol
 
 #### Diagnose
 
+Say: *"The pod is Pending or failing to start with a volume error. I need to check whether the PVC can bind — that means checking StorageClass, capacity, and access mode."*
+
 ```bash
 kubectl get pvc -n <ns>
 kubectl describe pvc <pvc> -n <ns>
 kubectl get pv
 kubectl get storageclass
+kubectl describe pod <pod> -n <ns>
 ```
 
 #### What to look for
 
-Check the Events on the PVC for the reason.
+**`kubectl get pvc -n <ns>` — STATUS column:** Healthy: `Bound`. Broken: `Pending` — no PV has matched; pod will not schedule until resolved.
 
-| Event message | Cause | Fix |
+**`kubectl describe pvc <pvc> -n <ns>` — Events section:** The event message names the exact failure:
+
+| Event message | Cause | How to confirm |
 |---|---|---|
-| `no persistent volumes available` and no StorageClass | No default StorageClass, no matching PV | Create a StorageClass or PV |
-| `storageclass "X" not found` | PVC requests a StorageClass that doesn't exist | Fix the StorageClass name in the PVC or create it |
-| Capacity mismatch | PV exists but is too small | Create a larger PV or reduce the PVC request |
-| Access mode mismatch | PVC asks for ReadWriteMany but PV only supports ReadWriteOnce | Fix the access mode |
-| PV already bound | PV is bound to a different PVC | Create a new PV |
-| Wrong mount path in pod | PVC is bound but app can't find data | Check volumeMounts in pod spec |
+| `no persistent volumes available` | No matching PV or StorageClass | `kubectl get storageclass` — check if PVC's `storageClassName` exists |
+| `storageclass "X" not found` | PVC references nonexistent StorageClass | `kubectl get storageclass` — compare names exactly |
+| Capacity mismatch | PV too small for PVC request | `kubectl describe pvc` Capacity vs `kubectl describe pv` Capacity |
+| Access mode mismatch | PVC requests `ReadWriteMany`, PV offers `ReadWriteOnce` | Compare `Access Modes` in both `describe pvc` and `describe pv` |
+| PV already bound | PV claimed by different PVC | `kubectl get pv` — STATUS `Bound`, CLAIM column shows different PVC |
+
+**`kubectl describe pod <pod> -n <ns>` — Mounts section:** Check `volumeMounts[].mountPath`. Broken: mount path is `/data` but app expects `/var/lib/postgresql/data`.
 
 #### Stop condition
 
-Stop when you know why the PVC can't bind or why the volume isn't working correctly.
+Say: *"The PVC is Pending because [wrong StorageClass / capacity mismatch / access mode mismatch]. I can see it in the PVC events. I'm going to recreate the PVC with the correct spec."*
 
 #### Fix patterns
 
-You usually need to recreate the PVC (you can't edit most PVC fields):
+Change one thing at a time. Verify after each change before moving to the next fix. PVC fields are mostly immutable — you must delete and recreate.
+
+**Wrong StorageClass:** Find available classes: `kubectl get storageclass`. Delete and recreate:
 
 ```bash
 kubectl delete pvc <pvc> -n <ns>
@@ -1710,27 +1609,19 @@ spec:
 EOF
 ```
 
-Fix a wrong volume mount path:
+Verify: `kubectl get pvc <pvc> -n <ns>` shows `Bound`.
 
-```bash
-kubectl edit deployment <deploy> -n <ns>
-# Correct spec.template.spec.containers[].volumeMounts[].mountPath
-```
+**Wrong volume mount path:** Find correct path from app documentation or image defaults. Fix: `kubectl edit deploy <deploy> -n <ns>` — correct `volumeMounts[].mountPath`. Verify: `kubectl logs <pod> -n <ns>` — no data directory errors.
 
-You may also need to restart the pod that uses this PVC:
-
-```bash
-kubectl rollout restart deployment/<deploy> -n <ns>
-```
+**Pod still Pending after PVC fix:** `kubectl rollout restart deploy/<deploy> -n <ns>` to force new pod creation. Verify: pod moves to Running.
 
 #### Verify
 
 ```bash
-kubectl get pvc -n <ns>
-kubectl get pods -n <ns> -w
+kubectl get pvc -n <ns>              # Bound
+kubectl get pods -n <ns>             # Running, Ready
+curl -s localhost/health             # 200
 ```
-
-You are done when the PVC shows `Bound` and the pod using it starts successfully.
 
 ---
 
@@ -1745,144 +1636,53 @@ Say: *"I'm not seeing the resources I expect. Let me check if they're deployed t
 
 #### Diagnose
 
+Say: *"Resources appear to be missing. Before I assume they don't exist, I want to check whether they were deployed to the wrong namespace — this is a quick check that rules out a whole class of problems."*
+
 ```bash
 kubectl get all -A
 kubectl get ns
-```
-
-Look for resources in an unexpected namespace. Common variant: there are two similarly named namespaces and resources are split between them.
-
-Also check if you've been defaulted to the wrong namespace:
-
-```bash
 kubectl config view --minify | grep namespace
 ```
 
+#### What to look for
+
+**`kubectl get all -A` — NAMESPACE column:** Scan for your expected resources. Healthy: all app resources in the expected namespace. Broken: resources in `default` or a similarly-named but wrong namespace (e.g., `drill-app` vs `drill`).
+
+**`kubectl get ns` — NAME column:** Healthy: one namespace matches. Broken: two similar names exist and resources are split between them.
+
+**`kubectl config view --minify | grep namespace`:** Healthy: shows your target namespace. Broken: shows `default` or a wrong namespace — every `kubectl` command without `-n` has been targeting the wrong place.
+
 #### Stop condition
 
-Stop when you find where the resources actually are, or confirm they genuinely don't exist.
+Say: *"The resources exist — they're in `<actual-ns>`, not `<expected-ns>`. That explains why my earlier commands returned nothing. I'm going to [move them / fix the default namespace]."*
 
 #### Fix patterns
 
-Either move the resources (delete and recreate in the correct namespace) or update references to point to the right namespace.
+Change one thing at a time. Verify after each change before moving to the next fix.
 
-To reference a service in a different namespace from within the cluster:
+**Wrong default namespace:** Fix: `kubectl config set-context --current --namespace=<correct-ns>`. Verify: `kubectl config view --minify | grep namespace` shows correct value; `kubectl get all` returns expected resources.
 
-```
-<service-name>.<namespace>.svc.cluster.local
-```
-
-Set the correct default namespace:
+**Resources in wrong namespace:** Export, fix, and re-apply:
 
 ```bash
-kubectl config set-context --current --namespace=<ns>
-```
-
-If resources were applied to the wrong namespace:
-
-```bash
-# Export, fix namespace, re-apply
-kubectl get <resource> <n> -n <wrong-ns> -o yaml > fix.yaml
-# Edit fix.yaml to change namespace
+kubectl get <resource> <name> -n <wrong-ns> -o yaml > fix.yaml
+# Edit fix.yaml: change metadata.namespace to <correct-ns>
 kubectl apply -f fix.yaml
-kubectl delete <resource> <n> -n <wrong-ns>
+kubectl delete <resource> <name> -n <wrong-ns>
 ```
+
+Verify: `kubectl get all -n <correct-ns>` shows the moved resources.
+
+**Cross-namespace service reference needed:** If app in one namespace needs to reach a service in another, use FQDN: `<service-name>.<namespace>.svc.cluster.local`. Update the relevant ConfigMap hostname accordingly.
 
 #### Verify
 
 ```bash
 kubectl get all -n <correct-ns>
+kubectl get endpoints -n <correct-ns>
+curl -s localhost/
+curl -s localhost/health
 ```
-
-You are done when all expected resources exist in the correct namespace.
-
----
-
-<a id="when-to-stop-triaging"></a>
-## When to Stop Triaging and Commit
-
-You stop generic triage as soon as you get a clear strongest signal.
-
-Examples:
-
-- `kubectl auth can-i ...` = no → stop and commit to RBAC
-- pod shows CrashLoopBackOff with restart events → stop and commit to pod/startup
-- service has empty endpoints while pods are healthy → stop and commit to service
-- ingress returns 404 with wrong host/path rules → stop and commit to ingress
-- logs say secret missing / config invalid → stop and commit to config
-- everything healthy but traffic times out → stop and commit to network policies
-- resources missing in expected namespace → stop and commit to namespace confusion
-
-Do not keep doing all buckets "just in case." That wastes time.
-
----
-
-<a id="fix-discipline"></a>
-## Fix Discipline
-
-- Once the strongest signal is clear, stop broad scanning.
-- Make the **smallest fix** that matches the strongest confirmed signal.
-- Do **not** patch multiple unrelated objects at once unless the scenario clearly requires it.
-- After verifying the fix, only then go back up a level if another symptom remains.
-
-**Post-fix verify pattern:**
-
-After any fix, re-run the smallest set of commands that proves the specific issue is resolved before returning to broad triage:
-
-- RBAC fix → re-run `kubectl auth can-i`
-- Pod/startup fix → re-run `kubectl get pods`, `describe`, `logs`
-- Service fix → re-run `get endpoints`, `port-forward`, `curl`
-- Ingress fix → re-run `describe ingress`, `curl -H "Host: ..."`
-- Config fix → re-run pod logs and inspect references
-- Namespace/context fix → re-run `kubectl config current-context`, `kubectl get ns`, then target the correct namespace
-- Network policy fix → re-run `curl` or `kubectl exec` to test traffic
-- Storage fix → re-run `kubectl get pvc`, `kubectl get pods`
-- Application fix → re-run `curl` against the app endpoints, check logs
-
-Then always do end-to-end verification:
-
-Say: *"I've applied the fix. Now I'm verifying end-to-end to make sure the issue is fully resolved."*
-
-```bash
-kubectl get pods -n <ns>
-kubectl get endpoints -n <ns>
-curl http://localhost/
-curl http://localhost/health
-curl http://localhost/items
-```
-
----
-
-<a id="what-to-say-out-loud"></a>
-## What to Say Out Loud (Interview)
-
-Opening:
-
-> "I'm starting with universal triage to identify the failure category. I'm checking context, namespaces, core workloads, services, ingress, resource usage, and recent events. Once I see the strongest signal, I'll stop broad triage and switch to the relevant branch."
-
-After identifying the signal:
-
-> "The strongest signal here is [signal], so I'm treating this as a [bucket] problem."
-
-During diagnosis:
-
-> "I see the pod is in CrashLoopBackOff — let me check logs to understand why it's crashing."
->
-> "Endpoints are empty, which tells me the service selector doesn't match any pod labels. Let me compare them."
->
-> "Everything looks healthy from a Kubernetes perspective — pods are Running, endpoints are populated. So this is probably an application-level issue. Let me check the logs."
->
-> "The pod is Pending. I want to check if it's a resource issue or a storage issue — `describe pod` should tell me."
->
-> "I see `Init:0/1` — this pod has an init container that hasn't completed. Let me get the init container logs specifically."
->
-> "All the obvious things look correct but traffic is timing out. That makes me think there might be a NetworkPolicy blocking traffic. Let me check."
->
-> "My theory is [X]. Let me test that by running [Y]. If I'm wrong, I'll reconsider."
-
-After fixing:
-
-> "I've applied the fix. Now I'm verifying by re-running the relevant checks to confirm the issue is resolved."
 
 ---
 
@@ -1951,11 +1751,11 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 1. Apply [Rule 0](#rule-0) — do not guess
 2. Run [universal triage](#phase-1-universal-triage)
 3. Identify strongest signal using the [Quick Signal Table](#quick-signal-table)
-4. Commit to one bucket
+4. Commit to one bucket — say why out loud
 5. Run that bucket's diagnostic commands
-6. Stop when root cause category is clear ([when to stop](#when-to-stop-triaging))
-7. Apply the smallest fix that resolves the confirmed issue ([fix discipline](#fix-discipline))
-8. Verify the fix worked (bucket-specific, then end-to-end)
+6. Stop when root cause is clear — say what you found and your fix plan
+7. Apply the smallest fix — change one thing at a time, verify after each change
+8. Verify the fix worked (bucket-specific check, then end-to-end curl)
 
 ---
 
