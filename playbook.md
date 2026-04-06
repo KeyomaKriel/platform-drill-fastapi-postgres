@@ -3,8 +3,7 @@
 ## Table of Contents
 
 - [Rule 0](#rule-0)
-- [Phase 1: Universal Triage](#phase-1-universal-triage)
-- [Environment / Cluster / App Baseline](#environment-baseline)
+- [Phase 1: Orient and Triage](#phase-1-orient-and-triage)
 - [Quick Signal Table](#quick-signal-table)
 - The Buckets
   - [Bucket A: RBAC / Identity / Permissions](#bucket-a)
@@ -41,53 +40,14 @@ Start by answering:
 
 ---
 
-<a id="phase-1-universal-triage"></a>
-## Phase 1: Universal Triage
+<a id="phase-1-orient-and-triage"></a>
+## Phase 1: Orient and Triage
 
-Run these first in almost every scenario unless the prompt is extremely explicit.
+Say: *"I'm starting with triage to identify the failure category. I'm checking context, namespaces, core workloads, services, ingress, resource usage, and recent events. Once I see the strongest signal, I'll stop broad triage and switch to the relevant branch."*
 
-```bash
-kubectl config current-context
-kubectl get ns
-kubectl get pods -A
-kubectl get deploy -A
-kubectl get svc -A
-kubectl get ingress -A
-kubectl top nodes
-kubectl top pods -A
-kubectl get events -A --sort-by=.metadata.creationTimestamp
-```
-
-Say: *"I'm starting with universal triage to identify the failure category. I'm checking context, namespaces, core workloads, services, ingress, resource usage, and recent events. Once I see the strongest signal, I'll stop broad triage and switch to the relevant branch."*
-
-### When to shortcut triage
-
-Sometimes the scenario prompt or task wording gives you a strong enough cue to skip broad triage and start in a specific bucket. This is about choosing a **starting point**, not assuming root cause — you still verify once you get there.
-
-Two types of cue:
-
-- **Prompt cues** — the interview/task wording names a specific failure type. Example: *"the service account is getting Forbidden"* tells you to start in RBAC. You haven't run any commands yet, but the wording is specific enough to skip straight there.
-- **Observed signals** — you run one or two commands and immediately see an obvious status (CrashLoopBackOff, Pending, empty endpoints). No need to finish the full triage sequence — commit to the bucket that matches.
-
-If neither type of cue is strong, run the full triage. It takes under a minute.
-
-The [Quick Signal Table](#quick-signal-table) below covers both: prompt cues in the left column and observed signals from command output.
-
-### Why these commands
-
-This gives you:
-
-- whether you are on the right cluster/context
-- what namespaces exist
-- whether anything obvious is broken
-- whether a deployment is unavailable
-- whether services/ingress exist
-- whether nodes or pods are under resource pressure
-- whether events already reveal the issue
+Work through these commands in order. Each command is followed by what to look for before moving to the next one.
 
 ---
-
-### What to look for in each triage command
 
 #### `kubectl config current-context`
 
@@ -113,18 +73,11 @@ kubectl config use-context <correct-context>
 export KUBECONFIG=<path-to-kubeconfig>
 ```
 
-- if the issue is not context but namespace defaulting, keep the same context and fix the namespace instead:
-
-```bash
-kubectl config set-context --current --namespace=<ns>
-```
-
 **Verify:**
 
 ```bash
 kubectl config current-context
 kubectl config view --minify
-kubectl get ns
 ```
 
 You are done with this check when the current context matches the scenario and the cluster responds as expected.
@@ -142,19 +95,13 @@ Stop and switch direction if:
 
 - the prompt names a namespace and you were looking elsewhere
 
-**Fix patterns:**
-
-- target the correct namespace explicitly in commands:
-
-```bash
-kubectl get pods -n <ns>
-```
-
-- set the default namespace for the current context if you want to stop repeating `-n`:
+Once you identify the target namespace, set it as the default so you don't have to repeat `-n` on every command:
 
 ```bash
 kubectl config set-context --current --namespace=<ns>
 ```
+
+**Fix patterns:**
 
 - if resources were applied to the wrong namespace, re-apply or move them correctly rather than continuing to inspect the wrong place
 
@@ -175,7 +122,7 @@ You are done with this check when you are consistently inspecting the namespace 
 Look for these statuses:
 
 - CrashLoopBackOff
-- ImagePullBackOff / ErrImagePull
+- ImagePullBackOff / ErrImagePull / ErrImageNeverPull
 - Pending
 - Error
 - OOMKilled (check `kubectl describe` for LastState)
@@ -296,6 +243,8 @@ Look for:
 
 If a node is full and pods are Pending, this is a scheduling/resource problem → [**Bucket B**](#bucket-b).
 
+Note: if Metrics API is not available, skip this step — it's confirmatory, not diagnostic.
+
 **Fix patterns:**
 
 - no direct fix from here; use to confirm whether resource pressure is the root cause
@@ -346,117 +295,45 @@ and confirm the error event is no longer recurring.
 
 ---
 
-<a id="environment-baseline"></a>
-## Environment / Cluster / App Baseline
+### When to shortcut triage
 
-Run this section first in any session to orient yourself before you have a symptom. Takes under two minutes. If you already have a clear signal, skip to the [Quick Signal Table](#quick-signal-table).
+Sometimes the scenario prompt or task wording gives you a strong enough cue to skip broad triage and start in a specific bucket. This is about choosing a **starting point**, not assuming root cause — you still verify once you get there.
 
----
+Two types of cue:
 
-### 1. Orient to the cluster
+- **Prompt cues** — the interview/task wording names a specific failure type. Example: *"the service account is getting Forbidden"* tells you to start in RBAC. You haven't run any commands yet, but the wording is specific enough to skip straight there.
+- **Observed signals** — you run one or two commands and immediately see an obvious status (CrashLoopBackOff, Pending, empty endpoints). No need to finish the full triage sequence — commit to the bucket that matches.
 
-```bash
-kubectl config current-context                   # confirm you're on the right cluster
-kubectl get ns                                   # list all namespaces
-kubectl config set-context --current --namespace=<ns>  # set default so you don't have to type -n every time
-```
+If neither type of cue is strong, run the full triage. It takes under a minute.
 
-If the context is wrong, stop and fix it. Every command you run after this assumes the right cluster and namespace.
+The [Quick Signal Table](#quick-signal-table) below covers both: prompt cues in the left column and observed signals from command output.
 
 ---
 
-### 2. Map the workloads
+### Flowchart Fast Path
 
-```bash
-kubectl get all -n <ns>                         # deployments, replicasets, pods, services in one view
-kubectl get ingress -n <ns>                     # ingress resources and their addresses
-kubectl get endpoints -n <ns>                   # populated endpoints = service selector is matching pods
-```
+Use the Fast Path when you already know which app/workload is broken and the symptom is "this app is not working." Examples: *"The app is down"*, *"Users can't reach this service"*, *"The pod keeps restarting"*, *"The new rollout failed."*
 
-You're looking for: pods Running + Ready, endpoints populated, ingress has an address assigned. Any gap here is a signal.
+Use full triage when the scope is ambiguous, multiple things look broken, or you don't know which namespace/workload matters. Examples: *"Please investigate this cluster"*, *"Production is having issues"*, *"Find what's wrong."*
 
----
+The simplest rule: **known app + known symptom + unknown cause = Fast Path.** Unknown app + unknown scope = full triage.
 
-### 3. Find the port chain
+Say: *"This looks like a single workload problem, so I'm going straight to pods, then logs, then testing reachability layer by layer."*
 
-Traffic flows: Ingress → Service port → targetPort → container port. You need all four to reason about routing.
+1. `kubectl get pods -n <ns>` — check pod status. If broken (Pending, CrashLoopBackOff, ImagePullBackOff, Running but not Ready), go to [Bucket B](#bucket-b).
+2. `kubectl describe pod <pod> -n <ns>` and `kubectl logs <pod> -n <ns>` — identify the specific failure from Events, exit codes, and log output.
+3. If pods are healthy, test pod reachability directly: `kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>` then `curl localhost:8080/`. If this fails, the app itself is broken — check logs, command, env vars ([Bucket H](#bucket-h) or [Bucket F](#bucket-f)).
+4. If pod is reachable, test service: `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl localhost:8080/`. If this fails, go to [Bucket D](#bucket-d).
+5. If service works, test ingress: `curl localhost/` or `curl -H "Host: <host>" localhost/`. If this fails, go to [Bucket E](#bucket-e).
 
-**Service — port and targetPort:**
-```bash
-kubectl get svc <svc> -n <ns> -o wide
-kubectl describe svc <svc> -n <ns>              # shows Port, TargetPort, Selector, and Endpoints inline
-```
-In `describe` output: `Port: 80/TCP`, `TargetPort: 8000/TCP`, `Selector: app=platform-<ns>-api`.
-
-**Pod — container port:**
-```bash
-kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[*].ports}'
-```
-Or just check the deployment spec: `kubectl describe deploy <deploy> -n <ns>` — ports appear under `Container Ports`.
-
-**Ingress — host, path, backend service and port:**
-```bash
-kubectl describe ingress <ingress> -n <ns>
-```
-Look for: `Host`, `Path`, `Backends: <svc>:<port>`. The backend port must match the service's `port` (not `targetPort`).
-
-**Endpoints — confirm pods are wired up:**
-```bash
-kubectl get endpoints <svc> -n <ns>
-```
-Empty endpoints means the service selector matches no pods. That's a routing break before any traffic is even attempted.
-
----
-
-### 4. Layered reachability testing
-
-Work through these in order. Stop at the layer that fails — that's your failure domain.
-
-**Layer 1 — Direct pod access:**
-```bash
-kubectl exec -it <pod> -n <ns> -- wget -qO- http://localhost:8000/health
-# or
-kubectl port-forward pod/<pod> 9090:8000 -n <ns>
-curl localhost:9090/health
-```
-Tests: is the app process running and responding inside the container?
-
-**Layer 2 — Service access:**
-```bash
-kubectl port-forward svc/<svc> 9091:80 -n <ns>
-curl localhost:9091/health
-```
-Tests: does the service route traffic to the right pod on the right port?
-
-**Layer 3 — Ingress access:**
-```bash
-curl localhost/health
-# or with a host header if the ingress uses hostname routing:
-curl -H "Host: <hostname>" localhost/health
-```
-Tests: does the ingress controller forward traffic to the right backend service and port?
-
----
-
-### 5. Interpreting the layers
-
-| Layer 1 (pod) | Layer 2 (service) | Layer 3 (ingress) | Conclusion |
-|---|---|---|---|
-| Fails | — | — | App or container problem. Check logs, probe config, env vars. |
-| OK | Fails | — | Service selector mismatch, wrong targetPort, or NetworkPolicy blocking. Check endpoints. |
-| OK | OK | Fails | Ingress misconfiguration — wrong backend service name, port, path, or IngressClass. |
-| Fails | Fails | Fails | Pod is broken. Start at Layer 1 — everything else is downstream of it. |
-
----
-
-Once you have the baseline, go to [Phase 1: Universal Triage](#phase-1-universal-triage) or jump to the [Quick Signal Table](#quick-signal-table) if you already see the signal.
+This is not a one-way decision. You can start with broad triage, get a signal from `get pods -A` or events, and switch into the Fast Path at any point. That is usually the safest pattern: 20–40 seconds of orientation, then commit.
 
 ---
 
 <a id="quick-signal-table"></a>
 ## Quick Signal Table
 
-Find the strongest signal — from the prompt wording or from command output — and jump to the right bucket.
+Now that you have a signal — from triage commands, from the Fast Path, or from the prompt itself — use this table to jump to the right bucket.
 
 | What you see or hear | Bucket | Go to |
 |---|---|---|
@@ -1749,7 +1626,7 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 ## The Process (Summary)
 
 1. Apply [Rule 0](#rule-0) — do not guess
-2. Run [universal triage](#phase-1-universal-triage)
+2. Run [orient and triage](#phase-1-orient-and-triage) or the [Fast Path](#phase-1-orient-and-triage)
 3. Identify strongest signal using the [Quick Signal Table](#quick-signal-table)
 4. Commit to one bucket — say why out loud
 5. Run that bucket's diagnostic commands
