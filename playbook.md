@@ -1,5 +1,36 @@
 # Kubernetes Troubleshooting Playbook
 
+## Table of Contents
+
+- [Rule 0](#rule-0)
+- [Phase 1: Universal Triage](#phase-1-universal-triage)
+- [Environment / Cluster / App Baseline](#environment-baseline)
+- [Quick Signal Table](#quick-signal-table)
+- The Buckets
+  - [Bucket A: RBAC / Identity / Permissions](#bucket-a)
+  - [Bucket B: Pod / Startup / Scheduling / Workload Health](#bucket-b)
+  - [Bucket C: Deployment / Rollout](#bucket-c)
+  - [Bucket D: Service / Internal Reachability](#bucket-d)
+  - [Bucket E: Ingress / External Routing](#bucket-e)
+  - [Bucket F: Config / Secret / Volume / Dependency Setup](#bucket-f)
+  - [Bucket G: Jobs / CronJobs](#bucket-g)
+  - [Bucket H: Application-Level Failures](#bucket-h)
+  - [Bucket I: Network Policies](#bucket-i)
+  - [Bucket J: Storage](#bucket-j)
+  - [Bucket K: Namespace Confusion](#bucket-k)
+- [When to Stop Triaging and Commit](#when-to-stop-triaging)
+- [Fix Discipline](#fix-discipline)
+- [What to Say Out Loud (Interview)](#what-to-say-out-loud)
+- [Quick Reference — Most Useful Commands](#quick-reference)
+- [The Process (Summary)](#process-summary)
+- [Appendix A: Linux / Bash / Zsh Commands](#appendix-linux)
+- [Appendix B: kubectl Commands](#appendix-kubectl)
+- [Appendix C: Git Commands](#appendix-git)
+- [Appendix D: HTTP Status Codes](#appendix-http)
+- [Appendix E: Exit Codes, Pod Statuses, and Error Reasons](#appendix-exit-codes)
+
+---
+
 <a id="rule-0"></a>
 ## Rule 0
 
@@ -312,6 +343,113 @@ kubectl get events -A --sort-by=.metadata.creationTimestamp
 ```
 
 and confirm the error event is no longer recurring.
+
+---
+
+<a id="environment-baseline"></a>
+## Environment / Cluster / App Baseline
+
+Run this section first in any session to orient yourself before you have a symptom. Takes under two minutes. If you already have a clear signal, skip to the [Quick Signal Table](#quick-signal-table).
+
+---
+
+### 1. Orient to the cluster
+
+```bash
+kubectl config current-context                   # confirm you're on the right cluster
+kubectl get ns                                   # list all namespaces
+kubectl config set-context --current --namespace=<ns>  # set default so you don't have to type -n every time
+```
+
+If the context is wrong, stop and fix it. Every command you run after this assumes the right cluster and namespace.
+
+---
+
+### 2. Map the workloads
+
+```bash
+kubectl get all -n <ns>                         # deployments, replicasets, pods, services in one view
+kubectl get ingress -n <ns>                     # ingress resources and their addresses
+kubectl get endpoints -n <ns>                   # populated endpoints = service selector is matching pods
+```
+
+You're looking for: pods Running + Ready, endpoints populated, ingress has an address assigned. Any gap here is a signal.
+
+---
+
+### 3. Find the port chain
+
+Traffic flows: Ingress → Service port → targetPort → container port. You need all four to reason about routing.
+
+**Service — port and targetPort:**
+```bash
+kubectl get svc <svc> -n <ns> -o wide
+kubectl describe svc <svc> -n <ns>              # shows Port, TargetPort, Selector, and Endpoints inline
+```
+In `describe` output: `Port: 80/TCP`, `TargetPort: 8000/TCP`, `Selector: app=platform-<ns>-api`.
+
+**Pod — container port:**
+```bash
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[*].ports}'
+```
+Or just check the deployment spec: `kubectl describe deploy <deploy> -n <ns>` — ports appear under `Container Ports`.
+
+**Ingress — host, path, backend service and port:**
+```bash
+kubectl describe ingress <ingress> -n <ns>
+```
+Look for: `Host`, `Path`, `Backends: <svc>:<port>`. The backend port must match the service's `port` (not `targetPort`).
+
+**Endpoints — confirm pods are wired up:**
+```bash
+kubectl get endpoints <svc> -n <ns>
+```
+Empty endpoints means the service selector matches no pods. That's a routing break before any traffic is even attempted.
+
+---
+
+### 4. Layered reachability testing
+
+Work through these in order. Stop at the layer that fails — that's your failure domain.
+
+**Layer 1 — Direct pod access:**
+```bash
+kubectl exec -it <pod> -n <ns> -- wget -qO- http://localhost:8000/health
+# or
+kubectl port-forward pod/<pod> 9090:8000 -n <ns>
+curl localhost:9090/health
+```
+Tests: is the app process running and responding inside the container?
+
+**Layer 2 — Service access:**
+```bash
+kubectl port-forward svc/<svc> 9091:80 -n <ns>
+curl localhost:9091/health
+```
+Tests: does the service route traffic to the right pod on the right port?
+
+**Layer 3 — Ingress access:**
+```bash
+curl localhost/health
+# or with a host header if the ingress uses hostname routing:
+curl -H "Host: <hostname>" localhost/health
+```
+Tests: does the ingress controller forward traffic to the right backend service and port?
+
+---
+
+### 5. Interpreting the layers
+
+| Layer 1 (pod) | Layer 2 (service) | Layer 3 (ingress) | Conclusion |
+|---|---|---|---|
+| Fails | — | — | App or container problem. Check logs, probe config, env vars. |
+| OK | Fails | — | Service selector mismatch, wrong targetPort, or NetworkPolicy blocking. Check endpoints. |
+| OK | OK | Fails | Ingress misconfiguration — wrong backend service name, port, path, or IngressClass. |
+| Fails | Fails | Fails | Pod is broken. Start at Layer 1 — everything else is downstream of it. |
+
+---
+
+Once you have the baseline, go to [Phase 1: Universal Triage](#phase-1-universal-triage) or jump to the [Quick Signal Table](#quick-signal-table) if you already see the signal.
 
 ---
 
@@ -1801,3 +1939,248 @@ kubectl exec <pod> -n <ns> -- curl -s http://localhost:<port><path>
 6. Stop when root cause category is clear ([when to stop](#when-to-stop-triaging))
 7. Apply the smallest fix that resolves the confirmed issue ([fix discipline](#fix-discipline))
 8. Verify the fix worked (bucket-specific, then end-to-end)
+
+---
+
+<a id="appendix-linux"></a>
+## Appendix A: Linux / Bash / Zsh Commands
+
+---
+
+| Command | What it does | Example |
+|---|---|---|
+| `grep "pattern" file` | Search for pattern in file | `grep "error" app.log` |
+| `grep -r "pattern" dir/` | Recursive search in directory | `grep -r "POSTGRES" ./manifests/` |
+| `grep -i "pattern" file` | Case-insensitive search | `grep -i "crashloop" events.txt` |
+| `grep -c "pattern" file` | Count matching lines | `grep -c "200" access.log` |
+| `cat file` | Print file contents | `cat /etc/resolv.conf` |
+| `less file` | Page through file (q to quit) | `less app.log` |
+| `head -n 20 file` | Print first N lines | `head -n 20 startup.log` |
+| `tail -n 50 file` | Print last N lines | `tail -n 50 app.log` |
+| `tail -f file` | Follow file in real time | `tail -f <ns>-session.log` |
+| `wc -l file` | Count lines in file | `wc -l app.log` |
+| `awk '{print $3}' file` | Print Nth column | `kubectl get pods \| awk '{print $1}'` |
+| `cut -d',' -f2 file` | Cut field by delimiter | `cut -d':' -f2 /etc/passwd` |
+| `sort file` | Sort lines alphabetically | `sort namespaces.txt` |
+| `uniq file` | Remove consecutive duplicates | `sort errors.txt \| uniq` |
+| `sort \| uniq -c` | Count occurrences of each unique line | `cat events.txt \| sort \| uniq -c` |
+| `xargs` | Pass stdin as arguments to a command | `kubectl get pods \| awk '{print $1}' \| xargs kubectl describe pod` |
+| `watch -n 2 cmd` | Re-run command every N seconds | `watch -n 2 kubectl get pods -n <ns>` |
+| `env` | Print all environment variables | `env \| grep POSTGRES` |
+| `export VAR=val` | Set env var for current session | `export KUBECONFIG=~/.kube/config` |
+| `echo "string"` | Print string to stdout | `echo $POSTGRES_HOST` |
+| `curl -s URL` | Silent HTTP request (no progress) | `curl -s localhost/health` |
+| `curl -o /dev/null -w '%{http_code}' URL` | Print only HTTP status code | `curl -s -o /dev/null -w '%{http_code}' localhost/` |
+| `curl -H "Header: val" URL` | Send custom header | `curl -H "Host: myapp.local" localhost/health` |
+| `curl --max-time 5 URL` | Fail after N seconds | `curl --max-time 5 localhost/health` |
+| `curl -i URL` | Include response headers in output | `curl -i localhost/health` |
+| `wget -qO- URL` | Fetch URL to stdout, quiet | `wget -qO- localhost/health` |
+| `jq '.key'` | Extract key from JSON | `kubectl get pod app -o json \| jq '.status.phase'` |
+| `jq -r '.key'` | Raw string output (no quotes) | `kubectl get secret s -o json \| jq -r '.data.password'` |
+| `base64 -d <<< "string"` | Decode base64 (Linux) | `echo "cGFzcw==" \| base64 -d` |
+| `base64 -D <<< "string"` | Decode base64 (macOS) | `echo "cGFzcw==" \| base64 -D` |
+| `nc -z host port` | Test TCP reachability (no data) | `nc -z postgres 5432` |
+| `dig hostname` | DNS lookup with full response | `dig postgres.<ns>.svc.cluster.local` |
+| `nslookup hostname` | Simple DNS lookup | `nslookup postgres` |
+| `ps aux` | List all running processes | `ps aux \| grep python` |
+| `kill -9 PID` | Force-kill process by PID | `kill -9 1234` |
+
+---
+
+<a id="appendix-kubectl"></a>
+## Appendix B: kubectl Commands
+
+---
+
+| Command | Purpose |
+|---|---|
+| **Read** | |
+| `kubectl config current-context` | Show active cluster context |
+| `kubectl config use-context <ctx>` | Switch cluster context |
+| `kubectl config view --minify` | Show active context config only |
+| `kubectl config set-context --current --namespace=<ns>` | Set default namespace |
+| `kubectl get ns` | List all namespaces |
+| `kubectl get all -n <ns>` | List pods, deploys, services, replicasets in namespace |
+| `kubectl get all -A` | List all resources across all namespaces |
+| `kubectl get pods -n <ns> -o wide` | Pods with node and IP info |
+| `kubectl get pods -n <ns> --show-labels` | Pods with their labels |
+| `kubectl get pods -n <ns> -w` | Watch pod status in real time |
+| `kubectl get deploy -n <ns>` | List Deployments |
+| `kubectl get svc -n <ns>` | List Services |
+| `kubectl get endpoints -n <ns>` | List Endpoints (check if populated) |
+| `kubectl get ingress -n <ns>` | List Ingress resources |
+| `kubectl get pvc -n <ns>` | List PersistentVolumeClaims |
+| `kubectl get pv` | List PersistentVolumes (cluster-scoped) |
+| `kubectl get sc` | List StorageClasses |
+| `kubectl get configmap -n <ns>` | List ConfigMaps |
+| `kubectl get secret -n <ns>` | List Secrets |
+| `kubectl get networkpolicy -n <ns>` | List NetworkPolicies |
+| `kubectl get sa -n <ns>` | List ServiceAccounts |
+| `kubectl get role,rolebinding -n <ns>` | List RBAC Role and RoleBinding |
+| `kubectl get rs -n <ns>` | List ReplicaSets |
+| `kubectl get jobs -n <ns>` | List Jobs |
+| `kubectl get cronjobs -n <ns>` | List CronJobs |
+| `kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp` | Events sorted by time |
+| `kubectl get pod <pod> -n <ns> -o yaml` | Full pod spec as YAML |
+| `kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[*].image}'` | Extract specific field via jsonpath |
+| `kubectl api-resources` | List all resource types and short names |
+| `kubectl explain pod.spec.containers` | Show schema docs for a resource field |
+| **Diagnose** | |
+| `kubectl describe pod <pod> -n <ns>` | Full pod state, events, probe status |
+| `kubectl describe svc <svc> -n <ns>` | Service selector, endpoints, ports |
+| `kubectl describe deploy <deploy> -n <ns>` | Deployment state, strategy, conditions |
+| `kubectl describe ingress <ingress> -n <ns>` | Ingress rules, backend, address |
+| `kubectl describe pvc <pvc> -n <ns>` | PVC binding status and events |
+| `kubectl describe node <node>` | Node capacity, allocatable, taints, conditions |
+| `kubectl logs <pod> -n <ns>` | Container stdout/stderr |
+| `kubectl logs <pod> -n <ns> --previous` | Logs from last crashed container |
+| `kubectl logs <pod> -n <ns> -c <container>` | Logs from specific container (init containers) |
+| `kubectl logs <pod> -n <ns> --tail=50` | Last 50 lines of logs |
+| `kubectl logs <pod> -n <ns> -f` | Stream logs in real time |
+| `kubectl top nodes` | Node CPU/memory usage |
+| `kubectl top pods -n <ns>` | Pod CPU/memory usage |
+| `kubectl auth can-i <verb> <resource> -n <ns> --as=system:serviceaccount:<ns>:<sa>` | Check RBAC permission for a ServiceAccount |
+| `kubectl rollout status deploy/<deploy> -n <ns>` | Show rollout progress |
+| `kubectl rollout history deploy/<deploy> -n <ns>` | List rollout revision history |
+| **Fix** | |
+| `kubectl apply -f <file>` | Apply manifest (create or update) |
+| `kubectl edit <resource> <name> -n <ns>` | Edit resource live in $EDITOR |
+| `kubectl patch <resource> <name> -n <ns> -p '<json>'` | Inline patch resource |
+| `kubectl set image deploy/<deploy> <container>=<image> -n <ns>` | Update container image |
+| `kubectl rollout undo deploy/<deploy> -n <ns>` | Roll back to previous revision |
+| `kubectl rollout restart deploy/<deploy> -n <ns>` | Restart all pods in a deployment |
+| `kubectl scale deploy/<deploy> --replicas=<n> -n <ns>` | Change replica count |
+| `kubectl delete pod <pod> -n <ns>` | Force pod recreation |
+| `kubectl delete <resource> <name> -n <ns>` | Delete any resource |
+| `kubectl create configmap <name> --from-literal=KEY=val -n <ns>` | Create ConfigMap from literals |
+| `kubectl create secret generic <name> --from-literal=KEY=val -n <ns>` | Create Secret from literals |
+| `kubectl create rolebinding <name> --role=<role> --serviceaccount=<ns>:<sa> -n <ns>` | Create RoleBinding |
+| `kubectl create job <name> --from=cronjob/<cj> -n <ns>` | Trigger CronJob manually |
+| **Debug/Test** | |
+| `kubectl exec <pod> -n <ns> -- env` | Print env vars inside container |
+| `kubectl exec -it <pod> -n <ns> -- sh` | Interactive shell in container |
+| `kubectl exec <pod> -n <ns> -- wget -qO- http://svc/health` | Test HTTP from inside the cluster |
+| `kubectl exec <pod> -n <ns> -- nc -z <host> <port>` | Test TCP reachability from inside pod |
+| `kubectl port-forward pod/<pod> 8080:8000 -n <ns>` | Forward pod port to localhost |
+| `kubectl port-forward svc/<svc> 8080:80 -n <ns>` | Forward service port to localhost |
+
+---
+
+<a id="appendix-git"></a>
+## Appendix C: Git Commands
+
+---
+
+| Command | Purpose |
+|---|---|
+| `git status` | Show changed, staged, and untracked files |
+| `git diff` | Show unstaged changes |
+| `git diff --staged` | Show staged changes (what will be committed) |
+| `git log --oneline` | Compact commit history |
+| `git log -p` | Commit history with diffs |
+| `git checkout <branch>` | Switch to existing branch |
+| `git checkout -b <branch>` | Create and switch to new branch |
+| `git add <file>` | Stage specific file |
+| `git commit -m "message"` | Commit staged changes |
+| `git commit --amend` | Amend most recent commit |
+| `git stash` | Temporarily shelve uncommitted changes |
+| `git stash pop` | Restore most recently stashed changes |
+| `git reset --soft HEAD~1` | Undo last commit, keep changes staged |
+| `git reset --hard HEAD~1` | **Destructive.** Undo last commit and discard all changes |
+| `git branch` | List local branches |
+| `git branch -d <branch>` | Delete merged local branch |
+| `git cherry-pick <sha>` | Apply a specific commit to current branch |
+| `git blame <file>` | Show who last changed each line |
+
+---
+
+<a id="appendix-http"></a>
+## Appendix D: HTTP Status Codes
+
+---
+
+| Code | Meaning | Kubernetes / Interview Context |
+|---|---|---|
+| 200 | OK | Expected response from healthy endpoints (`/health`, `/`, `/items`). |
+| 301 | Moved Permanently | Permanent redirect. May appear from nginx Ingress path rewrites. |
+| 302 | Found (Temporary Redirect) | Temporary redirect. Check Ingress path rules or app-level redirects. |
+| 400 | Bad Request | Malformed request. Usually app-level — check request format, not K8s config. |
+| 401 | Unauthorized | Authentication missing or invalid. Check auth headers, tokens, or ServiceAccount. |
+| 403 | Forbidden | Authenticated but not permitted. Check RBAC Role/RoleBinding, `kubectl auth can-i`. |
+| 404 | Not Found | Route doesn't exist. Check Ingress path rules, backend service name, app routes. |
+| 408 | Request Timeout | Client timed out waiting. Check app logs, Ingress timeout config. |
+| 429 | Too Many Requests | Rate limited. Check Ingress rate-limit annotations or API gateway config. |
+| 500 | Internal Server Error | App crashed processing request. Check pod logs for stack trace. |
+| 502 | Bad Gateway | Proxy received invalid response from upstream. Check endpoints, pod readiness, targetPort. |
+| 503 | Service Unavailable | No healthy backend. From nginx Ingress: check pod readiness, service selector, endpoints, backend port. |
+| 504 | Gateway Timeout | Proxy timed out waiting for upstream. Check app performance, resource limits, Ingress timeout settings. |
+
+---
+
+<a id="appendix-exit-codes"></a>
+## Appendix E: Exit Codes, Pod Statuses, and Error Reasons
+
+---
+
+### Container Exit Codes
+
+| Code | Meaning | Typical Cause | Next Step |
+|---|---|---|---|
+| 0 | Success | Container completed normally | Expected for init containers and Jobs. If unexpected for a long-running app, check command/args. |
+| 1 | Generic application error | Unhandled exception, config error, bad startup | `kubectl logs <pod> --previous` |
+| 2 | Misuse of shell builtins | Bad shell command in `command` or `args` | Check pod spec `command`/`args` syntax |
+| 3 | Application-defined exit | App uses code 3 for specific error (e.g., Python/uvicorn unhandled exception) | Check app logs |
+| 126 | Command not executable | Script/binary not executable | Check file permissions inside the image |
+| 127 | Command not found | Binary missing from container image | Verify image contents with `kubectl exec` |
+| 128 | Invalid argument to exit | Shell received signal or invalid exit call | Check entrypoint/cmd scripting |
+| 137 | OOMKilled (128 + 9) | Container exceeded memory limit | `kubectl describe pod` last state; increase memory limit |
+| 139 | Segfault (128 + 11) | Memory access violation | Application bug or corrupted binary |
+| 143 | Graceful SIGTERM (128 + 15) | Normal shutdown, preStop hook, or pod deletion | Usually expected. If unexpected, check liveness probe. |
+
+---
+
+### Pod Status Reasons
+
+| Status | Meaning | Next Step |
+|---|---|---|
+| Running | Containers started, at least one still running | Check Ready column — Running but 0/1 means readiness probe failing |
+| Pending | Pod accepted but not scheduled or containers not started | `kubectl describe pod` — look for FailedScheduling (resources, taints, PVC) |
+| CrashLoopBackOff | Container keeps crashing, K8s backing off restarts | `kubectl logs <pod> --previous` for last crash output |
+| ImagePullBackOff | Repeated image pull failures | `kubectl describe pod` — check image name/tag, registry, pull secrets |
+| ErrImagePull | One-time image pull failure | Same as above — check Events for specific error |
+| OOMKilled | Container exceeded memory limit | Increase memory limit or reduce usage; `kubectl describe pod` last state |
+| Error | Container exited with non-zero code | `kubectl logs <pod> --previous` — check exit code in describe |
+| Init:CrashLoopBackOff | Init container crashing | `kubectl logs <pod> -c <init-container>` |
+| Init:0/1 | Init container not yet completed | `kubectl logs <pod> -c <init-container>` — may be waiting on dependency |
+| Completed | All containers exited with 0 | Normal for Jobs. Unexpected for Deployments — check restart policy |
+| Terminating | Pod being deleted | Check for stuck finalizers; may need force delete |
+| Unknown | Node unreachable | Check node health — `kubectl get nodes`, `kubectl describe node` |
+| ContainerCreating | Image pulling or volume mounting | If stuck: `kubectl describe pod` for mount/pull events |
+| PodInitializing | Init containers running | Normal transitional state — check init container logs if stuck |
+
+---
+
+### Common Event Reasons
+
+| Reason | Meaning | Next Step |
+|---|---|---|
+| Scheduled | Pod assigned to node | Normal |
+| Pulled | Image pulled from registry | Normal |
+| Created | Container created | Normal |
+| Started | Container started | Normal |
+| Killing | Container being killed | If unexpected: check liveness probe config |
+| BackOff | Backing off restart or pull | Check logs (CrashLoopBackOff) or image (ImagePullBackOff) |
+| FailedScheduling | No suitable node found | `kubectl describe pod` — insufficient CPU/memory, taints, node selectors |
+| FailedMount | Volume could not be mounted | Check PVC name, StorageClass, volume mount path |
+| FailedAttachVolume | PVC exists but can't attach to node | Check PVC bound status, StorageClass provisioner |
+| Unhealthy | Readiness or liveness probe failed | `kubectl describe pod` shows which probe and response |
+| FailedCreate | ReplicaSet couldn't create pod | `kubectl describe rs` — quota exceeded or invalid spec |
+| SuccessfulCreate | Pod created by ReplicaSet | Normal |
+| SuccessfulDelete | Pod deleted during scale-down/rollout | Normal |
+| RELOAD | nginx Ingress controller reloaded config | Normal — happens when Ingress resources change |
+| Sync | Ingress controller synced state | Normal |
+| Forbidden | RBAC denied an action | Check ServiceAccount, Role, RoleBinding — `kubectl auth can-i` |
+| Evicted | Pod evicted due to resource pressure | Check node resources — `kubectl describe node` |
+| NodeNotReady | Pod's node entered NotReady state | `kubectl get nodes`, `kubectl describe node` |
+| InsufficientMemory | Node lacks memory to schedule pod | Reduce memory request or add capacity |
+| InsufficientCPU | Node lacks CPU to schedule pod | Reduce CPU request or add capacity |
