@@ -65,13 +65,16 @@ Say: *"I'm starting with universal triage to identify the failure category. I'm 
 
 ### When to shortcut triage
 
-If the prompt already tells you the exact problem category, skip straight to that bucket. Examples:
+Sometimes the scenario prompt or task wording gives you a strong enough cue to skip broad triage and start in a specific bucket. This is about choosing a **starting point**, not assuming root cause — you still verify once you get there.
 
-- "The deploy-bot service account is getting Forbidden" → skip to [Bucket A](#bucket-a)
-- "Pods are stuck in Pending" → skip to [Bucket B](#bucket-b)
-- "Users cannot reach the app externally" → skip to [Bucket E](#bucket-e)
+Two types of cue:
 
-If in doubt, run the full triage. It takes under a minute.
+- **Prompt cues** — the interview/task wording names a specific failure type. Example: *"the service account is getting Forbidden"* tells you to start in RBAC. You haven't run any commands yet, but the wording is specific enough to skip straight there.
+- **Observed signals** — you run one or two commands and immediately see an obvious status (CrashLoopBackOff, Pending, empty endpoints). No need to finish the full triage sequence — commit to the bucket that matches.
+
+If neither type of cue is strong, run the full triage. It takes under a minute.
+
+The [Quick Signal Table](#quick-signal-table) below covers both: prompt cues in the left column and observed signals from command output.
 
 ### Why these commands
 
@@ -456,27 +459,27 @@ Once you have the baseline, go to [Phase 1: Universal Triage](#phase-1-universal
 <a id="quick-signal-table"></a>
 ## Quick Signal Table
 
-After triage, find the strongest signal and jump to the right bucket.
+Find the strongest signal — from the prompt wording or from command output — and jump to the right bucket.
 
-| What you see | Bucket | Go to |
+| What you see or hear | Bucket | Go to |
 |---|---|---|
-| Forbidden / Unauthorized / cannot create/get/list | **RBAC** | [Bucket A](#bucket-a) |
+| Forbidden / Unauthorized / "service account can't do X" | **RBAC** | [Bucket A](#bucket-a) |
 | Pod status: `ImagePullBackOff` or `ErrImagePull` | **Image / registry** | [Bucket B](#bucket-b) → ImagePull sub-branch |
-| Pod status: `Pending` | **Scheduling / resources / storage** | [Bucket B](#bucket-b) → Pending sub-branch |
-| Pod status: `CrashLoopBackOff` | **Pod startup / app crash** | [Bucket B](#bucket-b) → CrashLoop sub-branch |
-| Pod status: `Running` but READY shows `0/1` | **Readiness probe** | [Bucket B](#bucket-b) → Running-not-Ready sub-branch |
+| Pod status: `Pending` / "pods won't schedule" | **Scheduling / resources / storage** | [Bucket B](#bucket-b) → Pending sub-branch |
+| Pod status: `CrashLoopBackOff` / "app keeps restarting" | **Pod startup / app crash** | [Bucket B](#bucket-b) → CrashLoop sub-branch |
+| Pod `Running` but READY shows `0/1` | **Readiness probe** | [Bucket B](#bucket-b) → Running-not-Ready sub-branch |
 | Pod `Running` + `1/1` but RESTARTS climbing | **Liveness probe** | [Bucket B](#bucket-b) → Liveness sub-branch |
 | Pod status: `Init:CrashLoopBackOff` or `Init:0/1` | **Init container** | [Bucket B](#bucket-b) → Init container sub-branch |
 | Pod exit code 137 / OOMKilled in describe | **Resource limits** | [Bucket B](#bucket-b) → CrashLoop sub-branch (OOMKilled) |
-| Deployment unhealthy but pods not obviously broken | **Deployment / rollout** | [Bucket C](#bucket-c) |
+| Deployment unhealthy but pods not obviously broken / "deploy went out but new version isn't running" | **Deployment / rollout** | [Bucket C](#bucket-c) |
 | Pods healthy but app unreachable through Service | **Service routing** | [Bucket D](#bucket-d) |
-| Service works (port-forward OK) but external URL fails | **Ingress** | [Bucket E](#bucket-e) |
-| Events show missing ConfigMap or Secret | **Configuration injection** | [Bucket F](#bucket-f) |
-| Issue is scheduled or batch execution | **Jobs / CronJobs** | [Bucket G](#bucket-g) |
+| Service works (port-forward OK) but external URL fails / "users can't reach the app" | **Ingress** | [Bucket E](#bucket-e) |
+| Events show missing ConfigMap or Secret / "app fails after config change" | **Configuration injection** | [Bucket F](#bucket-f) |
+| "Cronjob not running" / issue is batch or scheduled execution | **Jobs / CronJobs** | [Bucket G](#bucket-g) |
 | Pods Running + Ready but app returns 5xx errors | **Application-level** | [Bucket H](#bucket-h) |
 | Everything looks healthy but traffic silently times out | **Network policies** | [Bucket I](#bucket-i) |
-| PVC stuck in `Pending` | **Storage** | [Bucket J](#bucket-j) |
-| Resources appear to be missing entirely | **Namespace confusion** | [Bucket K](#bucket-k) |
+| PVC stuck in `Pending` / "pod can't start, volume issue" | **Storage** | [Bucket J](#bucket-j) |
+| Resources appear to be missing entirely / "I can't find the pods" | **Namespace confusion** | [Bucket K](#bucket-k) |
 
 If multiple signals compete, pick the one closest to the root. Pod issues before Service issues. Config issues before app crash issues.
 
