@@ -1,0 +1,120 @@
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill ⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:16 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4mp[24m[24mpods[?1l>[?2004l
+]2;kubectl get pods]1;kubectlNAME                                 READY   STATUS    RESTARTS   AGE
+platform-drill-api-f59f65754-7sm9k   1/1     Running   0          41h
+postgres-5df5d778cd-7x28g            1/1     Running   0          47h
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill ⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:16 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[1m[31mc[0m[39m[0m[39m [1m[31me[0m[39m[0m[39m [1m[31mb[0m[39m[0m[39m [1m[31mk[1m[31mu[0m[39m[0m[39m [0m[32mk[39m[0m[39m [39m [1m[31mP[0m[39m[1m[31mP[1m[31mO[0m[39m[1m[31mP[1m[31mO[1m[31mD[0m[39m[0m[39mP[0m[39mO[0m[39mD=[7mplatform-drill-api-f59f65754-7sm9k[27m[34D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27mf[27m5[27m9[27mf[27m6[27m5[27m7[27m5[27m4[27m-[27m7[27ms[27mm[27m9[27mk[?1l>[?2004l
+]2;POD=platform-drill-api-f59f65754-7sm9k ]1;[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill ⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:16 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31me[1m[31mc[1m[31mh[0m[39m[0m[32me[0m[32mc[0m[32mh[32mo[39m [1m[30m#[0m[39m[1m[30m#[1m[30m$[0m[39m[1m[30m$[1m[30mP[0m[39m[1m[30mP[1m[30mO[0m[39m[1m[30mO[1m[30mD[0m[39m[1m[30mD[1m[30m"[0m[39m[0m[39m$[0m[39mP[0m[39mO[0m[39mD[0m[33m"[39m[0m[39m [33m"[36m$[36mP[36mO[36mD[39m[33m"[39m[?1l>[?2004l
+]2;echo "$POD"]1;echoplatform-drill-api-f59f65754-7sm9k
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:17 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4md[24m[24mdeploy[?1l>[?2004l
+]2;kubectl get deploy]1;kubectlNAME                 READY   UP-TO-DATE   AVAILABLE   AGE
+platform-drill-api   1/1     1            1           47h
+postgres             1/1     1            1           47h
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:17 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get svc[?1l>[?2004l
+]2;kubectl get svc]1;kubectlNAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+platform-drill-api   ClusterIP   10.96.55.57     <none>        80/TCP     47h
+postgres             ClusterIP   10.96.199.142   <none>        5432/TCP   47h
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:17 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get events[?1l>[?2004l
+]2;kubectl get events]1;kubectlLAST SEEN   TYPE      REASON              OBJECT                                     MESSAGE
+83m         Warning   ErrImageNeverPull   pod/platform-drill-api-84b56f6bc9-ms4c6    Container image "platform-drill-api:v2.0.0" is not present with pull policy of Never
+81m         Normal    SuccessfulDelete    replicaset/platform-drill-api-84b56f6bc9   Deleted pod: platform-drill-api-84b56f6bc9-ms4c6
+81m         Normal    ScalingReplicaSet   deployment/platform-drill-api              Scaled down replica set platform-drill-api-84b56f6bc9 from 1 to 0
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:19 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe [4mp[24m[24mpod $ [33m"[39m[33m"[33m$[39m[36m$[36mP[39m[36mP[36mO[39m[36mO[36mD[39m[33m"[39m[?1l>[?2004l
+]2;kubectl describe pod "$POD"]1;kubectlName:             platform-drill-api-f59f65754-7sm9k
+Namespace:        drill
+Priority:         0
+Service Account:  app-sa
+Node:             drill-cluster-control-plane/172.19.0.2
+Start Time:       Sun, 05 Apr 2026 16:45:49 +0100
+Labels:           app=platform-drill-api
+                  pod-template-hash=f59f65754
+Annotations:      cni.projectcalico.org/containerID: 52129af84e224e91e62f56a08c5bb21d4f19d0fd2b5d20e739b7592316f47448
+                  cni.projectcalico.org/podIP: 10.244.113.138/32
+                  cni.projectcalico.org/podIPs: 10.244.113.138/32
+                  kubectl.kubernetes.io/restartedAt: 2026-04-05T16:45:49+01:00
+Status:           Running
+IP:               10.244.113.138
+IPs:
+  IP:           10.244.113.138
+Controlled By:  ReplicaSet/platform-drill-api-f59f65754
+Init Containers:
+  wait-for-postgres:
+    Container ID:  containerd://c551346f11f40472f070dedba7330f3215e6737d8f24fab9a98ae23bb8a48f1b
+    Image:         busybox
+    Image ID:      docker.io/library/busybox@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      sh
+      -c
+      until nc -z postgres 5432; do echo "waiting for postgres"; sleep 2; done
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Sun, 05 Apr 2026 16:45:51 +0100
+      Finished:     Sun, 05 Apr 2026 16:45:51 +0100
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9stvr (ro)
+Containers:
+  platform-drill-api:
+    Container ID:   containerd://7593a2186cf49ea8a9bd55c78e8ac3ed05114950d7b33c12a4ff924a2975bacc
+    Image:          platform-drill-api:local
+    Image ID:       sha256:6e9ed006de5db1c52244af9b329a86ca0ba86571a71e9645ba7705e8d50c3fa6
+    Port:           8000/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sun, 05 Apr 2026 16:45:51 +0100
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     200m
+      memory:  128Mi
+    Requests:
+      cpu:      50m
+      memory:   64Mi
+    Liveness:   http-get http://:8000/health delay=15s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:8000/health delay=5s timeout=1s period=5s #success=1 #failure=3
+    Environment Variables from:
+      app-config  ConfigMap  Optional: false
+      app-secret  Secret     Optional: false
+    Environment:  <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9stvr (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-9stvr:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:                      <none>
+[1m[7m%[27m[1m[0m                                                                                                                                                                                                                            ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  10:19 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h
