@@ -240,24 +240,20 @@ Create a fresh, isolated workspace that feels like a prepared interview repo the
 
 3. **Set up git history in the workspace** so `git log`, `git diff`, and `git status` work realistically.
 
-   The workspace should feel like a real repo with natural history, not a freshly initialised repo with one synthetic commit. Use this approach:
+   The workspace should feel like a real repo with natural history, not a freshly initialised repo with one synthetic commit.
 
-   ```bash
-   cd ./workspaces/drill-workspace-<NN>
-   git init
-   # Stage and commit in logical groups that simulate real project history:
-   # Commit 1: base application code and dependencies
-   git add app/ requirements.txt Dockerfile .dockerignore .gitignore
-   git commit -m "Initial application setup" --date="3 days ago"
-   # Commit 2: Kubernetes manifests and deployment config
-   git add k8s/ docker-compose*.yml
-   git commit -m "Add Kubernetes manifests and local dev config" --date="2 days ago" --allow-empty
-   # Commit 3: everything else (README, any remaining files)
-   git add -A
-   git commit -m "Add documentation and project configuration" --date="1 day ago" --allow-empty
-   ```
+   **Algorithm:**
+   1. `cd` into the workspace and run `git init`.
+   2. List the actual top-level files and directories in the workspace.
+   3. Sort them into 2-4 logical groups based on what they are (application code, infrastructure/deploy config, documentation/other). Do not hard-code group membership — inspect the workspace contents and decide per run.
+   4. For each group, `git add` those paths and commit with a realistic message and a backdated `--date`. Use `--allow-empty` on later commits in case earlier groups already covered everything.
 
-   Adapt the groupings to whatever files actually exist in the source repo. The goal is 2-4 commits with realistic messages and dates, not one "initial state" commit. Use `--allow-empty` on later commits in case earlier ones already staged everything.
+   **Grouping heuristic** (apply by inspecting what actually exists, not by assuming fixed paths):
+   - **Group 1 — Application code and dependencies:** Source code directories, dependency/lock files, Dockerfiles, `.dockerignore`, `.gitignore`. Commit message like `"Initial application setup"`. Date: 3 days ago.
+   - **Group 2 — Infrastructure and deploy config:** Manifest directories, Helm charts, compose files, CI config, deploy scripts — anything that describes how to build/run/deploy. Commit message like `"Add deployment configuration"`. Date: 2 days ago.
+   - **Group 3 — Everything else:** READMEs, docs, remaining config files. `git add -A` to catch anything not yet staged. Commit message like `"Add documentation and project config"`. Date: 1 day ago.
+
+   If the workspace is small enough that groups 1 and 2 cover everything, skip group 3. The goal is natural-looking history, not a fixed number of commits.
 
 4. **Do not modify `./source-repo/`.** The workspace is a copy. The source repo must remain unchanged.
 
