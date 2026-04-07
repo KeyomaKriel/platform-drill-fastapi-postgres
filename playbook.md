@@ -1,8 +1,11 @@
-# Kubernetes Troubleshooting Playbook
+# Kubernetes Troubleshooting Handbook
+
+A reference handbook for Kubernetes interview practice drills, aligned with the drill system defined in CLAUDE.md. Covers the debugging runtime flow, all twelve failure domains, and spoken narration practice for communicating your reasoning out loud during a live interview.
 
 ## Table of Contents
 
 - [Rule 0](#rule-0)
+- [Repo-First Orientation](#repo-first-orientation)
 - [Entry Modes](#entry-modes)
 - [Interview Runtime Flow](#interview-runtime-flow)
 - [Symptom-to-Domain Table](#symptom-table)
@@ -36,6 +39,19 @@ Start by answering:
 1. What is the visible symptom?
 2. Which Kubernetes object type is closest to that symptom?
 3. What command will show the truth fastest?
+
+---
+
+<a id="repo-first-orientation"></a>
+## Repo-First Orientation
+
+In a repo-based interview, you have access to the application source code alongside the running cluster. Use that context before or alongside your cluster inspection. Spending 30-60 seconds reading the repo can save minutes of guessing later.
+
+Start with the README or any top-level documentation. Identify what the app does, what its endpoints are, what dependencies it expects (databases, caches, external services), and what environment variables it reads. This tells you what "healthy" looks like and what config values matter.
+
+Look at the Dockerfile to understand the image build: base image, exposed ports, entrypoint command. Check for Kubernetes manifests (YAML files, Helm charts, kustomize overlays) to understand the expected deployment topology -- how many replicas, what services exist, what config objects are referenced.
+
+Finally, identify the deploy path. Is the app deployed via raw manifests, Helm, Kustomize, or a CI pipeline? Knowing how things got deployed tells you where to look when something is wrong and how to fix it cleanly.
 
 ---
 
@@ -297,6 +313,19 @@ kubectl auth can-i --as=system:serviceaccount:<ns>:<sa> <verb> <resource> -n <ns
 
 Say: *"Permission check returns yes, the RBAC chain is consistent. RBAC is healthy."*
 
+#### Spoken narration practice
+
+*"I see a Forbidden error on a pod operation. That's RBAC — the permission chain is broken somewhere. Let me check the ServiceAccount first, then trace through to the RoleBinding and Role."*
+
+*"The `auth can-i` check returns no. The SA exists, so either the RoleBinding is pointing to the wrong SA, or the Role doesn't have the right verbs. Let me look at the binding subjects."*
+
+*"Found it — the binding has the wrong namespace on the subject. Fixing that and re-checking."*
+
+#### Official docs
+
+- [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+- [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
+
 ---
 
 <a id="image-pull"></a>
@@ -305,9 +334,9 @@ Say: *"Permission check returns yes, the RBAC chain is consistent. RBAC is healt
 **Start here if** pod shows `ImagePullBackOff`, `ErrImagePull`, `ErrImageNeverPull`, `CreateContainerConfigError`, or `CreateContainerError`.
 
 Say: *If the status is ImagePullBackOff / ErrImagePull:
-“The pod is failing at image pull. I need to check whether it’s a bad image name/tag or a registry/auth issue.”
+"The pod is failing at image pull. I need to check whether it's a bad image name/tag or a registry/auth issue."
 	•	If the status is CreateContainerConfigError / CreateContainerError:
-“The image may already be present, but the container still can’t be created. I need to check events for missing config, bad command, or security-context issues.”*
+"The image may already be present, but the container still can't be created. I need to check events for missing config, bad command, or security-context issues."*
 
 #### Image pull failures
 
@@ -393,6 +422,17 @@ kubectl edit deploy <deploy> -n <ns>
 kubectl get pods -n <ns> -w
 # Pod moves past the error state and reaches Running
 ```
+
+#### Spoken narration practice
+
+*"The pod is stuck in ImagePullBackOff. This is either a bad image name/tag or a registry auth issue. Let me describe the pod — the Events section will tell me the exact image it tried to pull."*
+
+*"Events show 'manifest unknown' for the tag. The image name looks right but the tag doesn't exist. Let me check the deployment history for the last known-good image."*
+
+#### Official docs
+
+- [Images](https://kubernetes.io/docs/concepts/containers/images/)
+- [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
 
 ---
 
@@ -493,6 +533,17 @@ kubectl logs <pod> -n <ns>
 # Restarts stop climbing, pod stays Running, logs are clean
 ```
 
+#### Spoken narration practice
+
+*"The pod is in CrashLoopBackOff with 5 restarts. I need the exit code and logs. If it's 137 that's OOM, if it's 1 that's an app error."*
+
+*"Exit code is 1, so the app itself is crashing. Logs show a connection refused to the database host. That could be a wrong hostname in config or the database isn't running. Let me check the services and the app's env vars."*
+
+#### Official docs
+
+- [Debug Running Pods](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pods/)
+- [Determine the Reason for Pod Failure](https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/)
+
 ---
 
 <a id="probe-failure"></a>
@@ -572,6 +623,16 @@ kubectl get endpoints <svc> -n <ns>
 # Endpoints populate once readiness passes
 ```
 
+#### Spoken narration practice
+
+*"The pod is Running but showing 0/1 Ready — the readiness probe is failing. Let me check what path and port the probe is targeting, and whether the app actually responds there."*
+
+*"The probe is targeting /healthz on port 8080, but the app logs show it registered routes on port 8000. The probe port is wrong. Let me fix the deployment."*
+
+#### Official docs
+
+- [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+
 ---
 
 <a id="config-injection"></a>
@@ -624,6 +685,17 @@ kubectl describe pod <pod> -n <ns>          # no Warning events about missing ob
 kubectl exec <pod> -n <ns> -- env | grep <KEY>   # correct values injected
 kubectl logs <pod> -n <ns>                  # clean startup
 ```
+
+#### Spoken narration practice
+
+*"Events show 'configmap app-configs not found'. The pod is referencing a ConfigMap that doesn't exist. Let me check what ConfigMaps actually exist in this namespace and compare the names."*
+
+*"There's app-config but the deployment references app-configs with an extra 's'. Classic typo. Fixing the reference in the deployment spec."*
+
+#### Official docs
+
+- [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
+- [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 ---
 
@@ -727,6 +799,17 @@ kubectl get pods -n <ns>      # Running, Ready
 curl -s localhost/             # or a known app path — confirm end-to-end
 ```
 
+#### Spoken narration practice
+
+*"The pod is Pending. Describe shows 'Insufficient memory' — the requests exceed what the node can allocate. Let me compare the pod's memory request against the node's allocatable memory."*
+
+*"The pod requests 4Gi but the node only has 3.5Gi allocatable. I'll lower the request to something reasonable and see if it schedules."*
+
+#### Official docs
+
+- [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+- [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+
 ---
 
 <a id="service-routing"></a>
@@ -782,6 +865,17 @@ curl -s localhost/                       # end-to-end through Ingress
 ```
 
 Do not stop at port-forward. The external curl proves the full path.
+
+#### Spoken narration practice
+
+*"Pods are Running and Ready, but I can't reach the app through the service. First thing: check endpoints. If they're empty, the selector doesn't match."*
+
+*"Endpoints show none. Service selector says app=api, but the pods have app=platform-drill-api. That's the mismatch. Patching the service selector."*
+
+#### Official docs
+
+- [Service](https://kubernetes.io/docs/concepts/services-networking/service/)
+- [Debug Services](https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/)
 
 ---
 
@@ -854,6 +948,16 @@ kubectl exec <pod> -n <ns> -- nslookup <service>
 # Returns a valid cluster IP
 ```
 
+#### Spoken narration practice
+
+*"I can't find the resources I expect. Before I assume they're missing, let me check if they're in a different namespace."*
+
+*"Found them — they're in default, not in drill. The commands were targeting the wrong namespace. Let me switch context."*
+
+#### Official docs
+
+- [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+
 ---
 
 <a id="ingress"></a>
@@ -913,6 +1017,17 @@ kubectl get ingress -n <ns>       # ADDRESS populated
 kubectl describe ingress <ing> -n <ns>   # Backends show correct service with endpoints
 curl -s localhost/                 # or a known app path — confirm end-to-end
 ```
+
+#### Spoken narration practice
+
+*"Port-forward to the service works fine, but curl to localhost fails. So the problem is between Ingress and the Service. Let me describe the ingress and check the backend."*
+
+*"The ingress backend points to port 8080 but the service is on port 80. That mismatch is why traffic isn't reaching the app. Patching the ingress."*
+
+#### Official docs
+
+- [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+- [Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
 
 ---
 
@@ -1025,6 +1140,16 @@ curl -s localhost/                 # or a known app path — confirm traffic flo
 
 All policies present, requests return expected data.
 
+#### Spoken narration practice
+
+*"Everything looks correct — pods Running, endpoints populated, service selector matches — but traffic silently times out. When everything looks right but doesn't work, I check NetworkPolicies."*
+
+*"There's a default-deny-ingress policy but no allow rule for traffic from the ingress-nginx namespace. That's blocking external traffic. I need to add an allow policy."*
+
+#### Official docs
+
+- [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+
 ---
 
 <a id="deployment-rollout"></a>
@@ -1088,6 +1213,16 @@ kubectl get pods -n <ns>                           # all Running 1/1
 curl -i localhost/                                 # or a known app path — confirm end-to-end
 ```
 
+#### Spoken narration practice
+
+*"The deployment exists but the rollout seems stuck. Let me check rollout status and look at the ReplicaSets — if the new RS has 0 ready pods, something is wrong with the new pod template."*
+
+*"New RS shows 1 desired, 0 ready. The new pods are in ImagePullBackOff — bad image tag on the latest revision. I'll set the correct image to trigger a fresh rollout."*
+
+#### Official docs
+
+- [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+
 ---
 
 <a id="app-failure"></a>
@@ -1137,6 +1272,16 @@ curl -s localhost/                           # confirm app responds
 # Also test any known app paths from the scenario to verify full functionality
 ```
 
+#### Spoken narration practice
+
+*"Pods are Running, Ready, endpoints look good — Kubernetes thinks everything is fine. But the app returns 500. This is an application-level issue. Logs should tell me what's going on."*
+
+*"Logs show 'password authentication failed for user platformuser'. The credentials in the Secret don't match what Postgres expects. Let me decode the secret and compare."*
+
+#### Official docs
+
+- [Debug Running Pods](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pods/)
+
 ---
 
 <a id="jobs-cronjobs"></a>
@@ -1184,6 +1329,17 @@ kubectl get jobs -n <ns>                              # COMPLETIONS 1/1
 kubectl get pods --selector=job-name=<job> -n <ns>    # Completed
 kubectl logs <job-pod> -n <ns>                        # clean output
 ```
+
+#### Spoken narration practice
+
+*"The CronJob exists but LAST SCHEDULE shows none. Either the schedule syntax is wrong or it's suspended. Let me describe it."*
+
+*"It's suspended. Patching suspend to false and creating a manual job to test immediately."*
+
+#### Official docs
+
+- [Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
+- [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
 
 ---
 
