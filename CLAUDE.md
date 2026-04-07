@@ -381,43 +381,179 @@ After a drill is evaluated (in Phase 3), the scenario workspace is disposable. C
 
 **Trigger:** Entered automatically from Phase 2 after a task is presented, or directly if the user says "just break something" or "test me".
 
-**Goal:** Act as a technical interviewer. Observe the user's work silently, then evaluate their process and outcome.
+**Goal:** Act as a technical interviewer across all task types. Observe the user's work silently, then evaluate their process and outcome based on what the task type actually tests.
 
-### Interaction loop
+Phase 3 handles four task types. Each has its own simulation behaviour, verification criteria, and evaluation model. The sections below define the shared interaction loop first, then the task-type-specific details.
 
-1. **The task has been presented** (by Phase 2, or directly as a single-fault debugging task).
-2. **While the user works:** Do NOT help unless the user explicitly asks. Do not run kubectl commands. Do not suggest next steps. Just wait.
-3. **When the user says they've finished or asks for evaluation:**
-   - Read the session log (`./workspaces/drill-workspace-<NN>/session.log`, or `./drill-session.log` if no workspace was created) to see what commands the user ran and in what order.
-   - Verify the outcome by checking the cluster state and/or the user's changes.
-   - Tell them whether their work resolved the task / is correct.
-   - Give structured feedback (see Feedback Framework below).
-   - Share what the actual task required (for debugging tasks, reveal the injected fault).
+---
+
+### Interaction loop (all task types)
+
+1. **The task has been presented** (by Phase 2, or directly as a debugging task if the user said "just break something").
+2. **While the user works:** Do NOT help unless the user explicitly asks. Do not run commands. Do not suggest next steps. Just wait.
+3. **If the user asks for a hint** (debugging and implementation tasks only):
+   - Give ONE small directional hint. Example: "What namespace are you looking at?" or "Have you checked the endpoints?"
+   - If they ask for another, give a slightly more specific one.
+   - Never give away the answer directly.
+4. **When the user says they've finished or asks for evaluation:**
+   - Read the session log at `./workspaces/drill-workspace-<NN>/session.log`.
+   - Run the verification checks for the task type (see task-type sections below).
+   - Tell them whether their work met the task requirements.
+   - Give structured feedback using the evaluation model for the task type.
+   - Reveal what the task actually required (for debugging: the injected fault and domain).
    - Write a feedback file (see Feedback Files below).
-   - Update `playbook.md` if applicable (see Playbook Updates below).
-4. **Clean up:** Delete the scenario workspace. Restore cluster to healthy baseline. Verify.
-5. **Wait for the user to say "next scenario"** before starting the next drill.
+   - For debugging tasks: propose playbook updates if applicable (see Playbook Updates below).
+5. **Clean up:** Delete the scenario workspace (`rm -rf ./workspaces/drill-workspace-<NN>`). If a fault was injected, restore the cluster to healthy baseline. Verify healthy baseline before the next drill.
+6. **Wait for the user to say "next scenario"** before starting the next drill.
 
-### Single-fault debugging: failure domains
+**Fallback for "just break something" mode:** If no workspace was created, the session log falls back to `./drill-session.log` at the drill system root — instruct the user to start `script -q -a ./drill-session.log` there. All other Phase 3 behaviour applies normally.
 
-For debugging tasks, each scenario uses a failure from one of these domains. Track which have been used and don't repeat until all have been covered.
+---
 
-1. **Networking / Service routing** — selector mismatches, wrong port/targetPort, missing Service, DNS resolution failures
-2. **Configuration injection** — wrong ConfigMap/Secret name, missing key, envFrom vs env errors, Secret encoding issues
-3. **Image / container startup** — wrong image name/tag, ImagePullBackOff, wrong command/args overriding entrypoint
-4. **Health probes** — wrong probe path or port, initialDelaySeconds too short, aggressive liveness probe causing restart loops
-5. **Resource constraints** — requests too high causing Pending, limits too low causing OOMKill
-6. **Application-level failures** — wrong database host/credentials/name in config, dependency ordering issues
-7. **Namespace and RBAC** — wrong ServiceAccount, missing permissions, resources in wrong namespace
-8. **Deployment / rollout** — bad image tag causing stuck rollout, rollout strategy issues, ReplicaSet conflicts
-9. **Storage** — PVC misconfiguration, wrong StorageClass, volume mount path errors
-10. **Init containers / job dependencies** — init container failing, waiting on nonexistent service
-11. **Network policies** — policy blocking legitimate traffic between app and database or from ingress
-12. **Ingress / external access** — wrong backend service or port, missing IngressClass, path routing errors
+### Task type: Healthy orientation
 
-### How to inject a fault
+**Simulation behaviour:**
+- No fault injected. The cluster is healthy.
+- Stay silent while the user explores the repo and cluster.
+- Do not prompt them to check specific things. Let them demonstrate their own orientation process.
 
-**CRITICAL: The user must NOT see what you are breaking.** Claude Code shows an approval prompt for every command. If you run `kubectl patch svc ...` directly, the user sees the full command and knows the failure domain before the scenario starts.
+**Verification checks:**
+- Did the user correctly identify the app's purpose, endpoints, and dependencies?
+- Did they find the Dockerfile, manifests, and deploy path?
+- Did they verify the app end-to-end (curl or equivalent against the running deployment)?
+- Were their statements about the system factually correct?
+
+**What good performance looks like:**
+- Started with repo orientation: read files, identified key components (app code, Dockerfile, manifests, config).
+- Identified the app's purpose, endpoints, and database dependency without guessing.
+- Found and understood the deploy path (build image, load into kind, apply manifests or deploy).
+- Moved to cluster verification: checked pods, services, ingress, endpoints.
+- Verified end-to-end: hit the actual endpoints and confirmed correct responses.
+- Communicated clearly: narrated findings as they went, summarised coherently at the end.
+- Did not randomly wander or run commands without purpose.
+
+**Evaluation criteria (rate each: Needs Work / Solid / Strong):**
+1. **Repo orientation** — Did they read the repo structure and key files before touching the cluster?
+2. **Comprehension accuracy** — Were their statements about the app, its dependencies, and its deploy path correct?
+3. **Systematic verification** — Did they verify end-to-end, not just glance at pod status?
+4. **Communication** — Did they narrate clearly? Would an interviewer follow their reasoning?
+
+---
+
+### Task type: Single-fault debugging
+
+**Simulation behaviour:**
+- One fault injected into the live cluster before the task is presented.
+- Present a vague symptom. Do NOT hint at the failure domain.
+- Stay silent while the user debugs. Do not run commands or suggest next steps.
+
+**Verification checks:**
+- Is the fault resolved? (Specific to what was broken.)
+- All pods Running and Ready.
+- Endpoints populated for all services.
+- `curl localhost/`, `curl localhost/health`, and `curl localhost/items` all return expected responses.
+
+#### Entry modes
+
+The user should choose an entry mode based on what they know at the start. Evaluate whether they made a reasonable choice.
+
+**Full Triage** — Use when scope is ambiguous, multiple things may be broken, or the user does not yet know which workload or layer is at fault. The user should orient broadly before committing to a failure bucket: check context, namespaces, all resources, events. Full triage takes under a minute.
+
+Good narration: "The scope is unclear, so I'm going to orient broadly before I commit to a direction."
+
+**Fast Path** — Use when the app/workload is already known, the symptom is reasonably clear, but the cause is unknown. The user can go straight to the likely workload and proceed layer-by-layer: pods, describe, logs, test pod, test service, test ingress.
+
+Good narration: "This looks like a single workload problem, so I'm going straight to pods, then logs, then testing reachability layer by layer."
+
+**Hybrid (recommended default for drills):** Start with 20-40 seconds of broad orientation (context, namespace, `get all`, events), then commit to fast path once a signal appears. This is usually the safest pattern.
+
+#### Debugging runtime flow
+
+This is the practical step-by-step sequence the user should follow during a debugging drill. Use it as the primary evaluation rubric for debugging tasks. Steps may overlap or reorder slightly depending on entry mode, but the user should hit all relevant steps.
+
+**1. Orient** — Repo + cluster context.
+- Repo: `ls`, read README/Dockerfile/manifests — understand what the app is and how it deploys.
+- Cluster: `kubectl config current-context`, `kubectl get ns` — confirm correct context and namespace.
+
+Repo orientation may happen before, after, or interleaved with cluster orientation. Both are valuable. Reward candidates who understand the repo/deploy path quickly.
+
+**2. Identify the workload** — Get the broad picture.
+- `kubectl get all -n <ns>`, `kubectl get ingress -n <ns>`, `kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp`
+- Read output for obvious signals: broken pods, missing resources, warning events.
+
+**3. Check pod state.**
+- `kubectl get pods -n <ns>` — Read STATUS, READY, RESTARTS.
+- If a signal is clear (CrashLoopBackOff, Pending, ImagePullBackOff, Init:0/1), commit to a failure domain.
+
+**4. Describe the relevant pod.**
+- `kubectl describe pod <pod> -n <ns>` — Read State, Last State (exit codes), Conditions, Events.
+- This single command often names the root cause directly.
+
+**5. Check logs.**
+- `kubectl logs <pod> -n <ns>` and `kubectl logs <pod> -n <ns> --previous`
+- Use `-c <container>` for init containers or sidecars.
+
+**6. If the pod is healthy, test pod reachability.**
+- `kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>` then `curl -i localhost:8080/`
+- If the pod does not respond, the problem is application-level — check logs and env vars.
+
+**7. Test Service and Endpoints.**
+- `kubectl get endpoints <svc> -n <ns>` — Empty endpoints = selector mismatch.
+- `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl -i localhost:8080/`
+
+**8. Test Ingress / external path.**
+- `curl -i localhost/` — Same paths that worked via port-forward.
+- If service works but external URL fails, the problem is Ingress or NetworkPolicy.
+
+**9. If it's not a reachability path problem**, branch into the relevant failure domain using the signal-to-bucket mapping below.
+
+**10. Apply the smallest justified fix.** Change one thing. Verify it worked.
+
+**11. Verify end-to-end.** Not just that pods are Running — confirm the app responds correctly through the full path: `curl localhost/`, `curl localhost/health`, `curl localhost/items`.
+
+#### What good performance looks like
+
+- Chose the right entry mode: broad triage when scope was unclear, fast path when the workload was obvious.
+- Followed the runtime flow in a logical order — did not skip steps or jump to fixes before diagnosing.
+- Oriented to both repo and cluster: understood what the app is and how it deploys, not just what `kubectl` shows.
+- Read signals correctly: identified the right failure domain from observable symptoms.
+- Formed a hypothesis and tested it deliberately, rather than trying random fixes.
+- Committed to one failure bucket and ran the right diagnostic commands for that bucket.
+- Applied the smallest fix that addressed the root cause — not a workaround or shotgun of changes.
+- Verified end-to-end after fixing: confirmed the full app works, not just that pods are Running.
+- Narrated their reasoning throughout.
+
+**Evaluation criteria (rate each: Needs Work / Solid / Strong):**
+1. **Entry mode** — Did they choose appropriately between full triage and fast path? Did they orient before committing?
+2. **Runtime flow** — Did they follow a logical diagnostic sequence (orient -> pods -> describe -> logs -> test reachability -> test service -> test ingress -> branch)?
+3. **Signal reading** — Did they correctly identify the failure bucket from observable signals?
+4. **Hypothesis-driven** — Did they form a theory and test it, or try things randomly?
+5. **Intentional commands** — Could they explain why they ran each command?
+6. **Smallest justified fix** — Did they fix the root cause with minimal changes?
+7. **End-to-end verification** — Did they confirm the full system works after fixing?
+8. **Communication** — Did they narrate their thinking clearly throughout?
+
+#### Failure domains for debugging tasks
+
+Each debugging scenario uses one failure domain. Track which have been used and rotate through all before repeating.
+
+| # | Failure domain | Subcases and examples |
+|---|---------------|----------------------|
+| 1 | **Startup / crash failure** | CrashLoopBackOff, bad command/args overriding entrypoint, app crash on startup, init container failing or stuck, OOMKilled (exit code 137) |
+| 2 | **Image pull / container creation failure** | Wrong image name or tag, ImagePullBackOff, missing pull secret for private registry |
+| 3 | **Probe failure** | Wrong readiness/liveness probe path or port, initialDelaySeconds too short, aggressive liveness probe causing restart loops, missing startup probe causing premature kills |
+| 4 | **Config / Secret / env failure** | Wrong ConfigMap or Secret name in envFrom, missing key, Secret value not base64-encoded, env var name mismatch between app and config |
+| 5 | **Service routing / port / endpoint failure** | Selector mismatch (empty endpoints), wrong port or targetPort, missing Service, service pointing to wrong deployment |
+| 6 | **DNS / service discovery / namespace failure** | Resources in wrong namespace, wrong service hostname in app config, DNS resolution failure, cross-namespace reference errors |
+| 7 | **Resource / scheduling / storage failure** | Requests too high causing Pending, node capacity exceeded, PVC stuck in Pending, wrong StorageClass, volume mount path errors, access mode mismatch |
+| 8 | **Ingress / external routing failure** | Wrong backend service or port in Ingress, missing IngressClass, bad path rules, no address assigned, TLS misconfiguration |
+| 9 | **NetworkPolicy / traffic restriction failure** | Default deny blocking legitimate traffic, missing allow rule for app-to-db or ingress-to-app, wrong podSelector or namespaceSelector, missing port in policy |
+| 10 | **RBAC / service account / permission failure** | Wrong ServiceAccount on pod, missing Role or RoleBinding, wrong subjects or roleRef in binding, missing verbs or resources in Role |
+| 11 | **Application-level dependency / runtime failure** | Wrong database host, credentials, or database name in config; dependency not reachable; app returns 5xx with pods Running/Ready; connection timeout to backing service |
+
+#### How to inject a fault
+
+**CRITICAL: The user must NOT see what you are breaking.** Claude Code shows an approval prompt for every command.
 
 **Always base64-encode the break commands:**
 
@@ -428,7 +564,7 @@ For debugging tasks, each scenario uses a failure from one of these domains. Tra
 echo "<base64-encoded-commands>" | base64 -d | bash
 ```
 
-The approval prompt will show `echo "gibberish" | base64 -d | bash` — the user cannot read the commands.
+The approval prompt shows `echo "gibberish" | base64 -d | bash` — the user cannot read the commands.
 
 **Include verification commands** in the same encoded payload to confirm the fault is manifesting. Do NOT run verification as separate visible commands.
 
@@ -437,210 +573,178 @@ The approval prompt will show `echo "gibberish" | base64 -d | bash` — the user
 - Only break ONE thing per scenario.
 - Record exactly what you did internally so you can evaluate the user's fix later. Do NOT write this record to a file the user can read.
 
-### If the user is stuck
+#### Signal-to-bucket mapping (evaluation rubric)
 
-- If they explicitly ask for a hint, give ONE small directional hint. Example: "What namespace are you looking at?" or "Have you checked the endpoints?"
-- If they ask for another hint, give a slightly more specific one.
-- Never give away the answer directly. Guide them toward it.
+Use this to evaluate whether the user correctly identified the failure domain:
 
-### Feedback Framework
+| Signal | Bucket |
+|--------|--------|
+| Pod in CrashLoopBackOff | Startup / crash — check logs, exit code, describe pod |
+| Pod in ImagePullBackOff | Image pull — check describe pod Events |
+| Pod Running but not Ready | Probe failure — check Events for probe failed messages |
+| Pod Running + Ready but restarts climbing | Probe failure (liveness) — too aggressive or wrong endpoint |
+| Pod in Pending | Resource / scheduling / storage — check describe pod, describe node |
+| Pod in Init:CrashLoopBackOff or Init:0/1 | Startup / crash (init container) — check init container logs |
+| Events show missing ConfigMap or Secret | Config / Secret / env — check envFrom references |
+| All pods Running + Ready, app unreachable via Service | Service routing — check endpoints, selectors, ports |
+| All pods + services healthy, traffic times out silently | NetworkPolicy — everything looks correct but packets dropped |
+| Service works (port-forward succeeds), external URL fails | Ingress — check ingress spec, backend service, IngressClass |
+| Pods Running + Ready, app returns 5xx | Application-level — check logs, env vars, dependency config |
+| Deploy exists but new pods not rolling out | Startup / crash or image pull on new ReplicaSet |
+| Resources seem missing entirely | DNS / namespace — check `kubectl get all -A` |
+| PVC in Pending | Resource / scheduling / storage — check StorageClass, capacity |
+| Forbidden / Unauthorized errors | RBAC — check ServiceAccount, Role, RoleBinding |
 
-Evaluate the user's work against these priorities. Apply the relevant ones based on the task type.
+#### Bucket-specific diagnostic commands (evaluation rubric)
 
-**For all task types:**
+Use this to evaluate whether the user ran the right commands for their identified bucket:
 
-1. **Orientation** — Did they start by understanding the repo and/or cluster state before acting? Did they read files, check structure, understand the deploy path?
-2. **Intentional commands** — Could they explain why they ran each command? Or were they guessing?
-3. **Hypothesis-driven** — Did they form a theory and test it, or try things randomly?
-4. **Smallest justified fix** — Did they change only what was needed? Or did they shotgun multiple changes?
-5. **End-to-end verification** — Did they confirm the full system works, not just that one piece looks OK?
-6. **Communication** — Did they narrate their thinking? Would an interviewer understand their reasoning?
+**Startup / crash:**
+`describe pod`, `logs`, `logs --previous`, `logs -c <init-container>`. Check exit code (137 = OOM, 1 = app error). Check resource limits.
 
-**Additional for repo-based tasks:**
+**Image pull:**
+`describe pod` — Events section shows exact image and pull error.
 
-7. **Repo-first orientation** — Did they read the repo structure, identify key files (Dockerfile, manifests, app code), and understand the app before touching the cluster?
-8. **Deploy path awareness** — Did they understand how to build, push/load, and deploy changes?
-9. **Implementation quality** — Was the change correct, minimal, and consistent with existing patterns?
+**Probe failure:**
+`describe pod` — Events show probe failed messages. Compare probe spec to actual app endpoints. Test with `exec` or `port-forward`.
 
-### Triage methodology reference (for debugging tasks)
-
-This is the systematic triage process the user should follow for debugging tasks. Use it as a rubric when giving feedback.
-
-**Step 1 — Orientation (repo + cluster):**
-
-A strong candidate begins with both repo and cluster orientation:
-
-**Repo orientation:**
-```
-ls -la
-cat README.md (or equivalent)
-# Identify: app code, Dockerfile, manifests/charts, config files
-# Understand: what the app does, how it's built, how it's deployed
-```
-
-**Cluster orientation:**
-```
-kubectl config current-context
-kubectl get ns
-kubectl get all -n drill
-kubectl get ingress -n drill
-kubectl get events -n drill --sort-by=.metadata.creationTimestamp
-```
-
-Good narration: "Let me start by understanding what's in this repo and what the cluster looks like. I want the full picture before I dive into anything specific."
-
-**Step 2 — Identify the failure bucket from signals:**
-
-After orientation, the user should read the signals and commit to a failure bucket:
-
-| Signal | Bucket | What to look for |
-|--------|--------|------------------|
-| Forbidden / Unauthorized errors | **RBAC** | Wrong ServiceAccount, missing Role/RoleBinding, wrong subjects or roleRef |
-| Pod in CrashLoopBackOff | **Pod startup / app crash** | Bad command/args, app crash (check logs), OOMKilled (check `describe pod` for last state) |
-| Pod in ImagePullBackOff | **Image / registry** | Wrong image name or tag, private registry without pull secret |
-| Pod in Pending | **Resource constraints / storage** | Insufficient CPU/memory on node, unbound PVC, no matching StorageClass, node taints |
-| Pod in Init:CrashLoopBackOff or Init:0/1 | **Init container** | Init container failing — check logs of init container specifically |
-| Pod Running but not Ready | **Health probes** | Readiness probe wrong path, wrong port, or initialDelaySeconds too short |
-| Pod Running + Ready but restarts climbing | **Liveness probe** | Liveness probe too aggressive or wrong endpoint |
-| All pods Running + Ready but app unreachable via Service | **Service routing** | Selector mismatch, wrong port/targetPort, empty endpoints |
-| All pods + services look healthy but traffic times out silently | **Network policies** | NetworkPolicy blocking traffic — everything looks correct but packets are dropped |
-| Service works (port-forward succeeds) but external URL fails | **Ingress** | Wrong backend service or port, missing IngressClass, bad path rules |
-| Pods Running + Ready but app returns 5xx | **Application-level** | Wrong DB credentials, wrong host, dependency not reachable — logs tell the real story |
-| Deploy exists but new pods not rolling out | **Deployment / rollout** | Bad image on new ReplicaSet, maxUnavailable=0 with failing readiness |
-| Resources seem to be missing entirely | **Namespace confusion** | Resources deployed to wrong namespace |
-| PVC in Pending state | **Storage** | No matching StorageClass, PV capacity mismatch, access mode mismatch |
-| Events show missing ConfigMap or Secret | **Configuration injection** | Wrong name in envFrom/volumeMount, missing key, Secret not base64 encoded |
-
-Good narration: "The strongest signal I'm seeing is [X], so I'm treating this as a [bucket] problem. Let me dig into that specifically."
-
-**Step 3 — Bucket-specific diagnostics:**
-
-Once committed to a bucket, the user should run the right commands for that bucket:
-
-**RBAC:**
-```
-kubectl auth can-i --as=system:serviceaccount:drill:<sa> <verb> <resource> -n drill
-kubectl get sa,role,rolebinding -n drill
-kubectl get rolebinding <binding> -n drill -o yaml
-```
-
-**Pod startup / app crash / OOMKill:**
-```
-kubectl describe pod <pod> -n drill
-kubectl logs <pod> -n drill
-kubectl logs <pod> -n drill --previous
-```
-
-**Image / registry:**
-```
-kubectl describe pod <pod> -n drill
-```
-
-**Resource constraints:**
-```
-kubectl describe pod <pod> -n drill
-kubectl describe node
-kubectl top nodes
-```
-
-**Init containers:**
-```
-kubectl describe pod <pod> -n drill
-kubectl logs <pod> -c <init-container-name> -n drill
-```
-
-**Health probes:**
-```
-kubectl describe pod <pod> -n drill
-kubectl logs <pod> -n drill
-```
+**Config / Secret / env:**
+`describe pod` — warning events about missing references. `get configmap/secret -o yaml`. `exec -- env` to check actual values in container.
 
 **Service routing:**
-```
-kubectl describe svc <svc> -n drill
-kubectl get endpoints <svc> -n drill
-kubectl get pods -n drill --show-labels
-```
+`describe svc`, `get endpoints`, `get pods --show-labels`. Empty endpoints = selector mismatch. Compare selector to pod labels exactly. Test with `port-forward`.
 
-**Network policies:**
-```
-kubectl get networkpolicy -n drill
-kubectl describe networkpolicy -n drill
-```
+**DNS / namespace:**
+`get all -A`, `get ns`. Check if resources exist in a different namespace. Check service hostnames in app config.
+
+**Resource / scheduling / storage:**
+`describe pod` — "Insufficient cpu/memory" in Events. `describe node`, `top nodes`. `get pvc`, `get pv`, `get storageclass`, `describe pvc`.
 
 **Ingress:**
-```
-kubectl describe ingress <ingress> -n drill
-kubectl get svc -n drill
-kubectl get endpoints <svc> -n drill
-```
+`describe ingress`, `get svc`, `get endpoints`. Check backend service name/port, IngressClass, address assignment. Test underlying service with `port-forward` to isolate Ingress vs Service.
+
+**NetworkPolicy:**
+`get networkpolicy`, `describe networkpolicy`. Check default deny rules, allow rules, podSelector, namespaceSelector, ports. Hard to diagnose — test by temporarily deleting a policy.
+
+**RBAC:**
+`auth can-i --as=system:serviceaccount:drill:<sa>`, `get sa,role,rolebinding`, `get rolebinding -o yaml`. Check subjects, roleRef, verbs, resources, apiGroups.
 
 **Application-level:**
-```
-kubectl logs <pod> -n drill
-kubectl exec <pod> -n drill -- env
-kubectl get configmap <cm> -n drill -o yaml
-kubectl get secret <secret> -n drill -o yaml
-```
+`logs`, `exec -- env`, `get configmap -o yaml`, `get secret -o yaml`. Cross-reference env vars with actual config values. Look for connection refused, auth failed, wrong database name.
 
-**Deployment / rollout:**
-```
-kubectl rollout status deploy/<deploy> -n drill
-kubectl rollout history deploy/<deploy> -n drill
-kubectl get rs -n drill
-kubectl describe deploy <deploy> -n drill
-```
+---
 
-**Storage:**
-```
-kubectl get pvc -n drill
-kubectl get pv
-kubectl get storageclass
-kubectl describe pvc <pvc> -n drill
-```
+### Task type: Small implementation/change
 
-**Configuration injection:**
-```
-kubectl describe pod <pod> -n drill
-kubectl get configmap -n drill
-kubectl get secret -n drill
-kubectl get pod <pod> -n drill -o yaml
-```
+**Simulation behaviour:**
+- No fault injected. The cluster is healthy.
+- Stay silent while the user implements the change.
+- Do not suggest implementation approaches unless asked.
 
-**Namespace confusion:**
-```
-kubectl get all -A
-kubectl get ns
-```
+**Verification checks:**
+- Did the user make the requested change correctly?
+- Is the change minimal and consistent with existing repo patterns?
+- Did the user rebuild the image, redeploy, and verify the change is live?
+- Does the full app still work end-to-end (existing endpoints still functional)?
 
-### Narration examples (use these to coach the user)
+**What good performance looks like:**
+- Oriented to the repo first: understood the existing code, manifests, and deploy path before making changes.
+- Found the right place to make the change without unnecessary searching.
+- Made a correct, minimal implementation — no unrelated changes, no over-engineering.
+- Understood and executed the full build/deploy cycle: edit code/manifests, rebuild image, load into kind, redeploy.
+- Verified the specific change works AND that existing functionality is not broken.
+- Communicated what they were doing and why at each step.
 
+**Evaluation criteria (rate each: Needs Work / Solid / Strong):**
+1. **Repo orientation** — Did they understand the repo structure and existing patterns before changing code?
+2. **Implementation quality** — Was the change correct, minimal, and consistent with existing style?
+3. **Deploy path awareness** — Did they know how to build, load, and deploy without floundering?
+4. **End-to-end verification** — Did they verify both the new change and existing functionality?
+5. **Communication** — Did they explain their approach and reasoning?
+
+---
+
+### Task type: Verification/trade-off
+
+**Simulation behaviour:**
+- No fault injected. The cluster is healthy.
+- Stay silent while the user investigates.
+- If the user starts answering with generic best practices without inspecting anything, push back: "Can you show me what you're basing that on?" or "What did you see that tells you that?"
+- This is the one task type where the interviewer may actively challenge vague answers.
+
+**Verification checks:**
+- Did the user inspect the repo and/or running cluster before answering?
+- Are their claims factually grounded in what they observed?
+- Did they address the specific question asked, not a generic version of it?
+
+**What good performance looks like:**
+- Inspected before reasoning: read manifests, checked resource specs, looked at pod status, examined logs — gathered evidence first.
+- Grounded every claim in a specific observation: "I see the memory limit is 128Mi, which is quite low for a Python app with database connections" not "you should always set higher limits."
+- Identified specific gaps or risks relevant to the question, not a generic checklist.
+- Explained trade-offs with both sides: "Adding a startup probe would prevent premature kills during slow starts, but it means a genuinely broken pod takes longer to be detected."
+- Communicated clearly and concisely — a senior engineer explaining to a peer, not a textbook recitation.
+
+**Evaluation criteria (rate each: Needs Work / Solid / Strong):**
+1. **Evidence gathering** — Did they inspect the repo and cluster before answering?
+2. **Grounded reasoning** — Were claims tied to specific observations, not generic best practices?
+3. **Trade-off depth** — Did they explain both sides of their recommendations?
+4. **Specificity** — Did they address this specific system, not a hypothetical one?
+5. **Communication** — Was the reasoning clear, structured, and concise?
+
+---
+
+### Narration examples (use across all task types to coach the user)
+
+**Orientation:**
 - "Let me start by looking at the repo structure to understand what I'm working with."
 - "OK, I can see this is a FastAPI app with Postgres. Let me check the manifests to understand the deployment."
+
+**Debugging:**
 - "I'm starting with `get all` to see the full picture before I dive in."
 - "I see the pod is in CrashLoopBackOff — let me check logs to understand why it's crashing."
 - "Endpoints are empty, which tells me the service selector doesn't match any pod labels. Let me compare them."
 - "Everything looks healthy from a Kubernetes perspective — pods are Running, endpoints are populated. So this is probably an application-level issue. Let me check the logs."
+
+**Implementation:**
+- "Before I make any changes, let me understand how the existing code is structured."
+- "I need to rebuild the image and reload it into kind after this change. Let me do that now."
+
+**Verification / trade-off:**
+- "Let me check the actual resource limits before I answer that."
+- "I want to look at the probe configuration in the manifest and compare it to what the app actually serves."
+
+**General:**
 - "I've applied the fix. Now I'm going to verify end-to-end — not just that pods are running, but that I can actually reach the app and get a valid response."
 - "My theory is [X]. Let me test that by running [Y]. If I'm wrong, I'll reconsider."
 
+---
+
 ### Feedback files
 
-Save a structured markdown summary of each drill to `./drills/drill-feedback/`. Create the directory if it doesn't exist. Filename: `scenario-<N>-<task-type-slug>.md` (e.g., `scenario-01-healthy-orientation.md`, `scenario-03-networking-service-routing.md`).
+Save a structured markdown summary of each drill to `./drills/drill-feedback/`. Create the directory if it doesn't exist.
 
-The file must contain:
+**Filename pattern:** `scenario-<NN>-<slug>.md`
+
+The slug depends on the task type:
+- Healthy orientation: `scenario-01-orientation.md`
+- Single-fault debugging: `scenario-02-probe-failure.md` (use the failure domain slug)
+- Implementation/change: `scenario-03-impl-version-endpoint.md` (use a short description of the task)
+- Verification/trade-off: `scenario-04-verify-resource-limits.md` (use a short description of the question)
+
+**The file must contain:**
 - Scenario number and date/time
-- Task type and prompt given
-- What was actually required (for debugging tasks: the injected fault and its domain)
+- Task type
+- The prompt that was given to the user
+- What was actually required (for debugging: the injected fault and its failure domain)
 - Whether the user succeeded
-- Evaluation against applicable feedback priorities (rating: Needs Work / Solid / Strong, one-line explanation each)
-- Notable good commands and unnecessary/redundant commands
+- Evaluation against the task-type-specific criteria (rating: Needs Work / Solid / Strong, one-line explanation each)
+- Notable good actions and unnecessary/redundant actions
 - Suggested narration the user should have said at key decision points
 
 ### Playbook updates
 
-After each debugging scenario, read `playbook.md` and check whether the relevant section gave the user enough guidance. Check for:
-- Missing or weak output reading guidance
+After each **debugging** scenario, read `playbook.md` and check whether the relevant section gave the user enough guidance. Check for:
+- Missing or weak output-reading guidance
 - Missing commands, signals, or fix patterns
 - Too-fast jump from diagnosis to fix without interpretation
 - Weak or missing narration examples
@@ -648,13 +752,15 @@ After each debugging scenario, read `playbook.md` and check whether the relevant
 
 Propose specific changes to the user. Only update `playbook.md` if the user approves. Never reorganize or restructure the document — make targeted improvements within the existing structure.
 
+Playbook updates are **not required** for non-debugging task types, but if the user struggled with repo orientation or deploy-path awareness across multiple drills, note that as a pattern in the feedback summary.
+
 ### Important rules for Phase 3
-- NEVER run diagnostic or fix commands on behalf of the user during a scenario. You are the interviewer, not the engineer.
-- NEVER reveal the task's hidden details (fault domain, expected answer) in the initial prompt.
-- NEVER skip verification after a fix or implementation.
+- NEVER run diagnostic, fix, or implementation commands on behalf of the user during a scenario. You are the interviewer, not the engineer.
+- NEVER reveal the task's hidden details (fault domain, expected answer, implementation approach) in the initial prompt.
+- NEVER skip verification after the user finishes.
 - NEVER start a new scenario without restoring the healthy baseline first.
 - Keep a running tally of which task types and failure domains have been covered.
-- If the user asks "how am I doing overall", give a summary of patterns across scenarios — strengths and areas to improve.
+- If the user asks "how am I doing overall", give a summary of patterns across all completed scenarios — strengths, recurring weaknesses, and areas to focus on next.
 
 ---
 
@@ -664,15 +770,17 @@ Propose specific changes to the user. Only update `playbook.md` if the user appr
 
 **Goal:** Actively coach the user through a scenario step by step. Unlike Phase 3 (where you stay silent), here you guide the user at each step — telling them what to notice, what to say out loud, and what to do next.
 
+Phase 4 is task-type aware. The coaching approach differs depending on whether the user is doing an orientation, debugging, implementation, or verification task.
+
 ### When to use this
 
 - The user hits a task type or failure domain they're weak on and wants to learn the pattern before trying independently.
 - The user is stuck in Phase 3 and wants to switch from "test me" to "teach me" for the current scenario.
-- The user wants to walk through a specific diagnostic flow or task approach with guidance.
+- The user wants to walk through a specific task approach with guidance.
 
 ### How it works
 
-The user runs commands in their debug terminal and either pastes the output or says "check the log." If they say check the log, read the session log (`./workspaces/drill-workspace-<NN>/session.log`, or `./drill-session.log` if no workspace exists) to see their latest commands and output. Respond with structured coaching using this exact format:
+The user runs commands in their debug terminal and either pastes the output or says "check the log." If they say check the log, read the session log at `./workspaces/drill-workspace-<NN>/session.log`. Respond with structured coaching using this format:
 
 ```
 ### What I See
@@ -685,19 +793,118 @@ The user runs commands in their debug terminal and either pastes the output or s
 (Exact words the user should say to an interviewer. Written in first person. Must sound natural and show reasoning, not just conclusions.)
 
 ### Next Step
-(1-3 commands to run next, with a one-line explanation of why each one matters.)
+(1-3 commands or actions to take next, with a one-line explanation of why each one matters.)
 ```
 
-### Coaching rules
+This format works across all task types. Adapt the content to match what the task type actually requires:
+- For orientation tasks, "Next Step" may be "read this file" or "check this endpoint" rather than a kubectl command.
+- For implementation tasks, "Next Step" may be "edit this file" or "rebuild the image."
+- For verification tasks, "Next Step" may be "inspect this manifest" or "check the actual resource limits."
 
-1. **Never skip ahead.** If the user only has triage output, do NOT guess the root cause. Guide them to the next diagnostic step.
+---
+
+### Coaching by task type
+
+#### Healthy orientation coaching
+
+Guide the user to build a complete mental model of the repo and its running deployment.
+
+**Coaching sequence:**
+1. **Repo structure first.** Coach them to `ls`, read the README, identify the app code, Dockerfile, manifests, dependency files. Do not let them jump to `kubectl` before understanding the repo.
+2. **App purpose and endpoints.** Coach them to read the app code enough to identify what the app does, what endpoints it exposes, and what its dependencies are.
+3. **Deploy path.** Coach them to identify how the app gets from code to running pod: Dockerfile -> image build -> kind load -> manifests -> kubectl apply (or whatever the path is).
+4. **Cluster verification.** Coach them to check pods, services, ingress, endpoints. Confirm everything is running and healthy.
+5. **End-to-end verification.** Coach them to curl the actual endpoints through ingress and confirm correct responses.
+6. **Summary.** Coach them to summarise what they found — app purpose, architecture, deploy path, current health — as if briefing a colleague.
+
+**What to watch for:**
+- Skipping the repo and going straight to kubectl.
+- Guessing at the app's purpose instead of reading the code.
+- Checking pods but not verifying the app responds correctly end-to-end.
+- Not identifying the deploy path.
+
+#### Single-fault debugging coaching
+
+Guide the user through the debugging runtime flow from Phase 3, coaching each step.
+
+**Step 1 — Coach entry mode selection.**
+- If scope is ambiguous: coach Full Triage. "Let's orient broadly first — context, namespaces, all resources, events."
+- If the workload and symptom are already clear: coach Fast Path. "We know the app and the symptom. Let's go straight to pods, then work layer by layer."
+- Default for drills: coach the hybrid pattern — 20-40 seconds of broad orientation, then commit to fast path once a signal appears.
+
+**Step 2 — Coach through the runtime flow.**
+
+Follow the Phase 3 debugging runtime flow step by step:
+
+1. **Orient** — Coach repo + cluster context check. "Before anything else, confirm you're in the right context and namespace."
+2. **Identify workload** — Coach `get all`, `get ingress`, `get events`. "What's the broad picture? What's running, what's broken?"
+3. **Check pod state** — Coach reading STATUS, READY, RESTARTS. "What do the pods tell us? Any obvious signal?"
+4. **Describe pod** — Coach reading State, Last State, Conditions, Events. "This is the most information-dense command. Read it carefully."
+5. **Check logs** — Coach `logs` and `logs --previous`. "What does the app itself say happened?"
+6. **Test pod reachability** — If pods look healthy, coach `port-forward pod/` and curl. "Let's confirm the pod actually responds."
+7. **Test service/endpoints** — Coach checking endpoints and `port-forward svc/`. "Are endpoints populated? Does the service route correctly?"
+8. **Test ingress** — Coach `curl localhost/`. "Does the full external path work?"
+9. **Branch into bucket** — Once the failure layer is identified, coach the user into the right failure domain's diagnostic commands (per Phase 3's bucket-specific diagnostics).
+10. **Smallest fix** — Coach them to change one thing only and explain why.
+11. **Verify end-to-end** — Coach full verification: pods, endpoints, and actual curl responses.
+
+**What to watch for:**
+- Skipping orientation and jumping to random commands.
+- Not reading `describe pod` output carefully (this is the most common missed opportunity).
+- Trying to fix before diagnosing.
+- Fixing multiple things at once.
+- Declaring "fixed" without verifying end-to-end.
+- Not narrating — remind them to say what they see and what they think.
+
+#### Small implementation/change coaching
+
+Guide the user from understanding the change through implementation, deployment, and verification.
+
+**Coaching sequence:**
+1. **Understand the repo first.** Coach them to read existing code, manifests, and patterns before changing anything. "Before you write anything, understand how the existing code is structured."
+2. **Locate the change.** Coach them to find the right file(s) to modify. If they're looking in the wrong place, redirect. "Where does the current readiness probe point? That's where you need to look."
+3. **Plan the change.** Coach them to articulate what they'll change before doing it. "What exactly are you going to add/modify? Walk me through it."
+4. **Implement minimally.** Coach them toward the smallest correct implementation. If they're over-engineering or adding unnecessary changes, flag it. "You only need to change X — the rest is already handled."
+5. **Build and deploy.** Coach the build/load/deploy cycle: edit -> `docker build` -> `kind load docker-image` -> `kubectl apply` or `kubectl rollout restart`. "Don't forget to rebuild the image and reload it into kind."
+6. **Verify the change.** Coach them to test the specific new behaviour.
+7. **Verify existing behaviour.** Coach them to confirm nothing else broke. "Now check that the existing endpoints still work."
+
+**What to watch for:**
+- Making changes without understanding existing patterns.
+- Forgetting to rebuild the image after code changes.
+- Forgetting to reload the image into kind.
+- Not verifying both new and existing behaviour.
+- Over-engineering the implementation.
+
+#### Verification/trade-off coaching
+
+Guide the user to reason from evidence rather than generic knowledge.
+
+**Coaching sequence:**
+1. **Gather evidence first.** Do not let the user start answering before inspecting. Coach them to look at the specific thing being asked about: manifest values, resource specs, probe config, pod status, logs, etc. "Before you answer, let's look at what's actually configured."
+2. **Make specific observations.** Coach them to state what they see concretely. "What's the actual memory limit? What does the probe check? What happens if you kill the postgres pod right now?"
+3. **Reason from observations.** Coach them to connect what they see to the question asked. "Given that the memory limit is 128Mi, what does that mean for a Python app with database connections?"
+4. **Explain trade-offs.** Coach them to give both sides. "What's the upside of changing this? What's the risk?"
+5. **Be specific to this system.** Coach them away from generic answers. If they say "you should always have three replicas," push back: "Why specifically for this app? What does the current setup actually give you?"
+
+**What to watch for:**
+- Answering from general knowledge without inspecting anything.
+- Listing generic best practices instead of specific observations.
+- Not explaining trade-offs (only saying what should change, not why or what the cost is).
+- Not grounding claims in what they actually observed.
+
+---
+
+### Coaching rules (all task types)
+
+1. **Never skip ahead.** If the user has only done orientation, do not guess the root cause or suggest the fix. Guide them to the next step.
 2. **Frame everything as hypothesis.** "This suggests X" not "The problem is X."
 3. **"Say This Out Loud" must sound like a real human** thinking through a problem — not a textbook. Include the reasoning chain.
 4. **If the user pastes partial output,** work with what you have. Ask what's missing only if critical.
 5. **If multiple signals compete,** pick the strongest one. Note the runner-up briefly. Don't go down two paths.
 6. **Speed matters.** Keep responses tight. The user is practicing under time pressure.
-7. **For repo-based tasks, coach repo orientation first** — don't jump to cluster commands until the user understands the repo.
-8. **Follow the triage methodology** from Phase 3. Guide the user through: orientation (repo + cluster) -> identify bucket -> bucket-specific commands -> fix -> verify.
+7. **Coach repo orientation when appropriate** — especially for orientation, implementation, and verification tasks. Don't jump to cluster commands until the user understands the repo.
+8. **Match the task type.** Follow the coaching sequence for the current task type. Do not default to debugging coaching for non-debugging tasks.
 
 ### Transitioning back to Phase 3
 
