@@ -50,17 +50,32 @@ There are two ways to start. Pick one based on what you know.
 
 Say: *"The scope is unclear, so I'm going to orient broadly before I commit to a direction."*
 
+Start cluster-wide — do not assume a namespace until you have evidence:
+
 ```bash
 kubectl config current-context
 kubectl get ns
+kubectl get pods -A
+kubectl get deploy -A
+kubectl get svc -A
+kubectl get ingress -A
+kubectl get events -A --sort-by=.metadata.creationTimestamp
+```
+
+From `get ns` and `get pods -A`, identify the likely target namespace. Look for the namespace with app workloads, broken pods, or the name mentioned in the scenario prompt.
+
+Once you have a likely namespace, focus there:
+
+```bash
+kubectl config set-context --current --namespace=<ns>
 kubectl get all -n <ns>
 kubectl get ingress -n <ns>
 kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp
 ```
 
-Work through these in order. At each step, read the output for signals. As soon as you see a clear signal, stop broad triage and commit to a failure domain using the [Symptom-to-Domain Table](#symptom-table).
+At each step, read the output for signals. As soon as you see a clear signal, stop broad triage and commit to a failure domain using the [Symptom-to-Domain Table](#symptom-table).
 
-If no signal is obvious after these five commands, also check:
+If no signal is obvious after these commands, also check:
 
 ```bash
 kubectl top nodes
@@ -69,12 +84,6 @@ kubectl get networkpolicy -n <ns>
 ```
 
 Full triage takes under a minute. Do not skip it when scope is unclear.
-
-**Setting default namespace** — once you identify the target namespace, set it to avoid repeating `-n`:
-
-```bash
-kubectl config set-context --current --namespace=<ns>
-```
 
 ### Fast Path
 
@@ -86,9 +95,9 @@ Say: *"This looks like a single workload problem, so I'm going straight to pods,
 
 1. `kubectl get pods -n <ns>` — check pod status
 2. `kubectl describe pod <pod> -n <ns>` + `kubectl logs <pod> -n <ns>` — identify the failure
-3. If pods are healthy, test pod directly: `kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>` then `curl localhost:8080/`
-4. If pod responds, test service: `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl localhost:8080/`
-5. If service works, test ingress: `curl localhost/` or `curl -H "Host: <host>" localhost/`
+3. If pods are healthy, test pod directly: `kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>` then `curl -i localhost:8080/` — try `/`, `/health`, or a known app path. The goal is to confirm the pod responds at all, not to test a specific endpoint.
+4. If pod responds, test service: `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl -i localhost:8080/`
+5. If service works, test ingress: `curl -i localhost/` or `curl -i -H "Host: <host>" localhost/`
 
 You can start with full triage and switch to Fast Path mid-flow once you have a signal. That is usually the safest pattern: 20-40 seconds of orientation, then commit.
 
@@ -111,7 +120,9 @@ If the context or namespace is wrong, fix it before touching anything else.
 **2. Identify the workload** — if not already known.
 
 ```bash
-kubectl get all -n <ns>
+kubectl get pods -n <ns>
+kubectl get deploy -n <ns>
+kubectl get svc -n <ns>
 kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp
 ```
 
@@ -147,10 +158,9 @@ Use `--previous` when the container has already crashed. Use `-c <container>` fo
 ```bash
 kubectl port-forward pod/<pod> 8080:<container-port> -n <ns>
 curl -i localhost:8080/
-curl -i localhost:8080/health
 ```
 
-If this fails, the app itself is broken — check logs and env vars. Go to [Application-Level Failure](#app-failure) or [Config Injection](#config-injection).
+Try `/`, `/health`, or a known app path from the scenario. The point is to confirm the pod accepts connections and returns something — not to validate a specific contract. If nothing responds, the app itself is broken — check logs and env vars. Go to [Application-Level Failure](#app-failure) or [Config Injection](#config-injection).
 
 **7. Test Service and Endpoints.**
 
@@ -166,10 +176,9 @@ Empty endpoints = selector mismatch. Go to [Service Routing](#service-routing).
 
 ```bash
 curl -i localhost/
-curl -i localhost/health
 ```
 
-If service works but external URL fails, go to [Ingress](#ingress). If traffic times out silently, consider [NetworkPolicy](#networkpolicy).
+Try the same path(s) that worked via port-forward. If service works but the external URL fails, go to [Ingress](#ingress). If traffic times out silently with no error, consider [NetworkPolicy](#networkpolicy).
 
 **9. If it's not a reachability path problem**, branch into the relevant failure domain using the [Symptom-to-Domain Table](#symptom-table).
 
@@ -190,6 +199,7 @@ Use this to jump from what you see (or hear) to the right failure domain.
 |---|---|---|
 | Forbidden / Unauthorized / "service account can't do X" | RBAC | [RBAC](#rbac) |
 | `ImagePullBackOff` / `ErrImagePull` / `ErrImageNeverPull` | Image pull | [Image Pull](#image-pull) |
+| `CreateContainerConfigError` / `CreateContainerError` | Container creation | [Image Pull / Container Creation](#image-pull) |
 | `CrashLoopBackOff` / "app keeps restarting" | Startup / crash | [Startup / Crash](#startup-crash) |
 | Pod exit code 137 / OOMKilled in describe | Resource limits | [Resource / Scheduling](#resource-scheduling) |
 | `Pending` / "pods won't schedule" | Scheduling / resources | [Resource / Scheduling](#resource-scheduling) |
@@ -256,7 +266,7 @@ If you don't know the SA name: `kubectl get pod <pod> -n <ns> -o jsonpath='{.spe
 | `resources` | `["pod"]` singular instead of `["pods"]` plural |
 | `verbs` | `["read"]` is not valid; use `["get","list","watch"]` |
 
-**Common apiGroup reference:** `pods`, `services`, `configmaps`, `secrets` → `[""]}`. `deployments`, `replicasets` → `["apps"]`. `ingresses`, `networkpolicies` → `["networking.k8s.io"]`. `jobs`, `cronjobs` → `["batch"]`.
+**Common apiGroup reference:** `pods`, `services`, `configmaps`, `secrets` → `[""]`. `deployments`, `replicasets` → `["apps"]`. `ingresses`, `networkpolicies` → `["networking.k8s.io"]`. `jobs`, `cronjobs` → `["batch"]`.
 
 If unsure: `kubectl api-resources | grep <resource>`
 
@@ -292,9 +302,13 @@ Say: *"Permission check returns yes, the RBAC chain is consistent. RBAC is healt
 <a id="image-pull"></a>
 ### Image Pull / Container Creation
 
-**Start here if** pod shows `ImagePullBackOff`, `ErrImagePull`, or `ErrImageNeverPull`.
+**Start here if** pod shows `ImagePullBackOff`, `ErrImagePull`, `ErrImageNeverPull`, `CreateContainerConfigError`, or `CreateContainerError`.
 
-Say: *"The pod can't pull its container image. I need to check whether it's a wrong image name, a wrong tag, or a registry access issue."*
+Say: *"The pod can't start its container. I need to check whether it's an image pull problem or a container creation failure."*
+
+#### Image pull failures
+
+Statuses: `ImagePullBackOff`, `ErrImagePull`, `ErrImageNeverPull`
 
 Note: `ErrImageNeverPull` means `imagePullPolicy: Never` but the image doesn't exist locally on the node. Common in kind/minikube where images are loaded directly.
 
@@ -319,6 +333,27 @@ kubectl rollout history deploy/<deploy> -n <ns> --revision=<N>
 - **`unauthorized: authentication required`** — image exists but credentials are missing. Check `imagePullSecrets`: `kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.imagePullSecrets}'`
 - Typo in registry/repo name (e.g., `ngixn` instead of `nginx`), nonexistent tag, or missing registry prefix.
 
+#### Container creation failures
+
+Statuses: `CreateContainerConfigError`, `CreateContainerError`
+
+These happen after the image is pulled but before the container starts. The pod is stuck — it will not reach `Running` or `CrashLoopBackOff`.
+
+```bash
+kubectl describe pod <pod> -n <ns>
+```
+
+**Common causes:**
+
+| Status | Typical cause | What to check |
+|---|---|---|
+| `CreateContainerConfigError` | Pod references a Secret or ConfigMap that doesn't exist | Events section names the missing object. Compare against `kubectl get configmap -n <ns>` / `kubectl get secret -n <ns>` |
+| `CreateContainerConfigError` | Key referenced via `valueFrom.secretKeyRef` or `configMapKeyRef` doesn't exist in the object | Check the specific key inside the object |
+| `CreateContainerError` | Entrypoint or command doesn't exist in the image | Check `command`/`args` in pod spec: `kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].command}'` |
+| `CreateContainerError` | Security context violation (e.g., runAsNonRoot but image runs as root) | Check Events for security context messages |
+
+Note: `CreateContainerConfigError` from a missing ConfigMap/Secret is related to [Config Injection](#config-injection), but the symptom appears here at container creation time. Fix the missing object, and the pod will proceed.
+
 #### Likely fixes
 
 ```bash
@@ -337,6 +372,14 @@ kubectl create secret docker-registry <secret-name> \
   --docker-username=<user> \
   --docker-password=<pass> \
   -n <ns>
+
+# Create missing ConfigMap/Secret causing CreateContainerConfigError
+kubectl create configmap <cm> --from-literal=KEY=value -n <ns>
+kubectl create secret generic <secret> --from-literal=KEY=value -n <ns>
+
+# Fix bad command/entrypoint
+kubectl edit deploy <deploy> -n <ns>
+# Correct or remove spec.template.spec.containers[].command / args
 ```
 
 `kubectl rollout undo` reverts the entire pod template — use when you want a full rollback. `kubectl set image` changes only the image — use when other spec changes are intentional.
@@ -345,7 +388,7 @@ kubectl create secret docker-registry <secret-name> \
 
 ```bash
 kubectl get pods -n <ns> -w
-# Pod pulls successfully and moves past image pull error
+# Pod moves past the error state and reaches Running
 ```
 
 ---
@@ -354,6 +397,7 @@ kubectl get pods -n <ns> -w
 ### Startup / Crash
 
 **Start here if** pod shows `CrashLoopBackOff`, `Error`, `Init:0/1`, `Init:CrashLoopBackOff`, or has a suspiciously high restart count.
+Use this section when the container process is failing to stay up; root cause may still live in config or app behavior sections.
 
 Say: *"The container is crashing repeatedly. I need to check the logs and exit code to understand why."*
 
@@ -452,6 +496,8 @@ kubectl logs <pod> -n <ns>
 ### Probe Failure
 
 **Start here if** pod is `Running` but not Ready (`0/1`), or Running with RESTARTS climbing.
+
+Say: *"The pod is Running but something is wrong with probes — either readiness is failing or liveness is killing the container. Let me check which probe and what it's targeting."*
 
 #### Readiness probe
 
@@ -585,10 +631,14 @@ kubectl logs <pod> -n <ns>                  # clean startup
 
 Say: *"The pod is [Pending / OOMKilled / has a storage issue]. Let me find the specific constraint that's blocking it."*
 
+In practice you usually need to identify the relevant node or inspect multiple nodes.
+
 #### Pending pods
 
 ```bash
 kubectl describe pod <pod> -n <ns>
+kubectl get nodes
+kubectl describe node <node>
 kubectl describe node | grep -A 5 Allocatable
 kubectl top nodes
 ```
@@ -605,6 +655,8 @@ Read the Events section. The scheduler message names the exact blocker:
 
 ```bash
 kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[0].resources.requests}'
+kubectl get nodes
+kubectl describe node <node>
 kubectl describe node | grep -A 5 Allocatable
 ```
 
@@ -669,7 +721,7 @@ EOF
 ```bash
 kubectl get pvc -n <ns>       # Bound
 kubectl get pods -n <ns>      # Running, Ready
-curl -s localhost/health      # 200
+curl -s localhost/             # or a known app path — confirm end-to-end
 ```
 
 ---
@@ -735,9 +787,15 @@ Do not stop at port-forward. The external curl proves the full path.
 
 **Start here if** resources appear to be missing entirely, DNS resolution fails, or pods can't resolve service hostnames.
 
-#### Namespace confusion
+Say: *"I need to check whether I'm looking in the right place, and whether DNS resolution is working inside the cluster."*
 
-Say: *"I'm not seeing the resources I expect. Let me check if they're in a different namespace."*
+---
+
+#### Namespace targeting / namespace confusion
+
+**Start here if** you expect resources to exist but `kubectl get` returns nothing, or the scenario mentions resources you can't find.
+
+Say: *"I'm not seeing the resources I expect. Let me check if they're in a different namespace before I assume they're missing."*
 
 ```bash
 kubectl get all -A
@@ -745,24 +803,39 @@ kubectl get ns
 kubectl config view --minify | grep namespace
 ```
 
-Look for: resources in `default` or a similarly-named but wrong namespace. Compare NAMESPACE column against where your commands are targeting.
+Look for: resources in `default` or a similarly-named but wrong namespace (e.g., `drill-app` vs `drill`). Compare the NAMESPACE column in `get all -A` against where your commands are targeting.
 
-**Fix wrong default namespace:** `kubectl config set-context --current --namespace=<correct-ns>`
+**Likely fixes:**
 
-**Resources in wrong namespace:** Export, change `metadata.namespace`, re-apply, delete from wrong namespace.
+**Wrong default namespace:** `kubectl config set-context --current --namespace=<correct-ns>`
 
-**Cross-namespace reference:** Use FQDN: `<service>.<namespace>.svc.cluster.local`
+**Resources in wrong namespace:** Export with `kubectl get <resource> <name> -n <wrong-ns> -o yaml`, change `metadata.namespace`, re-apply to the correct namespace, delete from wrong namespace.
 
-#### DNS resolution failures
+**Cross-namespace service reference:** Use FQDN: `<service>.<namespace>.svc.cluster.local`. Update the relevant ConfigMap/env var with the full name.
 
-If a pod shows `Name or service not known` in logs:
+**Verify:**
+
+```bash
+kubectl get all -n <correct-ns>
+# Resources appear where expected
+```
+
+---
+
+#### DNS / service discovery
+
+**Start here if** pod logs show `Name or service not known`, `no such host`, or connections fail to a hostname that should resolve.
+
+Say: *"The app can't resolve a hostname. I need to check whether the Service exists and whether DNS is functioning inside the cluster."*
 
 ```bash
 kubectl exec <pod> -n <ns> -- nslookup <hostname>
 kubectl get svc -n <ns>
 ```
 
-Compare the hostname the app is using against actual Service names. If DNS itself is broken (can't resolve any name), check:
+Compare the hostname the app is using (from logs or `kubectl exec -- env`) against actual Service names from `kubectl get svc`. Common: app uses `database` but the service is named `postgres`.
+
+**If no hostnames resolve at all** (even `kubernetes.default`), DNS itself is broken:
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=kube-dns
@@ -771,11 +844,11 @@ kubectl get networkpolicy -n <ns>
 
 A missing DNS egress NetworkPolicy will silently break all name resolution → [NetworkPolicy](#networkpolicy).
 
-#### Verify
+**Verify:**
 
 ```bash
-kubectl get all -n <correct-ns>
 kubectl exec <pod> -n <ns> -- nslookup <service>
+# Returns a valid cluster IP
 ```
 
 ---
@@ -835,8 +908,7 @@ kubectl patch ingress <ing> -n <ns> --type=json \
 ```bash
 kubectl get ingress -n <ns>       # ADDRESS populated
 kubectl describe ingress <ing> -n <ns>   # Backends show correct service with endpoints
-curl -s localhost/
-curl -s localhost/health
+curl -s localhost/                 # or a known app path — confirm end-to-end
 ```
 
 ---
@@ -871,7 +943,9 @@ kubectl get pods -n <ns> --show-labels
 - No DNS egress rule — pods can't resolve hostnames, producing silent connection failures
 - Egress deny exists but no rule allowing app-to-database traffic
 
-#### Quick test
+#### Quick test (sandbox/interview environments only)
+
+In an interview drill or sandbox cluster, temporarily deleting policies is a fast way to isolate the blocker. **Do not do this in production** — it removes security controls. In production, diagnose by reading policy specs and comparing selectors.
 
 Delete policies one at a time and test after each:
 
@@ -881,7 +955,7 @@ kubectl delete networkpolicy <policy-name> -n <ns>
 curl localhost/
 ```
 
-If traffic works after deleting a specific policy, that was the blocker. Re-apply a corrected version.
+If traffic works after deleting a specific policy, that was the blocker. Re-apply a corrected version — do not leave the namespace unprotected.
 
 #### Likely fixes
 
@@ -943,11 +1017,10 @@ EOF
 
 ```bash
 kubectl get networkpolicy -n <ns>
-curl -s localhost/
-curl -s localhost/health
+curl -s localhost/                 # or a known app path — confirm traffic flows end-to-end
 ```
 
-All policies present, all requests return expected data.
+All policies present, requests return expected data.
 
 ---
 
@@ -1039,8 +1112,8 @@ kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d
 ```bash
 kubectl logs <pod> -n <ns>                   # no connection or auth errors
 kubectl exec <pod> -n <ns> -- env | sort     # env vars correct
-curl -s localhost/health                     # 200
-curl -s localhost/<known-app-path>           # expected data
+curl -s localhost/                           # confirm app responds
+# Also test any known app paths from the scenario to verify full functionality
 ```
 
 ---
@@ -1100,6 +1173,7 @@ kubectl logs <job-pod> -n <ns>                        # clean output
 # Orientation
 kubectl config current-context
 kubectl get ns
+kubectl get pods -A
 kubectl get all -n <ns>
 kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp
 
@@ -1141,11 +1215,11 @@ kubectl rollout restart deploy/<deploy> -n <ns>
 kubectl rollout undo deploy/<deploy> -n <ns>
 kubectl patch svc <svc> -n <ns> -p '<json>'
 
-# Reachability testing
+# Reachability testing (layer by layer)
 kubectl port-forward pod/<pod> 8080:<port> -n <ns>
 kubectl port-forward svc/<svc> 8080:<port> -n <ns>
-curl -s localhost/
-curl -s localhost/health
+curl -i localhost:8080/              # test via port-forward
+curl -i localhost/                   # test via ingress
 ```
 
 ---
@@ -1174,6 +1248,8 @@ curl -s localhost/health
 | Pending | Not scheduled | `kubectl describe pod` → [Resource / Scheduling](#resource-scheduling) |
 | CrashLoopBackOff | Repeated crashes | → [Startup / Crash](#startup-crash) |
 | ImagePullBackOff / ErrImagePull | Image pull failed | → [Image Pull](#image-pull) |
+| CreateContainerConfigError | Missing Secret/ConfigMap ref | → [Image Pull / Container Creation](#image-pull) |
+| CreateContainerError | Bad command/entrypoint or security context | → [Image Pull / Container Creation](#image-pull) |
 | OOMKilled | Memory limit exceeded | → [Resource / Scheduling](#resource-scheduling) |
 | Init:0/1 / Init:CrashLoopBackOff | Init container failing | → [Startup / Crash](#startup-crash) (init section) |
 | Completed | Exited cleanly | Normal for Jobs, unexpected for Deployments |
