@@ -1,0 +1,103 @@
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill ⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:20 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4mp[24m[24mpods[?1l>[?2004l
+]2;kubectl get pods]1;kubectlNAME                                 READY   STATUS    RESTARTS   AGE
+platform-drill-api-f59f65754-7sm9k   1/1     Running   0          23h
+postgres-5df5d778cd-7x28g            1/1     Running   0          29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:21 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4md[24m[24mdeploy -     [4md[24m [24m [4mp[24m[24mpods -A[?1l>[?2004l
+]2;kubectl get pods -A]1;kubectlNAMESPACE            NAME                                                  READY   STATUS      RESTARTS   AGE
+drill                platform-drill-api-f59f65754-7sm9k                    1/1     Running     0          23h
+drill                postgres-5df5d778cd-7x28g                             1/1     Running     0          29h
+ingress-nginx        ingress-nginx-admission-create-wnpzt                  0/1     Completed   0          29h
+ingress-nginx        ingress-nginx-admission-patch-prfqm                   0/1     Completed   0          29h
+ingress-nginx        ingress-nginx-controller-77758f959f-pzqtd             1/1     Running     0          29h
+kube-system          calico-kube-controllers-676854dc5d-zmtwl              1/1     Running     0          29h
+kube-system          calico-node-txlg6                                     1/1     Running     0          29h
+kube-system          coredns-7d764666f9-d9vxz                              1/1     Running     0          29h
+kube-system          coredns-7d764666f9-fsvzd                              1/1     Running     0          29h
+kube-system          etcd-drill-cluster-control-plane                      1/1     Running     0          29h
+kube-system          kindnet-hh927                                         1/1     Running     0          29h
+kube-system          kube-apiserver-drill-cluster-control-plane            1/1     Running     0          29h
+kube-system          kube-controller-manager-drill-cluster-control-plane   1/1     Running     0          29h
+kube-system          kube-proxy-jxpgb                                      1/1     Running     0          29h
+kube-system          kube-scheduler-drill-cluster-control-plane            1/1     Running     0          29h
+local-path-storage   local-path-provisioner-67b8995b4b-nvrh6               1/1     Running     0          29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:22 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4md[24m[24mdeploy -A[?1l>[?2004l
+]2;kubectl get deploy -A]1;kubectlNAMESPACE            NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+drill                platform-drill-api         1/1     1            1           29h
+drill                postgres                   1/1     1            1           29h
+ingress-nginx        ingress-nginx-controller   1/1     1            1           29h
+kube-system          calico-kube-controllers    1/1     1            1           29h
+kube-system          coredns                    2/2     2            2           29h
+local-path-storage   local-path-provisioner     1/1     1            1           29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:22 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get svc -A[?1l>[?2004l
+]2;kubectl get svc -A]1;kubectlNAMESPACE       NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+default         kubernetes                           ClusterIP   10.96.0.1       <none>        443/TCP                      29h
+drill           platform-drill-api                   ClusterIP   10.96.55.57     <none>        80/TCP                       29h
+drill           postgres                             ClusterIP   10.96.199.142   <none>        5432/TCP                     29h
+ingress-nginx   ingress-nginx-controller             NodePort    10.96.85.110    <none>        80:32141/TCP,443:31683/TCP   29h
+ingress-nginx   ingress-nginx-controller-admission   ClusterIP   10.96.107.222   <none>        443/TCP                      29h
+kube-system     kube-dns                             ClusterIP   10.96.0.10      <none>        53/UDP,53/TCP,9153/TCP       29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:22 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe svc [4mp[24m[4mp[4ml[24m[4ml[4ma[24m[24mp[24ml[24matform-drill-api[?1l>[?2004l
+]2;kubectl describe svc platform-drill-api]1;kubectlName:                     platform-drill-api
+Namespace:                drill
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=platform-drill
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.96.55.57
+IPs:                      10.96.55.57
+Port:                     <unset>  80/TCP
+TargetPort:               8000/TCP
+Endpoints:                
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:24 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get endpoinb ts [4mp[24m[4mp[4ml[24m[4ml[4ma[24m[24mp[24ml[24matform-drill-api[?1l>[?2004l
+]2;kubectl get endpoints platform-drill-api]1;kubectl[33;1mWarning:[0m v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME                 ENDPOINTS   AGE
+platform-drill-api   <none>      29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:25 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4mp[24m[24mpods --show -labels[?1l>[?2004l
+]2;kubectl get pods --show-labels]1;kubectlNAME                                 READY   STATUS    RESTARTS   AGE   LABELS
+platform-drill-api-f59f65754-7sm9k   1/1     Running   0          23h   app=platform-drill-api,pod-template-hash=f59f65754
+postgres-5df5d778cd-7x28g            1/1     Running   0          29h   app=postgres,pod-template-hash=5df5d778cd
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:27 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4mp[24m[24mpatch svc [4mp[24m[4mp[4ml[24m[4ml[4ma[24m[24mp[24ml[24matform-drill-api -p [33m'[39m[33m'[33m{[39m[33m{[33m"[39m[33m"[33ms[39m[33ms[33mp[39m[33mp[33me[39m[33me[33mc[39m[33mc[33m"[39m[33m"[33m:[39m[33m:[33m{[39m[33m{[33m"[39m[33m"[33ms[39m[33ms[33ml[39m[33ml[33me[39m[33ml[39m[39m [33ms[39m[39m [33ms[33me[39m[33me[33ml[39m[33ml[33me[39m[33me[33mc[39m[33mc[33mt[39m[33mt[33mo[39m[33mo[33mr[39m[33mr[33m"[39m[33m"[33m:[39m[33m:[33m{[39m[33m{[33m"[39m[33m"[33ma[39m[33ma[33mp[39m[33mp[33mp[39m[33mp[33m"[39m[33m"[33m:[39m[33m:[33m"[39m[33m"[33mp[39m[33mp[33ml[39m[33ml[33ma[39m[33ma[33mt[39m[33mt[33mf[39m[33mf[33mo[39m[33mo[33mr[39m[33mr[33mm[39m[33mm[33m-[39m[33m-[33md[39m[33md[33mr[39m[33mr[33mi[39m[33mi[33ml[39m[33ml[33ml[39m[33ml[33m-[39m[33m-[33ma[39m[33ma[33mp[39m[33mp[33mi[39m[33mi[33m"[39m[33m"[33m}[39m[33m}[33m}[39m[33m}[33m}[39m[33m}[33m'[39m[?1l>[?2004l
+]2;kubectl patch svc platform-drill-api -p ]1;kubectlservice/platform-drill-api patched
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:28 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get endpoints [4mp[24m[4mp[4ml[24m[4ml[4ma[24m[24mp[24ml[24matform-drill-api[?1l>[?2004l
+]2;kubectl get endpoints platform-drill-api]1;kubectl[33;1mWarning:[0m v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME                 ENDPOINTS             AGE
+platform-drill-api   10.244.113.138:8000   29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:29 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4mp[24m[24mpods[?1l>[?2004l
+]2;kubectl get pods]1;kubectlNAME                                 READY   STATUS    RESTARTS   AGE
+platform-drill-api-f59f65754-7sm9k   1/1     Running   0          23h
+postgres-5df5d778cd-7x28g            1/1     Running   0          29h
+[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:30 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4mp[24m[24mport-forward svc/platform-drill-api 8080:80[?1l>[?2004l
+]2;kubectl port-forward svc/platform-drill-api 8080:80]1;kubectlForwarding from 127.0.0.1:8080 -> 8000
+Forwarding from [::1]:8080 -> 8000
+Handling connection for 8080
+^C[1m[7m%[27m[1m[0m                                                                                                                                                ]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres]1;..tapi-postgres]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres\[0m[27m[24m[J
+[38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/platform-drill-fastapi-postgres [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  mac-eks-drill !⇡ [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  16:32 [0m[38;2;60;56;54m [0m
+[1;38;2;152;151;26m[0m [K[?1h=[?2004h[1m[31me[0m[39m[0m[32me[32mx[39m[1m[31me[1m[31mx[1m[31mi[0m[39m[0m[32me[0m[32mx[0m[32mi[32mt[39m[?1l>[?2004l
+]2;exit]1;exit
