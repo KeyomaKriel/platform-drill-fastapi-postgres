@@ -104,7 +104,7 @@ Read the Dockerfile from top to bottom. Key lines:
 - **`COPY` / `ADD`** — what gets put into the image and where. The destination paths tell you the working directory inside the container.
 - **`RUN`** — build steps, dependency installation. If deps are installed here, the image is self-contained. If not, something external is expected.
 - **`EXPOSE`** — the port the app listens on inside the container. Cross-reference with the Service `targetPort` and any probe definitions.
-- **`CMD` / `ENTRYPOINT`** — the actual startup command. This is what runs when the container starts. If this is wrong, the container will crash or hang.
+- **`CMD` / `ENTRYPOINT`** — the actual startup command. This is what runs when the container starts. If this is wrong, the container will crash or hang. This line also tells you the app server — e.g. `CMD ["python", "-m", "uvicorn", ...]` means the app runs on Uvicorn; `CMD ["node", "server.js"]` means plain Node; `CMD ["nginx", ...]` means Nginx. You do not need to know the server in depth — just name it and note the port and entrypoint module.
 
 **Why it matters:** The Dockerfile is the bridge between "app code" and "running container." It tells you the port, the startup command, and what is actually inside the image. When a pod fails to start, the Dockerfile often holds the answer.
 
@@ -184,6 +184,107 @@ The "deploy path" is the answer to: **how do repo changes become running changes
 | `Makefile` / `justfile` with deploy targets | Scripted — read the target to see the underlying method |
 
 **Why this matters before making changes:** If you edit a manifest and `kubectl apply` it, but the app was deployed via Helm, your change may be overwritten on the next Helm operation. If you need to rebuild the image, you need to know whether to push to a registry or load into kind. Getting the deploy path right means your fix actually sticks.
+
+### How to narrate your orientation in an interview
+
+The interviewer is not testing whether you memorised the app. They are watching whether you can systematically read an unfamiliar repo and build an accurate mental model. **Narrate as you open each file** — say what you are looking at, what you found, and what it tells you. Do not read everything silently and then deliver a summary. Talking as you go fills silence, shows your prioritisation, and lets the interviewer follow your thinking in real time.
+
+**Structure your walkthrough in three phases:** understand the app (from the repo), understand the deployment (Dockerfile + manifests), then verify it live on the cluster. Within the first two phases, narrate file by file.
+
+#### Phase 1 — Understand the app (file by file)
+
+Open files in the search order from the table above. As you open each one, say what you are looking at and call out the key facts.
+
+**Repo structure** — start here. List or `ls` the top-level contents.
+
+> *"Let me start by looking at the repo structure. I can see an app directory, a Dockerfile, a k8s directory with manifests, requirements.txt, and a README. So this looks like a Python app with Kubernetes deployment config — raw manifests, no Helm or Kustomize."*
+
+**README** — scan it quickly. If it is helpful, say what you learned. If it is thin, say so and move on.
+
+> *"The README has a brief description but doesn't cover the deploy path. I'll get that from the code and manifests."*
+
+**App entrypoint** — open the main app file. Call out routes, dependencies, and startup behaviour.
+
+> *"Opening main.py. I can see three endpoints registered: a root path that returns app info and version, a /health endpoint that checks the Postgres connection, and /items that returns rows from the database. There's an init_db call on startup — let me check what that does."*
+
+**Database / config module** — follow the dependency. Say what it tells you operationally.
+
+> *"In db.py, init_db creates an items table and seeds two rows. The connection reads from environment variables — POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD. So the app depends on Postgres being reachable at startup. I don't see retry logic, which means if Postgres is down when the app starts, the container will crash."*
+
+**Dependency file** — glance at it. One sentence is enough.
+
+> *"requirements.txt shows FastAPI, Uvicorn, and psycopg — so this is a FastAPI app using Uvicorn as the server, talking to Postgres via psycopg."*
+
+You do not need to understand every library or every line of code. Extract the operational facts: what the app serves, what it depends on, what happens at startup, what happens if a dependency is missing.
+
+#### Phase 2 — Understand the deployment (file by file)
+
+Now move to the Dockerfile and Kubernetes manifests. The goal is to trace how the app goes from code to a running, reachable service in the cluster.
+
+**Dockerfile** — read top to bottom. Connect it to what you learned in phase 1.
+
+> *"The Dockerfile builds from python:3.13-slim, installs deps from requirements.txt, copies the app code, exposes port 8000, and starts Uvicorn on that port. So the container listens on 8000 — I'll want to check that the Service and probes target that same port."*
+
+**Deployment manifest** — look for image, pull policy, env injection, probes, init containers, resource limits, service account.
+
+> *"The Deployment uses image platform-drill-api:local with imagePullPolicy Never — so the image is loaded directly, not pulled from a registry. Env vars come from a ConfigMap called app-config and a Secret called app-secret via envFrom. The readiness probe hits /health on port 8000 with a 5-second initial delay. There's a liveness probe on the same path with a 15-second delay. There's also an init container that waits for Postgres on port 5432 before the main container starts — that protects against the crash-on-startup issue I saw in the code. Resource limits are set at 128Mi memory and 200m CPU."*
+
+**Service manifest** — check the selector, port, and targetPort.
+
+> *"The Service selects pods with label app: platform-drill-api, maps port 80 to targetPort 8000. That lines up with the Dockerfile's EXPOSE and the probe config."*
+
+**Ingress manifest** — check the routing rule.
+
+> *"The Ingress uses ingressClass nginx and routes / to the Service on port 80. So external traffic comes in on port 80, hits the Ingress, goes to the Service, which forwards to port 8000 on the pod."*
+
+**ConfigMap and Secret** — verify the key names match what the app expects.
+
+> *"The ConfigMap has POSTGRES_HOST set to postgres, POSTGRES_PORT 5432, POSTGRES_DB and POSTGRES_USER. The Secret has POSTGRES_PASSWORD. Those match the variable names the app reads in db.py."*
+
+**NetworkPolicies** — scan for default deny and allow rules.
+
+> *"There's a default-deny-ingress policy, then explicit allows: ingress-nginx namespace to app pods, app pods to postgres, and a DNS egress rule for all pods. So traffic is locked down to only the required flows."*
+
+After the manifests, briefly trace the full request path to confirm the pieces connect:
+
+> *"So the full request path is: client hits localhost on port 80, Ingress routes to the platform-drill-api Service, the Service forwards to targetPort 8000 on the pod, which is where Uvicorn is listening. The ports line up across all layers."*
+
+#### Phase 3 — Verify it live
+
+Now move to the cluster. Run commands and narrate what you see.
+
+> *"Let me verify this is actually working. I'll check the pod state first."*
+
+```bash
+kubectl get pods -n drill
+```
+
+> *"Both pods are Running and Ready — postgres and the app. No restarts. Let me check that endpoints are populated."*
+
+```bash
+kubectl get endpoints -n drill
+```
+
+> *"Both services have endpoints, so the selectors are matching. Now I'll test end-to-end through the Ingress."*
+
+```bash
+curl localhost/
+curl localhost/health
+curl localhost/items
+```
+
+> *"Root returns the app info with version and hostname. Health returns status ok. Items returns the two seeded rows — keyboard and monitor. Everything is working end-to-end."*
+
+If something fails during verification, say what you expected versus what you got, and where you would investigate next — but do not jump to fixing. In an orientation task, showing that you can identify the gap is enough.
+
+#### Tips for the narration
+
+- **Talk as you open each file.** "Opening the Deployment manifest..." keeps the interviewer with you. Silence while reading looks like you are stuck.
+- **Name the specific things you found.** "It reads POSTGRES_HOST from a ConfigMap called app-config" is better than "it uses environment variables."
+- **Connect layers as you go.** When you see targetPort 8000 in the Service, say "that matches the EXPOSE in the Dockerfile." This shows you are verifying consistency, not just listing facts.
+- **Mention failure modes.** "If Postgres is down at startup the app crashes, which is why the init container matters" shows you understand operational implications, not just what files contain.
+- **Say what you have not checked yet.** "I haven't verified the NetworkPolicies allow all the required flows" is better than skipping it silently. Interviewers value honest scoping.
+- **Aim for about two minutes total.** This is orientation, not a code review. Hit the key facts per file, then move to verification.
 
 ---
 
