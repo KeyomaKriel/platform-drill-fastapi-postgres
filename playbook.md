@@ -304,7 +304,10 @@ Say: *"Permission check returns yes, the RBAC chain is consistent. RBAC is healt
 
 **Start here if** pod shows `ImagePullBackOff`, `ErrImagePull`, `ErrImageNeverPull`, `CreateContainerConfigError`, or `CreateContainerError`.
 
-Say: *"The pod can't start its container. I need to check whether it's an image pull problem or a container creation failure."*
+Say: *If the status is ImagePullBackOff / ErrImagePull:
+“The pod is failing at image pull. I need to check whether it’s a bad image name/tag or a registry/auth issue.”
+	•	If the status is CreateContainerConfigError / CreateContainerError:
+“The image may already be present, but the container still can’t be created. I need to check events for missing config, bad command, or security-context issues.”*
 
 #### Image pull failures
 
@@ -1051,13 +1054,30 @@ kubectl rollout history deploy/<deploy> -n <ns>
 
 Check the new RS's pods for a clear status. If `ImagePullBackOff` → [Image Pull](#image-pull). If `CrashLoopBackOff` → [Startup / Crash](#startup-crash). If `0/1` Ready → [Probe Failure](#probe-failure).
 
+#### Finding the correct image
+
+If the rollout is stuck because of a bad image tag, find the known-good image from the old pod that is still running:
+
+```bash
+kubectl get pod <old-pod> -n <ns> -o jsonpath='{.spec.containers[0].image}'
+```
+
+Or check previous rollout revisions:
+
+```bash
+kubectl rollout history deploy/<deploy> -n <ns>
+kubectl rollout history deploy/<deploy> -n <ns> --revision=<N>
+```
+
 #### Likely fixes
 
-**Bad image tag:** `kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>`
+**Bad image tag:** `kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>` — this modifies the pod template and triggers a new rollout automatically. No `rollout restart` needed.
 
-**Rollback:** `kubectl rollout undo deploy/<deploy> -n <ns>` (or `--to-revision=<N>`)
+**Rollback:** `kubectl rollout undo deploy/<deploy> -n <ns>` (or `--to-revision=<N>`) — reverts the entire pod template to the previous revision.
 
-**Bad config in new template:** Fix the ConfigMap/Secret, then `kubectl rollout restart deploy/<deploy> -n <ns>`
+When to use which: `set image` when you know the correct image and only the image was wrong. `rollout undo` when you want to revert everything (image, env, probes, etc.) to the last working revision.
+
+**Bad config in new template:** Fix the ConfigMap/Secret, then `kubectl rollout restart deploy/<deploy> -n <ns>` — `rollout restart` is needed here because the change is external to the deployment spec.
 
 #### Verify
 
@@ -1065,6 +1085,7 @@ Check the new RS's pods for a clear status. If `ImagePullBackOff` → [Image Pul
 kubectl rollout status deploy/<deploy> -n <ns>    # successfully rolled out
 kubectl get rs -n <ns>                             # one RS at desired count
 kubectl get pods -n <ns>                           # all Running 1/1
+curl -i localhost/                                 # or a known app path — confirm end-to-end
 ```
 
 ---
