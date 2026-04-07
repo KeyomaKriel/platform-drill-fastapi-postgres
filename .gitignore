@@ -4,3 +4,9 @@ __pycache__/
 .env
 .vscode/
 .DS_Store
+
+# Drill system — disposable runtime artefacts
+workspaces/drill-workspace-*/
+drill-session.log
+drill-session*.log
+tmp/

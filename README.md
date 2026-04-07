@@ -1,195 +1,207 @@
-# Platform Drill — K8s Interview Prep
+# Platform Drill System
 
-Kubernetes troubleshooting practice environment for a 60-minute hands-on Platform Engineer interview. Uses Claude Code as both infrastructure setup tool and interview simulator.
+Practice environment for a 60-minute hands-on Platform Engineer technical interview. You run drills through Claude Code, which acts as interviewer, scenario generator, and evaluator.
 
-## Prerequisites
+The system creates fresh workspaces for each drill from a canonical template repo, deploys to a local Kubernetes cluster, and evaluates your debugging process, implementation quality, and communication.
 
-- Apple Silicon Mac with Docker Desktop running
-- Claude Code installed and authenticated
-- Git
+---
 
-## Quick Start
-
-### 1. Open Claude Code in the repo
-
-```bash
-cd ~/code/platform-drill-fastapi-postgres
-claude
-```
-
-Claude Code will automatically read `CLAUDE.md` and understand the full setup.
-
-### 2. Set up the environment (Phase 1)
-
-In Claude Code, type:
+## Folder structure
 
 ```
-run phase 1
+./
+├── CLAUDE.md              # The operating manual — Claude Code follows this
+├── source-repo/           # Canonical template repo (DO NOT edit during drills)
+├── workspaces/            # Disposable drill workspaces (auto-created, auto-deleted)
+├── drills/drill-feedback/ # Persistent feedback files from completed drills
+├── playbook.md            # Triage reference — updated after debugging drills
+├── playbook-old.md        # Previous playbook version
+├── CLAUDE-old.md          # Previous operating manual version
+├── prompts/               # Prompt drafts used to build the system
+├── kind-config.yaml       # Kind cluster config (drill infrastructure)
+├── cluster.yaml           # EKS cluster config (reference only)
+├── cheat-sheet-general.md # General K8s cheat sheet
+└── k8s-debug-flowchart.png
 ```
 
-This will take a few minutes. Claude Code will:
-- Check and install any missing tools (kind, kubectl, helm)
-- Create a kind cluster with Calico CNI and nginx Ingress
-- Build your app image and load it into the cluster
-- Deploy the full production-grade stack (Postgres + app + Ingress + NetworkPolicies + RBAC)
-- Verify everything is healthy and show you the final state
+**What each key part does:**
 
-Don't proceed until you see: **"Phase 1 complete. Environment is healthy and ready for Phase 2."**
+| Path | Role | Who edits it |
+|------|------|--------------|
+| `CLAUDE.md` | Full operating manual. Claude Code reads this to know how to run drills. | You, intentionally, outside drills |
+| `source-repo/` | The candidate-facing project template. Contains app code, Dockerfile, K8s manifests, README. | You, intentionally, outside drills. Never during a drill. |
+| `workspaces/` | Where fresh drill workspaces are created. Each drill gets `workspaces/drill-workspace-01/`, `02/`, etc. | Claude Code creates them. You work inside them. They get deleted after evaluation. |
+| `drills/drill-feedback/` | Structured feedback from each completed drill. Persists across drills. | Claude Code writes these after evaluation. |
+| `playbook.md` | Your triage reference. Claude Code proposes updates after debugging drills. | Claude Code updates with your approval. |
 
-### 3. Open a second terminal for debugging
+---
 
-Open a new terminal tab/window. This is where you'll run all your `kubectl` commands during drills.
+## How the system works
 
-Start session logging so Claude Code can review your work:
+### Phase 1 — Baseline bootstrap and verification
 
-```bash
-script -q -a ~/code/platform-drill-fastapi-postgres/drill-session.log
-```
+Sets up or verifies the local environment: kind cluster, Calico CNI, nginx Ingress, app image built and loaded, full stack deployed and healthy.
 
-Keep this terminal open for the rest of your practice session.
+Run this first, or whenever you need to restore a clean baseline.
 
-### 4. Start a drill (Phase 2)
+### Phase 2 — Drill workspace generation and task setup
 
-Back in Claude Code, type:
+Creates a fresh workspace under `workspaces/` by copying `source-repo/`. Chooses a task type and presents it as a realistic interview prompt.
 
-```
-next scenario
-```
+Task types: repo orientation, single-fault debugging, small implementation/change, verification/trade-off.
 
-Claude Code will:
-1. Silently break something in the cluster
-2. Give you a vague symptom (like a real interviewer would)
-3. Wait for you to debug
+### Phase 3 — Silent interviewer and evaluation
 
-### 5. Debug in your second terminal
+Claude Code stays silent while you work. When you're done, it reads your session log, verifies the outcome, gives structured feedback, writes a feedback file, and optionally proposes playbook updates.
 
-Switch to your debug terminal and start triaging. Practice the methodology:
+### Phase 4 — Guided coaching
 
-**Orient first:**
-```bash
-kubectl get all -n drill
-kubectl get events -n drill --sort-by=.metadata.creationTimestamp
-```
+Instead of silent observation, Claude Code walks you through step by step — telling you what to notice, what to say out loud, and what to do next.
 
-**Identify the bucket, then dig in with targeted commands.**
+---
 
-**Practice narrating out loud** as you work — say what you see, what you think the problem is, and why you're running each command. This is what the interview actually tests.
+## Typical workflow
 
-### 6. Get evaluated
+1. Open Claude Code in this folder.
+2. Say **"run phase 1"** to bootstrap or verify the environment.
+3. Wait for Phase 1 to complete and confirm healthy.
+4. Say **"next scenario"** to start a drill.
+5. Claude Code creates a workspace and presents a task.
+6. In a **separate terminal**, cd into the workspace and start the session log:
+   ```
+   cd /path/to/workspaces/drill-workspace-01
+   script -q -a ./session.log
+   ```
+7. Do the task in that terminal.
+8. When done, go back to Claude Code and say **"evaluate my fix"** (or "evaluate", "done", etc.).
+9. Claude Code reads the log, evaluates your work, writes feedback.
+10. Say **"next scenario"** to start another drill.
 
-When you've fixed the issue (or you're stuck), go back to Claude Code and type:
+---
 
-```
-evaluate my fix
-```
+## Phrases to use with Claude Code
 
-Claude Code will:
-- Read your session log to see exactly what you did
-- Check if the cluster is actually healthy
-- Tell you whether you fixed the root cause
-- Give feedback on your triage process, command choices, and narration
-- Reveal what the break was
-- Restore the cluster to healthy
-- Clear the session log
+| Say this | What happens |
+|----------|-------------|
+| `run phase 1` / `set up the environment` / `bootstrap` | Runs Phase 1 — creates or verifies the baseline environment |
+| `next scenario` / `start drill` / `new drill` / `start phase 2` | Runs Phase 2 — creates a fresh workspace and presents a task |
+| `evaluate my fix` / `evaluate` / `done` / `check my work` | Triggers Phase 3 evaluation — reads your session log and gives feedback |
+| `just break something` / `test me` | Skips workspace creation, injects a fault directly, enters Phase 3 |
+| `coach me on this one` / `help me through this` | Switches to Phase 4 — guided coaching instead of silent observation |
+| `back to phase 3` / `test me again` | Returns from coaching to silent interviewer mode |
+| `hint` / `I'm stuck` | Gets a small directional hint (Phase 3 only — won't give away the answer) |
+| `how am I doing overall` | Gets a summary of patterns across all completed drills |
 
-### 7. Repeat
+---
 
-```
-next scenario
-```
+## Session logs, workspaces, and feedback
 
-Claude Code tracks which failure domains have been covered. To see progress:
+**Workspaces:**
+- Created at `./workspaces/drill-workspace-<NN>/` for each drill
+- Contains a copy of `source-repo/` contents with simulated git history
+- Deleted after evaluation. Never reused.
 
-```
-which domains have we covered?
-```
+**Session log:**
+- Lives at `./workspaces/drill-workspace-<NN>/session.log`
+- You start it with `script -q -a ./session.log` in the workspace
+- Claude Code reads it during evaluation
+- Deleted with the workspace
 
-To get a summary of your performance across all scenarios:
+**Feedback files:**
+- Saved to `./drills/drill-feedback/scenario-<NN>-<slug>.md`
+- Persist across drills — these are your training record
+- Include: what was broken, whether you fixed it, evaluation ratings, suggested narration
 
-```
-how am I doing overall?
-```
+**What gets deleted after each drill:** The workspace directory and its session log.
 
-## If You Get Stuck
+**What persists:** Feedback files, playbook updates, the source repo, the cluster state (restored to healthy).
 
-### Ask for a hint
+---
 
-In Claude Code, type:
+## Important operating rules
 
-```
-give me a hint
-```
+1. **`source-repo/` is read-only during drills.** All your drill work happens in a workspace. If you want to change the template (add a manifest, update app code), do it intentionally outside of a drill.
 
-You'll get a small directional nudge, not the answer. Ask again for a slightly bigger hint.
+2. **Phase 1 is for baseline setup, not editing.** It builds from `source-repo/` and deploys. It does not modify `source-repo/`.
 
-### Switch to coaching mode (Phase 3)
+3. **Each drill starts from a fresh workspace.** Previous drill state does not leak into the next one.
 
-If you're struggling with a particular type of failure and want active guidance:
+4. **Faults are injected into the live cluster, not into workspace files.** You discover problems through runtime behaviour, not by diffing files.
 
-```
-coach me on this one
-```
+5. **Claude Code does not help during Phase 3** unless you explicitly ask for a hint or switch to coaching mode.
 
-Claude Code switches from silent interviewer to active coach. It will tell you what to notice in your output, what to say out loud, and what command to run next.
+---
 
-You can either paste kubectl output into Claude Code, or just say:
+## Reset and cleanup
 
-```
-check the log
-```
+**If a drill went wrong or the environment is messy:**
 
-To go back to independent practice:
+- Say **"run phase 1"** to Claude Code. It will verify and fix the cluster, clean up stale workspaces, and restore the healthy baseline.
 
-```
-back to phase 2
-```
+**If the cluster is deeply broken:**
 
-## Useful Commands
+- Delete the kind cluster and re-bootstrap:
+  ```
+  kind delete cluster --name drill-cluster
+  ```
+  Then say **"run phase 1"** to rebuild from scratch.
 
-| What | Where to type | Command |
-|---|---|---|
-| Set up environment | Claude Code | `run phase 1` |
-| Start/next drill | Claude Code | `next scenario` |
-| Get evaluated | Claude Code | `evaluate my fix` |
-| Get a hint | Claude Code | `give me a hint` |
-| Switch to coaching | Claude Code | `coach me on this one` |
-| Go back to drills | Claude Code | `back to phase 2` |
-| Check progress | Claude Code | `which domains have we covered?` |
-| Overall feedback | Claude Code | `how am I doing overall?` |
-| Start session log | Debug terminal | `script -a ~/code/platform-drill-fastapi-postgres/drill-session.log` |
-| Clear session log | Debug terminal | `> ~/code/platform-drill-fastapi-postgres/drill-session.log` |
-
-## Resetting
-
-If things get into a bad state:
+**If you want to manually clean up workspaces:**
 
 ```
-run phase 1
+rm -rf ./workspaces/drill-workspace-*
 ```
 
-Phase 1 is idempotent — it will fix whatever's broken without recreating everything from scratch.
+**If you want to start a completely fresh drill session** (clean workspace state, fresh cluster):
 
-To fully nuke and start over:
+1. `kind delete cluster --name drill-cluster`
+2. `rm -rf ./workspaces/drill-workspace-*`
+3. Open Claude Code and say "run phase 1"
 
-```bash
-kind delete cluster --name drill-cluster
+---
+
+## Common usage patterns
+
+**I want a normal drill:**
+Say "next scenario". Claude Code picks a task type, creates a workspace, and presents the task.
+
+**I want debugging only:**
+Say "just break something" or "next debugging scenario". Claude Code injects a fault and gives you a vague symptom.
+
+**I want coaching instead of testing:**
+Say "coach me on this one" before or during a drill. Claude Code guides you step by step instead of staying silent.
+
+**I want to inspect the source repo first:**
+Look at `source-repo/` directly. It's just a normal project folder. Don't edit it during drills.
+
+**I want another scenario of the same type:**
+Say "another debugging drill" or "give me another implementation task". Claude Code will honour specific requests.
+
+**I want to see my progress:**
+Say "how am I doing overall" or look at the files in `drills/drill-feedback/`.
+
+---
+
+## Quick start
+
 ```
+# 1. Open Claude Code in this folder
 
-Then `run phase 1` again in Claude Code.
+# 2. Bootstrap the environment
+> run phase 1
 
-## The 12 Failure Domains
+# 3. Wait for it to complete, then start a drill
+> next scenario
 
-These are the types of breaks Claude Code will introduce. You won't know which one you're getting — that's the point.
+# 4. In a separate terminal, cd into the workspace Claude Code tells you about
+cd ./workspaces/drill-workspace-01
+script -q -a ./session.log
 
-1. Networking / Service routing
-2. Configuration injection
-3. Image / container startup
-4. Health probes
-5. Resource constraints
-6. Application-level failures
-7. Namespace and RBAC
-8. Deployment / rollout
-9. Storage
-10. Init containers / job dependencies
-11. Network policies
-12. Ingress / external access
+# 5. Do the task
+
+# 6. When done, go back to Claude Code
+> evaluate my fix
+
+# 7. Read the feedback, then
+> next scenario
+```

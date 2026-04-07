@@ -13,11 +13,32 @@ Kubernetes break/fix is one layer of this practice, not the whole frame. A stron
 ## Environment
 
 - Machine: Apple Silicon Mac
-- Source repo: `~/code/platform-drill-fastapi-postgres`
+- **Drill system root**: The current working directory (the folder Claude Code is running in). All paths in this document are relative to this root unless stated otherwise.
 - Container runtime: Docker Desktop
 - Local cluster: kind (not EKS)
 - No cloud registry — use `kind load docker-image`
 - Required tools: Docker, kubectl, kind, helm
+
+### Filesystem layout
+
+```
+./                              # Drill system root
+├── CLAUDE.md                   # This operating manual
+├── source-repo/                # Canonical template — read-only during drills
+│   ├── app/                    # Application code
+│   ├── Dockerfile
+│   ├── k8s/                    # Kubernetes manifests
+│   ├── requirements.txt
+│   └── ...                     # Other candidate-facing project files
+├── workspaces/                 # Disposable drill workspaces (gitignored)
+│   └── drill-workspace-<NN>/   # One per drill, created fresh, deleted after eval
+│       └── session.log         # Terminal capture for this drill
+├── drills/
+│   └── drill-feedback/         # Persistent feedback files across drills
+├── playbook.md                 # Triage reference (updated after drills)
+├── prompts/                    # Prompt drafts and notes
+└── ...                         # Other drill-system supporting files
+```
 
 ---
 
@@ -25,13 +46,14 @@ Kubernetes break/fix is one layer of this practice, not the whole frame. A stron
 
 These terms are used precisely throughout this document.
 
-- **Source repo**: This repo (`~/code/platform-drill-fastapi-postgres`). A manually curated canonical template containing the app code, Dockerfile, Kubernetes manifests, and drill infrastructure. The source repo is **read-only during drills** — Claude Code and the user must not modify it as part of any drill. Phase 1 may read from it, build from it, deploy from it, and verify against it. Phase 1 may not rewrite, regenerate, restructure, or mutate the source repo unless the user explicitly instructs it to do so outside of a drill context.
+- **Drill system root**: The current working directory. All relative paths in this document are rooted here.
+- **Source repo** (`./source-repo/`): A manually curated canonical template containing the app code, Dockerfile, Kubernetes manifests, and supporting project files. The source repo is **read-only during drills** — Claude Code and the user must not modify it as part of any drill. Phase 1 may read from it, build from it, deploy from it, and verify against it. Phase 1 may not rewrite, regenerate, restructure, or mutate the source repo unless the user explicitly instructs it to do so outside of a drill context.
 - **Template baseline**: The known-good state established by Phase 1. It includes: source repo intact and unmodified, app image built and loaded into kind, all Kubernetes resources deployed and healthy in the `drill` namespace, all verification checks passing. This is the reusable foundation from which every drill starts.
-- **Scenario workspace**: A fresh directory (`~/code/drill-workspace-<NN>`) created for each drill by copying specified contents from the source repo. The user works exclusively inside this workspace. It is disposable — deleted after evaluation. Each drill gets a new workspace; workspaces are never reused across drills.
+- **Scenario workspace** (`./workspaces/drill-workspace-<NN>/`): A fresh directory created for each drill by copying candidate-facing contents from the source repo. The user works exclusively inside this workspace. It is disposable — deleted after evaluation. Each drill gets a new workspace; workspaces are never reused across drills.
 - **Healthy baseline**: The cluster state where all pods are Running/Ready, endpoints are populated, and `curl localhost/`, `curl localhost/health`, and `curl localhost/items` all return expected responses through Ingress.
 - **Reset path**: The process of restoring the cluster to healthy baseline, deleting the current scenario workspace, and clearing the session log, so the next drill starts clean.
-- **Session log**: Terminal capture file at `~/code/drill-workspace-<NN>/session.log` (inside the current scenario workspace). Captures the user's commands and output during a drill. Created fresh per workspace. Read by Claude Code during evaluation. Cleared or deleted with the workspace after evaluation.
-- **Drill artefacts**: Feedback files and other persistent outputs are stored in the source repo at `~/code/platform-drill-fastapi-postgres/drills/drill-feedback/`. These survive workspace cleanup because they are reference material, not drill state.
+- **Session log** (`./workspaces/drill-workspace-<NN>/session.log`): Terminal capture file inside the current scenario workspace. Captures the user's commands and output during a drill. Created fresh per workspace. Read by Claude Code during evaluation. Deleted with the workspace after evaluation.
+- **Drill artefacts** (`./drills/drill-feedback/`): Feedback files and other persistent outputs. These survive workspace cleanup because they are reference material, not drill state.
 
 ---
 
@@ -57,12 +79,12 @@ The user debugs scenarios in a **separate terminal** — not through Claude Code
 
 > In your debug terminal, `cd` into the workspace and start the session log:
 > ```
-> cd ~/code/drill-workspace-<NN>
+> cd <absolute-path-to-drill-system-root>/workspaces/drill-workspace-<NN>
 > script -q -a ./session.log
 > ```
 > This captures all your commands and output. When you're done, come back here and say "evaluate my fix."
 
-The session log lives inside the scenario workspace at `~/code/drill-workspace-<NN>/session.log`. It is created fresh per drill and deleted with the workspace after evaluation.
+The session log lives inside the scenario workspace at `./workspaces/drill-workspace-<NN>/session.log`. It is created fresh per drill and deleted with the workspace after evaluation.
 
 **The user does not need to manually clear the log between scenarios.** Workspace cleanup handles this.
 
@@ -85,11 +107,11 @@ Phase 1 must be idempotent — safe to run repeatedly.
 
 ### Source repo rules during Phase 1
 
-Phase 1 **reads from** the source repo to build images and deploy resources. It does **not** modify the source repo's files, directory structure, or content. Specifically:
+Phase 1 **reads from** `./source-repo/` to build images and deploy resources. It does **not** modify the source repo's files, directory structure, or content. Specifically:
 
-- Build the Docker image from the source repo's Dockerfile. Do not modify the Dockerfile.
+- Build the Docker image from `./source-repo/Dockerfile`. Do not modify the Dockerfile.
 - Deploy Kubernetes resources as defined below. If the source repo contains manifest files, use them as-is. If it does not, generate manifests and apply them directly to the cluster — do not write generated manifests back into the source repo.
-- If Phase 1 needs to create supporting files (kind config, temporary YAML), use `/tmp` or apply them inline. Do not add files to the source repo.
+- If Phase 1 needs to create supporting files (kind config, temporary YAML), use `./tmp/` or apply them inline. Do not add files to the source repo.
 
 If the user explicitly asks to modify the source repo (e.g., "update the Dockerfile", "add a manifest"), that is a separate instruction outside Phase 1's scope. Comply, but do not conflate it with baseline setup.
 
@@ -119,7 +141,7 @@ If the user explicitly asks to modify the source repo (e.g., "update the Dockerf
    - Verify it's running before proceeding.
 
 5. **Build the app image.**
-   - `docker build -t platform-drill-api:local .`
+   - `docker build -t platform-drill-api:local ./source-repo/`
    - `kind load docker-image platform-drill-api:local --name drill-cluster`
 
 6. **Create namespace** `drill` (if it doesn't exist).
@@ -178,9 +200,9 @@ If the user explicitly asks to modify the source repo (e.g., "update the Dockerf
 ### Important rules for Phase 1
 - Be idempotent. Check before creating. Don't fail if something already exists.
 - If anything fails during setup, diagnose and fix it. Do not just report the error and stop.
-- Do not modify the source repo. Build from it, deploy from it, but leave it unchanged.
+- Do not modify `./source-repo/`. Build from it, deploy from it, but leave it unchanged.
 - Do not proceed to Phase 2 automatically. Wait for the user to trigger it.
-- If a previous scenario workspace exists (e.g., `~/code/drill-workspace-*`), delete it during Phase 1 to ensure a clean state.
+- If previous scenario workspaces exist under `./workspaces/`, delete them during Phase 1 to ensure a clean state.
 
 ---
 
@@ -195,41 +217,49 @@ If the user explicitly asks to modify the source repo (e.g., "update the Dockerf
 Before generating a scenario:
 
 1. **Verify the template baseline is healthy.** Run the same verification as Phase 1 step 8 (pods Running/Ready, endpoints populated, curl tests passing). If the baseline is unhealthy, restore it before proceeding. Do not generate a scenario on top of a broken baseline.
-2. **Clean up any previous scenario workspace.** Delete any existing `~/code/drill-workspace-*` directories.
+2. **Clean up any previous scenario workspace.** Delete any existing directories under `./workspaces/`.
 
 ### Scenario workspace creation
 
 Create a fresh, isolated workspace that feels like a prepared interview repo the user is entering for the first time.
 
-1. **Create the workspace directory.** Use `~/code/drill-workspace-<NN>` where `<NN>` is the scenario number (zero-padded, e.g., `01`). If the directory already exists, delete it first.
+1. **Create the workspace directory.** Use `./workspaces/drill-workspace-<NN>` where `<NN>` is the scenario number (zero-padded, e.g., `01`). If the directory already exists, delete it first.
 
-2. **Copy from the source repo.** Use `rsync` or equivalent to copy the source repo into the workspace with explicit include/exclude rules:
+2. **Copy candidate-facing project contents from `./source-repo/`.**
 
-   **Must copy (the interview repo):**
-   - `app/` (or wherever the application code lives)
-   - `Dockerfile`
-   - `requirements.txt` / `pyproject.toml` / dependency files
-   - `k8s/` or any manifest/chart directories if they exist in the source repo
-   - `README.md` if it exists
-   - Any config files that are part of the app project (e.g., `.env.example`, `docker-compose.yml`)
+   Use `rsync` (or equivalent) with an **exclude-list approach**: copy everything from `./source-repo/`, excluding files that are not part of the candidate-facing project.
 
-   **Must NOT copy (drill infrastructure and repo metadata):**
-   - `.git/`
-   - `CLAUDE.md`, `CLAUDE-old.md`
-   - `playbook.md`
-   - `drills/`
-   - `prompts/`
-   - `drill-session.log` or any `session.log`
-   - Any file that exists to support the drill system rather than the app itself
+   **Exclude from the workspace** (drill infrastructure, not project files):
+   - `.git/` (the source repo's git history, if any — see step 3 for workspace git setup)
+   - `session.log`, `drill-session.log`, or any `*.log` files
+   - `.DS_Store`
 
-   **Rule of thumb:** If a file would not exist in a real interview repo that was handed to a candidate, do not copy it.
+   **Everything else in `./source-repo/` is assumed to be candidate-facing** and must be copied. This includes application code, Dockerfiles, manifests, dependency files, config files, READMEs — whatever the source repo contains.
 
-3. **Initialise a fresh git repo in the workspace** so the user can use `git diff` and `git status` naturally:
+   **Rule of thumb:** The source repo should only contain files that belong in a realistic interview repo. If a file should not be handed to a candidate, it should not be in `./source-repo/` in the first place — it belongs at the drill system root instead.
+
+3. **Set up git history in the workspace** so `git log`, `git diff`, and `git status` work realistically.
+
+   The workspace should feel like a real repo with natural history, not a freshly initialised repo with one synthetic commit. Use this approach:
+
+   ```bash
+   cd ./workspaces/drill-workspace-<NN>
+   git init
+   # Stage and commit in logical groups that simulate real project history:
+   # Commit 1: base application code and dependencies
+   git add app/ requirements.txt Dockerfile .dockerignore .gitignore
+   git commit -m "Initial application setup" --date="3 days ago"
+   # Commit 2: Kubernetes manifests and deployment config
+   git add k8s/ docker-compose*.yml
+   git commit -m "Add Kubernetes manifests and local dev config" --date="2 days ago" --allow-empty
+   # Commit 3: everything else (README, any remaining files)
+   git add -A
+   git commit -m "Add documentation and project configuration" --date="1 day ago" --allow-empty
    ```
-   cd ~/code/drill-workspace-<NN> && git init && git add -A && git commit -m "initial state"
-   ```
 
-4. **Do not modify the source repo.** The workspace is a copy. The source repo must remain unchanged.
+   Adapt the groupings to whatever files actually exist in the source repo. The goal is 2-4 commits with realistic messages and dates, not one "initial state" commit. Use `--allow-empty` on later commits in case earlier ones already staged everything.
+
+4. **Do not modify `./source-repo/`.** The workspace is a copy. The source repo must remain unchanged.
 
 ### Task types
 
@@ -259,8 +289,9 @@ Each drill uses one of these task types. The task type determines what the user 
 - Examples:
   - "Add a new endpoint `GET /ready` that returns 200 with `{\"ready\": true}` and update the readiness probe to use it."
   - "The team wants to add a `version` label to all pods. Update the manifests and redeploy."
-  - "Add a HorizontalPodAutoscaler for the app deployment, targeting 70% CPU."
   - "The app currently has no startup probe. Add one and explain why it's useful here."
+  - "The database password is hardcoded in the manifests. Move it to a Kubernetes Secret and update the deployment to reference it."
+  - "Add a `/version` endpoint that returns the app version from an environment variable, and set that variable in the deployment manifest."
 - Tests: repo comprehension, implementation quality, deployment process, verification.
 - Evaluation: Did they understand where to make the change? Was the implementation correct and minimal? Did they rebuild, redeploy, and verify end-to-end?
 
@@ -279,6 +310,31 @@ Each drill uses one of these task types. The task type determines what the user 
 - Tests: evidence-based reasoning, architectural understanding, communication depth.
 - Evaluation: Did they inspect before answering? Was their reasoning grounded in specific observations from the repo and cluster? Did they communicate trade-offs clearly rather than listing generic best practices?
 
+### Drill scope and coverage model
+
+This section defines what kinds of tasks drills should generate. Use it to keep task generation aligned to realistic interview practice.
+
+**Primary focus — should dominate drill generation:**
+- Single-fault debugging of app, deployment, and runtime issues in Kubernetes
+- Repo orientation (understanding an unfamiliar codebase and its deploy path)
+- Small practical repo, config, or deployment changes (code edits, manifest adjustments, config tweaks)
+- Evidence-based verification and trade-off reasoning grounded in the repo and cluster
+
+**Secondary focus — may appear occasionally when they fit the repo and task naturally:**
+- Infra-adjacent tasks such as probe tuning, resource limit adjustments, label management, startup behaviour changes
+- Manifest-level additions or adjustments (e.g., adding a new resource type that the repo's existing patterns support)
+
+Secondary tasks should not appear more than roughly once per four drills. Only use them when they feel like a natural extension of the repo, not a detour into platform engineering exercises.
+
+**Out of scope — do not use unless the user explicitly requests:**
+- Deep cluster internals (CNI debugging, node-level issues, control-plane troubleshooting)
+- Multi-root-cause chaos scenarios (only one fault per debugging drill)
+- Major infrastructure buildout (service meshes, monitoring stacks, CI/CD pipelines, GitOps)
+- Advanced platform features not already present in the repo (custom operators, admission webhooks, etc.)
+- Long architecture or system-design discussions disguised as drills
+
+**Operational rule:** When generating a task, check it against this model. If the task falls outside primary focus, confirm it fits secondary focus before using it. If it falls outside both, do not use it unless the user asked for it. Keep drill grain close to what a 60-minute practical interview would realistically contain.
+
 ### Task selection rules
 
 1. **First drill:** Always use a healthy orientation task. The user needs to learn the repo before debugging or implementing.
@@ -294,29 +350,29 @@ Each drill uses one of these task types. The task type determines what the user 
 
 1. **Select the task type** using the task selection rules above.
 2. **If the task type requires a fault**, inject it now using the fault injection mechanics defined in Phase 3. Do not inject faults for orientation, implementation, or verification tasks.
-3. **Present the task** to the user as a realistic interview prompt. Frame it as if the user has just sat down at a workstation and been given instructions by an interviewer. Examples:
-   - "Welcome. This repo contains a service that's deployed to the cluster. A developer reported that the API is returning errors. Your workspace is at `~/code/drill-workspace-01`. Take a look and see what's going on."
-   - "Welcome. You've been given access to this repo and its running environment. Walk me through the application, how it's deployed, and verify that everything is working. Your workspace is at `~/code/drill-workspace-01`."
-   - "Welcome. The team wants to add a health-check CronJob. The repo is at `~/code/drill-workspace-01`. Implement it and deploy it to the cluster."
-4. **Tell the user their workspace path.** Always explicitly state it.
+3. **Present the task** to the user as a realistic interview prompt. Frame it as if the user has just sat down at a workstation and been given instructions by an interviewer. Use the **absolute path** to the workspace so the user can `cd` directly. Examples:
+   - "Welcome. This repo contains a service that's deployed to the cluster. A developer reported that the API is returning errors. Your workspace is at `<absolute-path>/workspaces/drill-workspace-01`. Take a look and see what's going on."
+   - "Welcome. You've been given access to this repo and its running environment. Walk me through the application, how it's deployed, and verify that everything is working. Your workspace is at `<absolute-path>/workspaces/drill-workspace-01`."
+   - "Welcome. The team wants you to add a `/version` endpoint. The repo is at `<absolute-path>/workspaces/drill-workspace-01`. Implement it and deploy it to the cluster."
+4. **Tell the user their workspace path.** Always explicitly state the absolute path.
 5. **Instruct the user to start the session log** in their debug terminal:
    ```
-   cd ~/code/drill-workspace-<NN> && script -q -a ./session.log
+   cd <absolute-path>/workspaces/drill-workspace-<NN> && script -q -a ./session.log
    ```
 6. **STOP. Wait for the user to work.**
 
 ### Workspace cleanup
 
 After a drill is evaluated (in Phase 3), the scenario workspace is disposable. Clean it up:
-- Delete the workspace directory (`rm -rf ~/code/drill-workspace-<NN>`).
+- Delete the workspace directory (`rm -rf ./workspaces/drill-workspace-<NN>`).
 - Restore the cluster to healthy baseline if a fault was injected.
 - Verify the healthy baseline before the next drill.
 
 ### Important rules for Phase 2
 - Never reuse a previous scenario workspace. Always create a fresh one.
-- Never modify the source repo as part of a drill. All user work happens in the workspace.
+- Never modify `./source-repo/` as part of a drill. All user work happens in the workspace.
 - The workspace must feel like a coherent interview repo, not a test harness or lab environment.
-- If the user asks to skip workspace creation and just inject a fault (e.g., "just break something"), that is acceptable — fall through to Phase 3's single-fault debugging mode directly, without creating a workspace. In this case, the session log falls back to `~/code/platform-drill-fastapi-postgres/drill-session.log` (instruct the user to start `script` there).
+- If the user asks to skip workspace creation and just inject a fault (e.g., "just break something"), that is acceptable — fall through to Phase 3's single-fault debugging mode directly, without creating a workspace. In this case, the session log falls back to `./drill-session.log` at the drill system root (instruct the user to start `script` there).
 - Track which task types and failure domains have been used. Vary them according to the selection rules.
 
 ---
@@ -332,7 +388,7 @@ After a drill is evaluated (in Phase 3), the scenario workspace is disposable. C
 1. **The task has been presented** (by Phase 2, or directly as a single-fault debugging task).
 2. **While the user works:** Do NOT help unless the user explicitly asks. Do not run kubectl commands. Do not suggest next steps. Just wait.
 3. **When the user says they've finished or asks for evaluation:**
-   - Read the session log (`~/code/drill-workspace-<NN>/session.log`, or `~/code/platform-drill-fastapi-postgres/drill-session.log` if no workspace was created) to see what commands the user ran and in what order.
+   - Read the session log (`./workspaces/drill-workspace-<NN>/session.log`, or `./drill-session.log` if no workspace was created) to see what commands the user ran and in what order.
    - Verify the outcome by checking the cluster state and/or the user's changes.
    - Tell them whether their work resolved the task / is correct.
    - Give structured feedback (see Feedback Framework below).
@@ -570,7 +626,7 @@ kubectl get ns
 
 ### Feedback files
 
-Save a structured markdown summary of each drill to `~/code/platform-drill-fastapi-postgres/drills/drill-feedback/`. Create the directory if it doesn't exist. Filename: `scenario-<N>-<task-type-slug>.md` (e.g., `scenario-01-healthy-orientation.md`, `scenario-03-networking-service-routing.md`).
+Save a structured markdown summary of each drill to `./drills/drill-feedback/`. Create the directory if it doesn't exist. Filename: `scenario-<N>-<task-type-slug>.md` (e.g., `scenario-01-healthy-orientation.md`, `scenario-03-networking-service-routing.md`).
 
 The file must contain:
 - Scenario number and date/time
@@ -616,7 +672,7 @@ Propose specific changes to the user. Only update `playbook.md` if the user appr
 
 ### How it works
 
-The user runs commands in their debug terminal and either pastes the output or says "check the log." If they say check the log, read the session log (`~/code/drill-workspace-<NN>/session.log`, or `~/code/platform-drill-fastapi-postgres/drill-session.log` if no workspace exists) to see their latest commands and output. Respond with structured coaching using this exact format:
+The user runs commands in their debug terminal and either pastes the output or says "check the log." If they say check the log, read the session log (`./workspaces/drill-workspace-<NN>/session.log`, or `./drill-session.log` if no workspace exists) to see their latest commands and output. Respond with structured coaching using this exact format:
 
 ```
 ### What I See

@@ -270,3 +270,10 @@ Output
 	•	what filesystem changes were made
 	•	what CLAUDE.md changes were made
 	•	any assumptions you had to make
+
+
+
+
+
+
+
