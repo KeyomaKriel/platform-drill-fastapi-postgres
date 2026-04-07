@@ -45,13 +45,145 @@ Start by answering:
 <a id="repo-first-orientation"></a>
 ## Repo-First Orientation
 
-In a repo-based interview, you have access to the application source code alongside the running cluster. Use that context before or alongside your cluster inspection. Spending 30-60 seconds reading the repo can save minutes of guessing later.
+### What this is for
 
-Start with the README or any top-level documentation. Identify what the app does, what its endpoints are, what dependencies it expects (databases, caches, external services), and what environment variables it reads. This tells you what "healthy" looks like and what config values matter.
+Before you touch the cluster, spend 60-90 seconds building a mental model of four things:
 
-Look at the Dockerfile to understand the image build: base image, exposed ports, entrypoint command. Check for Kubernetes manifests (YAML files, Helm charts, kustomize overlays) to understand the expected deployment topology -- how many replicas, what services exist, what config objects are referenced.
+1. **What the app does** — endpoints, purpose, expected behaviour.
+2. **What it depends on** — databases, caches, external services, env vars.
+3. **How it runs in a container** — base image, startup command, exposed port.
+4. **How it runs in Kubernetes** — deployments, services, ingress, config injection, network rules.
 
-Finally, identify the deploy path. Is the app deployed via raw manifests, Helm, Kustomize, or a CI pipeline? Knowing how things got deployed tells you where to look when something is wrong and how to fix it cleanly.
+This model is what lets you define "healthy," spot mismatches between intent and reality, and reason about where a fault could live. Without it, you are guessing.
+
+In a real interview the repo may be only partly documented. The README may be incomplete or absent. You will often have to infer the system from code, manifests, Dockerfile, and config files. That is normal and expected — the interviewer is watching whether you can orient yourself from primary sources, not whether you found a wiki page.
+
+### Where to look — practical search order
+
+Work top-down. Each layer fills in what the previous one missed.
+
+| Priority | Source | What you are looking for |
+|----------|--------|--------------------------|
+| 1 | **README / docs** | App purpose, endpoints, setup instructions, known dependencies |
+| 2 | **App entrypoint / main file** | Routes, startup logic, database init, error handling |
+| 3 | **Config / settings / env loading** | Which env vars the app reads, defaults, required vs optional |
+| 4 | **Dependency files** | `requirements.txt`, `package.json`, `go.mod` — runtime deps and their versions |
+| 5 | **Dockerfile** | Base image, build steps, exposed port, startup command |
+| 6 | **K8s manifests / Helm / Kustomize** | Deployments, Services, Ingress, ConfigMaps, Secrets, NetworkPolicies |
+| 7 | **Helper scripts / Makefile / CI config** | Build commands, deploy commands, test commands, pipeline steps |
+
+You do not need to read everything. Scan for the key facts at each layer, then move on.
+
+### What to look for in each place, and what it tells you
+
+#### App entrypoint and routes
+
+Find the main application file (e.g. `main.py`, `app.js`, `main.go`). Look for:
+
+- **Registered routes / endpoints** — these define what the app is supposed to serve. Common patterns: a root path `/`, a health check `/health` or `/healthz`, and one or more business endpoints. These are what you will curl to verify the system end-to-end.
+- **Startup logic** — does the app connect to a database on startup? Create tables? Run migrations? If startup depends on an external service being reachable, the app will crash if that service is down. This tells you about ordering dependencies and why an init container or retry might matter.
+- **Error handling** — does the app crash on connection failure, or retry? This affects whether a transient dependency issue causes a restart loop or just degraded responses.
+
+**Why it matters:** Knowing the routes tells you what "working" looks like. Knowing the startup logic tells you what must be true before the app can start. Both are critical for debugging and verification.
+
+#### Environment variables and config
+
+Look for where the app loads configuration — env var reads, config files, settings objects. Identify:
+
+- **Which env vars the app expects** — database host, port, credentials, feature flags. Note which are required vs have defaults.
+- **What happens if a var is missing** — crash, fallback to default, or silent misbehaviour.
+- **Where the values come from in K8s** — ConfigMaps, Secrets, or hardcoded in the Deployment spec. Cross-reference with the manifests.
+
+**Why it matters:** Config/env mismatches are one of the most common failure domains. If you know the app expects `POSTGRES_HOST` and the ConfigMap provides `DB_HOST`, you can spot the problem from the repo alone.
+
+#### Dockerfile
+
+Read the Dockerfile from top to bottom. Key lines:
+
+- **`FROM`** — base image and version. Tells you the language runtime, OS flavour, and whether it is a slim/distroless image (which affects what tools are available inside the container for debugging).
+- **`COPY` / `ADD`** — what gets put into the image and where. The destination paths tell you the working directory inside the container.
+- **`RUN`** — build steps, dependency installation. If deps are installed here, the image is self-contained. If not, something external is expected.
+- **`EXPOSE`** — the port the app listens on inside the container. Cross-reference with the Service `targetPort` and any probe definitions.
+- **`CMD` / `ENTRYPOINT`** — the actual startup command. This is what runs when the container starts. If this is wrong, the container will crash or hang.
+
+**Why it matters:** The Dockerfile is the bridge between "app code" and "running container." It tells you the port, the startup command, and what is actually inside the image. When a pod fails to start, the Dockerfile often holds the answer.
+
+#### Kubernetes manifests
+
+Scan the manifest directory (`k8s/`, `deploy/`, `manifests/`, or Helm `templates/`). For each resource type:
+
+**Deployment:**
+- `image` and `imagePullPolicy` — is it pulling from a registry or using a local image? `imagePullPolicy: Never` means the image must be pre-loaded (common in kind/minikube).
+- `replicas` — expected pod count.
+- `env` / `envFrom` — where config values come from. Cross-reference with ConfigMaps and Secrets.
+- `resources` — requests and limits. Tells you if the pod could be OOMKilled or fail to schedule.
+- `readinessProbe` / `livenessProbe` — what path/port is probed, with what timing. If the probe path does not exist in the app, or the port is wrong, the pod will be killed or never become ready.
+- Init containers — what must succeed before the main container starts.
+- `serviceAccountName` — whether the pod uses a custom service account (relevant for RBAC issues).
+
+**Service:**
+- `selector` — which pods it targets. Must match the pod labels exactly.
+- `port` and `targetPort` — the service port and the container port it forwards to. Mismatches here break routing silently.
+
+**Ingress:**
+- `host` and `path` rules — how external traffic reaches the service.
+- `ingressClassName` — which ingress controller handles it.
+- Backend service name and port — must match the Service resource.
+
+**ConfigMap / Secret:**
+- Key names — must match what the app expects.
+- Whether they are referenced by the Deployment's `envFrom` or `env[].valueFrom`.
+
+**NetworkPolicy:**
+- What traffic is allowed/denied. Default-deny policies mean you must have explicit allow rules for every required traffic flow (app-to-db, ingress-to-app, all-pods-to-DNS).
+
+**Why it matters:** The manifests define the contract between the app and the cluster. Most debugging tasks come down to a mismatch between what the app expects and what the manifests provide — wrong port, wrong env var name, wrong label selector, missing network allow rule.
+
+#### Helm / Kustomize indicators
+
+Not every repo uses raw manifests. Look for:
+
+- **Helm:** `Chart.yaml`, `values.yaml`, `templates/` directory. If present, resources are deployed via `helm install/upgrade`, and values may override template defaults.
+- **Kustomize:** `kustomization.yaml`. Resources are composed via overlays. The final applied YAML may differ from what you see in individual files.
+- **Neither:** Raw YAML files applied directly with `kubectl apply`.
+
+**Why it matters:** This tells you how changes get applied. If the repo uses Helm, editing a raw manifest will not help — you need to change `values.yaml` or the template, then re-run `helm upgrade`. If it is raw manifests, `kubectl apply -f` is the path.
+
+#### Helper scripts and CI config
+
+Look for `Makefile`, `justfile`, `Taskfile`, `scripts/`, `.github/workflows/`, `Jenkinsfile`, or similar. These often reveal:
+
+- The exact build command (e.g. `docker build -t app:local .`)
+- The deploy command (e.g. `kubectl apply -f k8s/` or `helm upgrade ...`)
+- How the image gets into the cluster (e.g. `kind load docker-image`)
+- Test or verification commands
+
+**Why it matters:** These are the fastest way to discover the intended build/deploy workflow when the README does not spell it out.
+
+### Identifying the deploy path
+
+The "deploy path" is the answer to: **how do repo changes become running changes in the cluster?** You need to know this before you make any fix, because applying a fix the wrong way can make things worse or not take effect.
+
+**Where to look for deploy-path clues:**
+
+1. **Helper scripts / Makefile** — often the most explicit source. A `make deploy` target or a `deploy.sh` script tells you exactly what commands to run.
+2. **CI config** — `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`. Pipeline steps show the full build-deploy sequence.
+3. **Manifest structure** — raw YAML in a `k8s/` directory suggests `kubectl apply`. A `Chart.yaml` means Helm. A `kustomization.yaml` means Kustomize.
+4. **README** — may describe the deploy steps, but do not assume it is complete or current.
+5. **Image pull policy** — `imagePullPolicy: Never` or `IfNotPresent` with a `:local` or `:latest` tag suggests images are loaded directly (not pulled from a registry).
+
+**How to tell which deploy method is in use:**
+
+| Clue | Deploy method |
+|------|--------------|
+| `k8s/*.yaml` with no `Chart.yaml` or `kustomization.yaml` | Raw manifests — `kubectl apply -f k8s/` |
+| `Chart.yaml` + `values.yaml` + `templates/` | Helm — `helm install` or `helm upgrade` |
+| `kustomization.yaml` | Kustomize — `kubectl apply -k` |
+| `docker-compose*.yml` only | Compose — not K8s, or used only for local dev |
+| CI pipeline with deploy steps | Pipeline-driven — check what the pipeline runs |
+| `Makefile` / `justfile` with deploy targets | Scripted — read the target to see the underlying method |
+
+**Why this matters before making changes:** If you edit a manifest and `kubectl apply` it, but the app was deployed via Helm, your change may be overwritten on the next Helm operation. If you need to rebuild the image, you need to know whether to push to a registry or load into kind. Getting the deploy path right means your fix actually sticks.
 
 ---
 
