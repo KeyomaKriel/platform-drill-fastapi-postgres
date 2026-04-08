@@ -101,11 +101,20 @@ Phase 1 must be idempotent — safe to run repeatedly.
 
 ### Source repo rules during Phase 1
 
-Phase 1 **reads from** `./source-repo/` to build images and deploy resources. It does **not** modify the source repo. Specifically:
+Phase 1 **reads from** `./source-repo/` to build images and deploy resources. It does **not** modify the source repo.
+
+The source repo contains two categories of content:
+
+- **Application code and Dockerfile** — used to build the container image.
+- **Kubernetes manifests** (`./source-repo/k8s/`) — the canonical, candidate-facing definition of how the app is deployed. These are the manifests a candidate would read, reason about, and modify during a drill.
+
+Phase 1 also creates **cluster-supporting infrastructure** that is not part of the candidate-facing repo: the kind cluster itself, Calico CNI, and the nginx Ingress controller. These are drill-system plumbing, not application resources.
+
+Specifically:
 
 - Build the Docker image from `./source-repo/Dockerfile`. Do not modify the Dockerfile.
-- Deploy K8s resources as defined below. If the source repo contains manifest files, use them as-is. If not, generate and apply directly — do not write generated manifests back into the source repo.
-- If Phase 1 needs supporting files (kind config, temporary YAML), use `./tmp/` or apply inline.
+- Deploy application resources by applying the manifests in `./source-repo/k8s/`. Use them as-is — do not generate alternative YAML for resources that already have manifests in the repo.
+- Create cluster-supporting infrastructure (kind cluster, Calico, Ingress controller) inline or from `./tmp/`. These do not belong in the source repo.
 
 If the user explicitly asks to modify the source repo, that is a separate instruction outside Phase 1's scope.
 
@@ -117,19 +126,19 @@ If the user explicitly asks to modify the source repo, that is a separate instru
    - kind
    - helm
 
-2. **Create kind cluster** (if one named `drill-cluster` doesn't already exist).
+2. **Create kind cluster** (if one named `drill-cluster` doesn't already exist). *(cluster-supporting infrastructure)*
    - Use a kind config that:
      - Maps container ports 80 and 443 to host for Ingress
      - Labels the control-plane node with `ingress-ready=true`
      - Uses one control-plane node (no workers needed)
    - After creation, verify `kubectl cluster-info` works
 
-3. **Install CNI that supports NetworkPolicies.**
+3. **Install CNI that supports NetworkPolicies.** *(cluster-supporting infrastructure)*
    - kindnet (the default) does NOT support NetworkPolicies. Install Calico instead.
    - Apply the Calico manifest and wait for calico pods to be ready.
    - Verify Calico is running before proceeding.
 
-4. **Install nginx Ingress controller for kind.**
+4. **Install nginx Ingress controller for kind.** *(cluster-supporting infrastructure)*
    - Use the kind-specific nginx ingress manifest.
    - Wait for the ingress-nginx-controller pod to be ready.
    - Verify it's running before proceeding.
@@ -140,41 +149,35 @@ If the user explicitly asks to modify the source repo, that is a separate instru
 
 6. **Create namespace** `drill` (if it doesn't exist).
 
-7. **Deploy the full stack** into the `drill` namespace. Create all resources via kubectl or by generating and applying YAML. The stack must include ALL of the following:
+7. **Deploy application resources from the source repo manifests.**
 
-   **Postgres:**
-   - ConfigMap: `postgres-config` with `POSTGRES_DB=platformdrill`, `POSTGRES_USER=platformuser`
-   - Secret: `postgres-secret` with `POSTGRES_PASSWORD=platformpass`
-   - PersistentVolumeClaim: `postgres-pvc`, 1Gi, access mode ReadWriteOnce
-   - Deployment: postgres:16, single replica, volume mount at `/var/lib/postgresql/data`, using the PVC, env from ConfigMap and Secret, readiness probe using `pg_isready`, liveness probe using `pg_isready`
+   Apply all manifest files in `./source-repo/k8s/`:
+
+   ```bash
+   kubectl apply -f ./source-repo/k8s/
+   ```
+
+   This deploys the full candidate-facing stack as defined in the repo:
+
+   **Postgres** (`postgres-config.yaml`, `postgres.yaml`):
+   - ConfigMap: `postgres-config`, Secret: `postgres-secret`
+   - PersistentVolumeClaim: `postgres-pvc`, 1Gi
+   - Deployment: postgres:16, single replica, PVC-backed storage, probes via `pg_isready`
    - Service: `postgres`, port 5432
 
-   **App:**
-   - ConfigMap: `app-config` with `POSTGRES_HOST=postgres`, `POSTGRES_PORT=5432`, `POSTGRES_DB=platformdrill`, `POSTGRES_USER=platformuser`
-   - Secret: `app-secret` with `POSTGRES_PASSWORD=platformpass`
-   - ServiceAccount: `app-sa`
-   - Role: `app-role` — grant get/list/watch on pods and services in the `drill` namespace
-   - RoleBinding: `app-rolebinding` — bind `app-role` to `app-sa`
-   - Deployment: `platform-drill-api`, image `platform-drill-api:local`, imagePullPolicy `Never`, single replica
-     - Uses ServiceAccount `app-sa`
-     - env from ConfigMap and Secret via `envFrom`
-     - Resource requests: 64Mi memory, 50m CPU
-     - Resource limits: 128Mi memory, 200m CPU
-     - Readiness probe: GET /health port 8000, initialDelaySeconds 5, periodSeconds 5
-     - Liveness probe: GET /health port 8000, initialDelaySeconds 15, periodSeconds 10
-     - Init container: busybox that waits for Postgres to be reachable on port 5432 before the main container starts. Use a simple loop with `nc -z postgres 5432`.
-   - Service: `platform-drill-api`, port 80, targetPort 8000
+   **App** (`app-config.yaml`, `rbac.yaml`, `app.yaml`):
+   - ConfigMap: `app-config`, Secret: `app-secret`
+   - ServiceAccount: `app-sa`, Role: `app-role`, RoleBinding: `app-rolebinding`
+   - Deployment: `platform-drill-api`, local image, init container, resource limits, probes
+   - Service: `platform-drill-api`, port 80 → targetPort 8000
 
-   **Ingress:**
-   - Ingress resource: `app-ingress`, IngressClass `nginx`
-   - Route `/` to service `platform-drill-api` on port 80
+   **Ingress** (`ingress.yaml`):
+   - Ingress: `app-ingress`, IngressClass `nginx`, routes `/` to the app Service
 
-   **NetworkPolicies:**
-   - `default-deny-ingress`: deny all ingress traffic in the namespace by default
-   - `allow-app-from-ingress`: allow ingress to the app pods from the ingress-nginx namespace
-   - `allow-postgres-from-app`: allow ingress to postgres pods from app pods only
-   - `allow-app-to-postgres`: allow egress from app pods to postgres pods on port 5432
-   - `allow-dns`: allow egress to kube-system for DNS resolution from all pods
+   **NetworkPolicies** (`network-policies.yaml`):
+   - `default-deny-ingress`, `allow-app-from-ingress`, `allow-postgres-from-app`, `allow-app-to-postgres`, `allow-dns`
+
+   If `kubectl apply` fails for any resource, diagnose and fix before proceeding. Do not silently skip failures.
 
 8. **Wait and verify everything is healthy.**
    - All pods Running and Ready

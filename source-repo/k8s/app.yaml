@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: platform-drill-api
-  namespace: depop-drill
+  namespace: drill
 spec:
   replicas: 1
   selector:
@@ -13,18 +13,37 @@ spec:
       labels:
         app: platform-drill-api
     spec:
+      serviceAccountName: app-sa
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres 5432; do
+                echo "Waiting for postgres..."
+                sleep 2
+              done
       containers:
         - name: platform-drill-api
-          image: 954082487282.dkr.ecr.eu-west-2.amazonaws.com/platform-drill-api:004d551
-          imagePullPolicy: Always
+          image: platform-drill-api:local
+          imagePullPolicy: Never
           ports:
             - name: http
               containerPort: 8000
           envFrom:
             - configMapRef:
-                name: platform-drill-api-config
+                name: app-config
             - secretRef:
-                name: platform-drill-api-secret
+                name: app-secret
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
           readinessProbe:
             httpGet:
               path: /health
@@ -42,7 +61,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: platform-drill-api
-  namespace: depop-drill
+  namespace: drill
 spec:
   selector:
     app: platform-drill-api
