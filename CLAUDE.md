@@ -271,6 +271,8 @@ Each drill uses one of these task types:
 
 ### Drill scope and coverage model
 
+Drills are weighted toward the scenarios most likely to appear in a 60-minute Codespace-based Platform Engineer interview. The interview tests app-level debugging, orientation, and small practical changes — not cluster administration.
+
 **Primary focus (dominate drill generation):**
 - Single-fault debugging of app, deployment, and runtime issues
 - Repo orientation
@@ -287,16 +289,38 @@ Each drill uses one of these task types:
 - Major infrastructure buildout (service meshes, monitoring, CI/CD, GitOps)
 - Advanced platform features not in the repo
 
+### Failure domain likelihood tiers
+
+Not all failure domains are equally likely in the interview. Weight scenario selection accordingly.
+
+**Tier 1 — High likelihood (prioritise these):**
+- Config / Secret / env failure (wrong value, missing ref, typo)
+- Probe failure (wrong path, wrong port, timing)
+- Service routing / port / endpoint failure (selector mismatch, port mismatch)
+- Image pull / container creation failure (wrong tag, missing image)
+
+**Tier 2 — Moderate likelihood:**
+- Ingress / external routing failure
+- Application-level dependency / runtime failure (dependency down or misconfigured)
+- Startup / crash failure (app code bug, bad entrypoint)
+
+**Tier 3 — Low likelihood (only if user requests or Tiers 1-2 are well covered):**
+- NetworkPolicy / traffic restriction failure (requires CNI support — many interview setups skip this)
+- RBAC / service account / permission failure (most interview apps don't use custom RBAC)
+- Resource / scheduling / storage failure (more infra-admin than app-platform)
+- DNS / service discovery / namespace failure (too niche for a 60-minute practical)
+
 ### Task selection rules
 
 1. **First drill:** Always healthy orientation.
 2. **Second drill onward:**
    a. Don't repeat the same task type consecutively (unless requested).
    b. ~50-60% debugging tasks.
-   c. Interleave implementation and verification between debugging drills.
-   d. After three debugging tasks in a row, insert a non-debugging task.
-   e. Honour explicit user requests.
-3. **Track and report** task types and failure domains when asked.
+   c. **For debugging tasks, draw from Tier 1 domains first.** Ensure all four Tier 1 domains are covered before moving to Tier 2. Only use Tier 3 if Tiers 1-2 are well covered or the user explicitly requests it.
+   d. Interleave implementation and verification between debugging drills.
+   e. After three debugging tasks in a row, insert a non-debugging task.
+   f. Honour explicit user requests (including requests for specific domains or tiers).
+3. **Track and report** task types, failure domains, and tiers when asked.
 
 ### How to prepare the task
 
@@ -390,21 +414,21 @@ After evaluation:
 
 #### Failure domains for debugging tasks
 
-Each scenario uses one failure domain. Track which have been used and rotate through all before repeating.
+Each scenario uses one failure domain. Draw from Tier 1 first, then Tier 2, then Tier 3 (see likelihood tiers above). Track which have been used.
 
-| # | Failure domain |
-|---|---------------|
-| 1 | Startup / crash failure |
-| 2 | Image pull / container creation failure |
-| 3 | Probe failure |
-| 4 | Config / Secret / env failure |
-| 5 | Service routing / port / endpoint failure |
-| 6 | DNS / service discovery / namespace failure |
-| 7 | Resource / scheduling / storage failure |
-| 8 | Ingress / external routing failure |
-| 9 | NetworkPolicy / traffic restriction failure |
-| 10 | RBAC / service account / permission failure |
-| 11 | Application-level dependency / runtime failure |
+| # | Failure domain | Tier |
+|---|---------------|------|
+| 1 | Config / Secret / env failure | 1 |
+| 2 | Probe failure | 1 |
+| 3 | Service routing / port / endpoint failure | 1 |
+| 4 | Image pull / container creation failure | 1 |
+| 5 | Ingress / external routing failure | 2 |
+| 6 | Application-level dependency / runtime failure | 2 |
+| 7 | Startup / crash failure | 2 |
+| 8 | NetworkPolicy / traffic restriction failure | 3 |
+| 9 | RBAC / service account / permission failure | 3 |
+| 10 | Resource / scheduling / storage failure | 3 |
+| 11 | DNS / service discovery / namespace failure | 3 |
 
 For detailed subcases, diagnostic commands, signal-to-domain mapping, and fix patterns for each domain, refer to `playbook.md`.
 
