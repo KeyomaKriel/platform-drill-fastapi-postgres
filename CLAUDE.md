@@ -260,8 +260,8 @@ Each drill uses one of these task types:
 #### 3. Small implementation/change task
 - **No fault injected.** Cluster is healthy.
 - User makes a small, realistic change and deploys it.
-- **Constraints:** Completable in 10-15 minutes. Must involve code/config/manifest change + build/deploy/verify. Prefer realistic tasks (adding an endpoint, updating config, adjusting a manifest). Do not invent tasks requiring deep domain knowledge or major infrastructure buildout.
-- Examples: add a `/ready` endpoint and update the readiness probe; add a `version` label to all pods; add a startup probe; move a hardcoded password to a Secret; add a `/version` endpoint from an env var.
+- **Constraints:** Completable in 10-15 minutes. **Prefer manifest/config-only tasks** — this is a Platform Engineer interview, not a developer interview. Tasks should stay in the Kubernetes resource and config layer (manifests, ConfigMaps, Secrets, deploy config) unless the user explicitly requests a code-level task. Do not invent tasks requiring app code changes, deep domain knowledge, or major infrastructure buildout.
+- Examples: add a startup probe; add a `version` label to all resources; move a hardcoded password from the Deployment spec into a Secret; add resource requests and limits; add or fix a NetworkPolicy rule; update the Ingress to add a path rule; add an init container that waits for a dependency.
 
 #### 4. Verification/trade-off task
 - **No fault injected.** Cluster is healthy.
@@ -457,9 +457,9 @@ The approval prompt shows `echo "gibberish" | base64 -d | bash` — the user can
 
 **Simulation:** Stay silent. Do not suggest approaches unless asked.
 
-**Verification:** Change correct? Minimal and consistent with repo patterns? Image rebuilt, redeployed, verified live? Existing endpoints still functional?
+**Verification:** Change correct? Minimal and consistent with repo patterns? Applied through the correct deploy path (manifest-only changes don't need an image rebuild)? Verified live? Existing endpoints still functional?
 
-**What good looks like:** Oriented to repo first. Found the right place to change. Minimal, correct implementation. Executed full build/deploy cycle. Verified new and existing behaviour. Communicated clearly.
+**What good looks like:** Oriented to repo first. Found the right manifest/config to change. Minimal, correct implementation. Used the correct deploy path — did not rebuild the image unnecessarily for a manifest-only change. Verified new and existing behaviour. Communicated clearly.
 
 **Evaluation criteria (Needs Work / Solid / Strong):**
 1. **Repo orientation** — Understood structure and patterns before changing?
@@ -570,9 +570,9 @@ Watch for: skipping orientation, not reading `describe pod` carefully, trying to
 
 #### Small implementation/change coaching
 
-Guide the user through: (1) read existing code/manifests/patterns, (2) locate the right files, (3) plan the change before implementing, (4) implement minimally, (5) build/load/deploy cycle, (6) verify new behaviour, (7) verify existing behaviour.
+Guide the user through: (1) read existing manifests/config/patterns, (2) locate the right files, (3) plan the change before implementing, (4) implement minimally, (5) apply through correct deploy path (manifest-only changes need `kubectl apply`, not an image rebuild), (6) verify new behaviour, (7) verify existing behaviour.
 
-Watch for: changing without understanding patterns, forgetting to rebuild image, forgetting to reload into kind, not verifying both new and existing behaviour, over-engineering.
+Watch for: changing without understanding patterns, rebuilding the image unnecessarily for a manifest-only change, not verifying both new and existing behaviour, over-engineering, touching app code when the task is manifest-level.
 
 #### Verification/trade-off coaching
 
