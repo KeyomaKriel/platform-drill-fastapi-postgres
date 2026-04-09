@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kubernetes Troubleshooting Interview Sheet</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --text: #eaf0ff;
+      --muted: #a8b4d1;
+      --line: #2a3963;
+      --accent: #7cc4ff;
+      --accent-2: #8ef0c3;
+      --warn: #ffd27a;
+      --danger: #ff9d9d;
+      --pill: #1a2647;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(124,196,255,.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(142,240,195,.12), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .page {
+      width: 1280px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero { margin-bottom: 18px; }
+    .hero-main { padding: 24px 26px 22px; }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 34px;
+      line-height: 1.05;
+      letter-spacing: -.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .step {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 128px;
+    }
+
+    .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: var(--pill);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .step h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .step p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: -.01em;
+    }
+
+    .hero-bottom {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(42,57,99,.8);
+    }
+
+    .symptom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .signal, .view {
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .signal { min-height: 174px; }
+
+    .signal h4, .view h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .hint {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .signal p, .view p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .signal ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .signal li { margin-bottom: 4px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .views, .footer { padding: 18px; }
+
+    .view-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .view { min-height: 160px; }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--pill);
+      color: var(--accent-2);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .diagram {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      white-space: pre-line;
+      color: var(--accent);
+      background: #0b1328;
+      border: 1px solid #22345f;
+      border-radius: 12px;
+      padding: 10px 11px;
+      margin: 0 0 9px;
+    }
+
+    .footer {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(124,196,255,.09), rgba(142,240,195,.05));
+      box-shadow: var(--shadow);
+    }
+
+    .footer strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .footer p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .accent { color: var(--accent); }
+    .green { color: var(--accent-2); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="card hero-main">
+        <h1>Kubernetes Troubleshooting Interview Sheet</h1>
+        <p class="subtitle">Use the four-stage flow first. Use the support views only to place the problem more precisely.</p>
+
+        <div class="flow">
+          <div class="step">
+            <div class="num">1</div>
+            <h3>Start</h3>
+            <p>Was the Pod created, and did the container actually start? Think image pull, command, env, mounts, admission, scheduling.</p>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <h3>Stay up</h3>
+            <p>Does it keep running and become Ready? Think crashes, probes, startup timing, OOM, bad config, app boot failures.</p>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <h3>Receive Traffic</h3>
+            <p>Can traffic reach the Pod through the Service path? Think selectors, EndpointSlices, ports, targetPort, path routing.</p>
+          </div>
+          <div class="step">
+            <div class="num">4</div>
+            <h3>Reach Dep</h3>
+            <p>Can the app reach its dependencies? Think DB, DNS, external APIs, storage, secrets, RBAC, network rules, identity.</p>
+          </div>
+        </div>
+
+        <div class="hero-bottom">
+          <h2 class="section-title">Fast symptom map</h2>
+          <div class="symptom-grid">
+            <div class="signal">
+              <h4>Pod missing or never becomes Running</h4>
+              <span class="hint">Think <span class="accent">Start</span></span>
+              <p>Put it in the creation/start bucket first.</p>
+              <ul>
+                <li>Pending: scheduling, node pressure, PVC, affinity, taints.</li>
+                <li>ErrImagePull / ImagePullBackOff: image name, tag, auth, registry reachability.</li>
+                <li>CreateContainerConfigError / CreateContainerError: env, secret, config, mount, command.</li>
+              </ul>
+            </div>
+            <div class="signal">
+              <h4>Pod runs briefly or shows 0/1 Ready</h4>
+              <span class="hint">Think <span class="green">Stay up</span></span>
+              <p>Assume boot or health gating until proven otherwise.</p>
+              <ul>
+                <li>CrashLoopBackOff: app exits, bad startup dependency, bad flags, bad config.</li>
+                <li>OOMKilled / exit 137: resource limits too low or leak / spike during boot.</li>
+                <li>Readiness failing: app alive but not actually ready to serve.</li>
+              </ul>
+            </div>
+            <div class="signal">
+              <h4>App is healthy inside Pod, but traffic still fails</h4>
+              <span class="hint">Think <span class="warn">Receive Traffic</span></span>
+              <p>Split internal routing from external routing.</p>
+              <ul>
+                <li>No endpoints or wrong EndpointSlices: selector mismatch or not Ready.</li>
+                <li>Service port / targetPort mismatch: Service exists but points to wrong container port.</li>
+                <li>Ingress host/path/backend issue: external path broken while internal Service works.</li>
+              </ul>
+            </div>
+            <div class="signal">
+              <h4>Requests reach app, but feature still fails</h4>
+              <span class="hint">Think <span class="danger">Reach Dep</span></span>
+              <p>Now think downstream systems, not Kubernetes routing.</p>
+              <ul>
+                <li>DB connection/auth failures, DNS resolution failures, bad upstream URL.</li>
+                <li>Missing secret values, expired creds, bad IAM/RBAC identity.</li>
+                <li>NetworkPolicy, egress limits, storage, external API failures.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div>
+        <div class="card views">
+          <h2 class="section-title">Support views</h2>
+          <div class="view-grid">
+            <div class="view">
+              <div class="tag">Supports Start</div>
+              <h4>Management view</h4>
+              <div class="diagram">Deployment
+↓
+ReplicaSet
+↓
+Pods</div>
+              <p>Use when asking whether the right Pods are being created, replaced, and kept at the expected count.</p>
+            </div>
+            <div class="view">
+              <div class="tag">Supports Stay up</div>
+              <h4>Health view</h4>
+              <div class="diagram">kubelet / probes
+↓
+Pod / container</div>
+              <p>Use when asking whether the app booted, stayed alive, and became eligible to receive traffic.</p>
+            </div>
+            <div class="view">
+              <div class="tag">Supports Receive Traffic</div>
+              <h4>Traffic view</h4>
+              <div class="diagram">Client
+↓
+Ingress
+↓
+Service
+↓
+Pod
+↓
+app</div>
+              <p>Use when asking whether the request path is broken externally, at the Service layer, or inside the Pod.</p>
+            </div>
+            <div class="view">
+              <div class="tag">Supports Start / Stay up / Reach Dep</div>
+              <h4>Dependencies view</h4>
+              <div class="diagram">Config / Secret / DNS / DB / API
+↓
+Pod / app</div>
+              <p>Use when asking whether the app got the inputs it needs and can reach the systems it depends on.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card footer">
+      <div>
+        <strong>How to learn it</strong>
+        <p>Do not memorise isolated terms first. Attach each concept to a job, a failure shape, and a first check.</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

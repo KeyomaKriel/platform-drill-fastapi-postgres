@@ -1,65 +1,48 @@
-# Scenario 02 — Config / Secret / Env Failure
+# Scenario 02 — Config / Secret / Env Failure (Debugging)
 
-**Date:** 2026-04-07 ~17:27
+**Date:** 2026-04-08 14:12–14:37
 **Task type:** Single-fault debugging
-**Failure domain:** #4 — Config / Secret / env failure
-**Prompt:** "The API has been returning 503s for the last few minutes. It was working fine earlier today. Can you figure out what's going on and get it back up?"
+**Failure domain:** Config / Secret / env failure (Tier 1)
+**Injected fault:** `POSTGRES_HOST` changed from `postgres` to `postgres-db` in `app-config` ConfigMap
+**Result:** Fixed successfully
 
-## What was broken
+## Prompt given
 
-`POSTGRES_HOST` in the `app-config` ConfigMap changed from `postgres` to `postgres-db`. App couldn't resolve the hostname, crashed on startup with `psycopg.OperationalError: failed to resolve host 'postgres-db'`.
+> A teammate pinged you: "The API was working earlier today but now it's returning errors. Can you take a look?"
 
-## Fix
+## What was required
 
-`kubectl edit configmap app-config` — changed `POSTGRES_HOST` back to `postgres`, then `kubectl rollout restart deployment/platform-drill-api`.
-
-**Fix succeeded:** Yes
+Identify that the `app-config` ConfigMap had a wrong `POSTGRES_HOST` value (`postgres-db` instead of `postgres`), fix it, restart the app deployment, and verify end-to-end.
 
 ## Evaluation
 
-| Criteria | Rating | Explanation |
-|---|---|---|
-| Entry mode | Solid | Went straight to cluster — appropriate for active 503s. |
-| Runtime flow | Solid | pods → describe → logs → config investigation → fix. Logical. |
-| Signal reading | Solid | Read logs, identified DNS failure, traced to ConfigMap. |
-| Hypothesis-driven | Solid | After seeing `postgres-db` in error, investigated config sources. |
-| Intentional commands | Needs Work | Many duplicate commands — get pods 8x, describe 4x each pod, logs 4x, wrong edit syntax repeated 4x. |
-| Smallest justified fix | Strong | Edited one wrong value and restarted. Clean. |
-| End-to-end verification | Needs Work | Watched pods come up but never ran curl to verify app responds through Ingress. |
-| Communication | Needs Work | No narration in session log. |
+| Criterion | Rating | Notes |
+|-----------|--------|-------|
+| Entry mode | Solid | Broad triage: pods → endpoints → deploy → logs |
+| Runtime flow | Solid | Logical progression, some redundancy after finding key signal |
+| Signal reading | Strong | Caught DNS error, cross-referenced with service name, noticed annotation showed original correct value |
+| Hypothesis-driven | Solid | Investigated hostname source after DNS error; used annotation as evidence |
+| Intentional commands | Solid | Mostly purposeful, some redundant exploration |
+| Smallest justified fix | Strong | Edited one ConfigMap value + rollout restart |
+| End-to-end verification | Needs Work | Checked pods/endpoints/logs but never curled endpoints |
+| Communication | Needs Work | No narration visible |
 
-## Notable commands
+## Notable good actions
 
-**Good:**
-- `kubectl logs` — went to logs after describe, found the error quickly
-- `kubectl get configmap app-config -o yaml` — checked live ConfigMap values
-- `kubectl get secret -o json` + base64 decode — thorough config investigation
-- `kubectl edit configmap app-config` — correct fix method (after syntax correction)
+- Spotted annotation showing original correct value for POSTGRES_HOST
+- Used `kubectl edit` + `rollout restart` — correct fix path for envFrom ConfigMap
+- Checked `--previous` logs for consistency
 
-**Redundant / would improve:**
-- `kubectl get pods` ran 8+ times with no new information between runs
-- `kubectl describe pod` ran 4x per pod with same output
-- `kubectl edit app-config` (wrong syntax) repeated 4x before correcting to `kubectl edit configmap app-config`
-- No `curl localhost/`, `curl localhost/health`, `curl localhost/items` after fix
+## Unnecessary/redundant actions
 
-## Suggested narration
+- JSON-inspected both services after logs already identified hostname issue
+- Described both deployments when error was clearly config-related
+- Described same pod twice
+- `env | grep POSTGRES_DB` instead of POSTGRES_HOST (wrong variable)
 
-At `get pods`:
-> "Two API pods in CrashLoopBackOff, Postgres is running fine. The app is crashing, not Postgres. Let me describe one of the crashing pods."
+## Suggested narration at key decision points
 
-At logs:
-> "The app is failing to resolve host 'postgres-db'. That's a DNS resolution error — the hostname is wrong. This comes from the POSTGRES_HOST env var, which is in the app-config ConfigMap."
-
-At checking ConfigMap:
-> "POSTGRES_HOST is set to 'postgres-db' in the live ConfigMap, but the Postgres service is called 'postgres'. The ConfigMap has a wrong hostname. I'll edit it and restart."
-
-After fix:
-> "ConfigMap updated, deployment restarted. Let me curl the endpoints to confirm it's working end-to-end."
-
-## Coaching notes
-
-This was a coached scenario. Key learning moments during coaching:
-- Understanding DNS resolution errors ("failed to resolve host" = DNS failure)
-- When rollout restart is needed (env vars from ConfigMap require pod restart)
-- kubectl edit vs yaml edit + apply (either works; for live cluster faults, edit is fast)
-- Trusting live cluster state as ground truth over file contents
+- After `kubectl get pods`: "I can see the API pod is in CrashLoopBackOff while postgres is healthy. Let me check the app logs to see why it's crashing."
+- After seeing logs: "The error says it failed to resolve host 'postgres-db'. The postgres service is called 'postgres', not 'postgres-db'. So the app has the wrong hostname configured. Let me check where that comes from — it's likely in a ConfigMap or env var."
+- After seeing ConfigMap: "The ConfigMap has POSTGRES_HOST set to 'postgres-db', but the annotation shows the original value was 'postgres'. Someone changed this. I'll fix it back and restart the deployment."
+- After fixing: "Let me curl all three endpoints through the ingress to verify everything is working end-to-end."

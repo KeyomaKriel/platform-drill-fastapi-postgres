@@ -1,0 +1,152 @@
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .sheet { padding: 0.5rem 0 1rem; }
+  .chain { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 1.25rem; padding: 10px 0; }
+  .chain-step { font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: var(--border-radius-md); }
+  .chain-arrow { font-size: 13px; color: var(--color-text-tertiary); }
+  .cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .col { border-radius: var(--border-radius-lg); padding: 14px 16px; }
+  .col-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .col-title .num { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; }
+  .section { margin-bottom: 12px; }
+  .section:last-child { margin-bottom: 0; }
+  .section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .tag { display: inline-block; font-size: 11px; font-family: var(--font-mono); padding: 2px 6px; border-radius: 4px; margin: 0 4px 4px 0; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+  .cmd { font-size: 11px; font-family: var(--font-mono); color: var(--color-text-info); padding: 2px 0; line-height: 1.6; }
+  .tip { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 4px; }
+
+  .c1 { background: #EEEDFE; } .c1 .col-title { color: #3C3489; } .c1 .num { background: #AFA9EC; color: #26215C; } .c1 .section-label { color: #534AB7; }
+  .c2 { background: #FAECE7; } .c2 .col-title { color: #712B13; } .c2 .num { background: #F0997B; color: #4A1B0C; } .c2 .section-label { color: #993C1D; }
+  .c3 { background: #E6F1FB; } .c3 .col-title { color: #0C447C; } .c3 .num { background: #85B7EB; color: #042C53; } .c3 .section-label { color: #185FA5; }
+  .c4 { background: #E1F5EE; } .c4 .col-title { color: #085041; } .c4 .num { background: #5DCAA5; color: #04342C; } .c4 .section-label { color: #0F6E56; }
+
+  .cs1 { background: #AFA9EC; color: #26215C; }
+  .cs2 { background: #F0997B; color: #4A1B0C; }
+  .cs3 { background: #85B7EB; color: #042C53; }
+  .cs4 { background: #5DCAA5; color: #04342C; }
+
+  @media (prefers-color-scheme: dark) {
+    .c1 { background: #26215C; } .c1 .col-title { color: #CECBF6; } .c1 .num { background: #534AB7; color: #EEEDFE; } .c1 .section-label { color: #AFA9EC; }
+    .c2 { background: #4A1B0C; } .c2 .col-title { color: #F5C4B3; } .c2 .num { background: #993C1D; color: #FAECE7; } .c2 .section-label { color: #F0997B; }
+    .c3 { background: #042C53; } .c3 .col-title { color: #B5D4F4; } .c3 .num { background: #185FA5; color: #E6F1FB; } .c3 .section-label { color: #85B7EB; }
+    .c4 { background: #04342C; } .c4 .col-title { color: #9FE1CB; } .c4 .num { background: #0F6E56; color: #E1F5EE; } .c4 .section-label { color: #5DCAA5; }
+    .cs1 { background: #534AB7; color: #EEEDFE; }
+    .cs2 { background: #993C1D; color: #FAECE7; }
+    .cs3 { background: #185FA5; color: #E6F1FB; }
+    .cs4 { background: #0F6E56; color: #E1F5EE; }
+    .tag { background: rgba(255,255,255,0.08); color: var(--color-text-secondary); border-color: rgba(255,255,255,0.1); }
+  }
+</style>
+
+<div class="sheet">
+  <div class="chain">
+    <span class="chain-step cs1">Start</span><span class="chain-arrow">→</span>
+    <span class="chain-step cs2">Stay up</span><span class="chain-arrow">→</span>
+    <span class="chain-step cs3">Receive traffic</span><span class="chain-arrow">→</span>
+    <span class="chain-step cs4">Reach dependencies</span>
+  </div>
+
+  <div class="cols">
+    <!-- COL 1: START -->
+    <div class="col c1">
+      <div class="col-title"><span class="num">1</span> Start</div>
+
+      <div class="section">
+        <div class="section-label">Symptoms</div>
+        <span class="tag">ImagePullBackOff</span>
+        <span class="tag">ErrImagePull</span>
+        <span class="tag">RunContainerError</span>
+        <span class="tag">Pending</span>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Causes</div>
+        <div class="tip">Wrong image name or tag, bad registry creds, bad command/args, missing ConfigMap or Secret, insufficient CPU/memory, node affinity or taint</div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">First checks</div>
+        <div class="cmd">kubectl describe pod &lt;name&gt;</div>
+        <div class="cmd">kubectl get events</div>
+        <div class="cmd">kubectl logs &lt;name&gt;</div>
+      </div>
+    </div>
+
+    <!-- COL 2: STAY UP -->
+    <div class="col c2">
+      <div class="col-title"><span class="num">2</span> Stay up</div>
+
+      <div class="section">
+        <div class="section-label">Symptoms</div>
+        <span class="tag">CrashLoopBackOff</span>
+        <span class="tag">OOMKilled</span>
+        <span class="tag">Restarting</span>
+        <span class="tag">0/1 Ready</span>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Causes</div>
+        <div class="tip">App crashes on startup, OOM from low memory limit, failing liveness or readiness probe, missing env var or dependency at boot</div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">First checks</div>
+        <div class="cmd">kubectl logs &lt;name&gt; --previous</div>
+        <div class="cmd">kubectl describe pod &lt;name&gt;</div>
+        <div class="cmd">kubectl top pod &lt;name&gt;</div>
+      </div>
+    </div>
+
+    <!-- COL 3: RECEIVE TRAFFIC -->
+    <div class="col c3">
+      <div class="col-title"><span class="num">3</span> Receive traffic</div>
+
+      <div class="section">
+        <div class="section-label">Symptoms</div>
+        <span class="tag">503 / 502</span>
+        <span class="tag">Connection refused</span>
+        <span class="tag">No endpoints</span>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Causes</div>
+        <div class="tip">Service selector doesn't match pod labels, wrong targetPort or containerPort, readiness probe failing, Ingress backend misconfigured, wrong host or path rule</div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">First checks</div>
+        <div class="cmd">kubectl get endpoints &lt;svc&gt;</div>
+        <div class="cmd">kubectl describe svc &lt;name&gt;</div>
+        <div class="cmd">kubectl describe ingress</div>
+        <div class="cmd">kubectl port-forward &lt;pod&gt;</div>
+      </div>
+    </div>
+
+    <!-- COL 4: REACH DEPENDENCIES -->
+    <div class="col c4">
+      <div class="col-title"><span class="num">4</span> Reach deps</div>
+
+      <div class="section">
+        <div class="section-label">Symptoms</div>
+        <span class="tag">Connection timeout</span>
+        <span class="tag">Auth errors</span>
+        <span class="tag">DNS failures</span>
+        <span class="tag">403 Forbidden</span>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Causes</div>
+        <div class="tip">Bad DB credentials in secret, DNS not resolving, NetworkPolicy blocking egress, RBAC missing, storage PVC not bound, external API unreachable</div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">First checks</div>
+        <div class="cmd">kubectl logs &lt;name&gt;</div>
+        <div class="cmd">kubectl exec -- nslookup &lt;host&gt;</div>
+        <div class="cmd">kubectl get networkpolicy</div>
+        <div class="cmd">kubectl auth can-i ...</div>
+      </div>
+    </div>
+  </div>
+</div>

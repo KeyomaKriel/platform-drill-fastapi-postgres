@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s App-Platform Troubleshooting</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface2: #1a2332;
+  --border: #2a3a4e;
+  --text: #e2e8f0;
+  --text-dim: #8896a8;
+  --accent: #f59e0b;
+  --accent-dim: #b45309;
+  --green: #10b981;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --purple: #a78bfa;
+  --cmd: #22d3ee;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.header {
+  padding: 2rem 2rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.header h1 span { color: var(--accent); }
+.header .subtitle {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+.badge {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+}
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-dim);
+}
+.breadcrumb .crumb {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.breadcrumb .crumb:hover { color: var(--accent); }
+.breadcrumb .sep { color: var(--border); }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card .question-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.card .question {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+.card .hint {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+.cmd {
+  background: #0d1520;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.75rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--cmd);
+  overflow-x: auto;
+  white-space: pre;
+}
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.opt {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.9rem 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.opt:hover {
+  border-color: var(--accent);
+  background: #1a2332;
+  transform: translateX(4px);
+}
+.opt .key {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.15rem 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.resolution {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: 8px;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+.resolution.warning {
+  border-left-color: var(--accent);
+}
+.resolution .res-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.resolution.warning .res-label { color: var(--accent); }
+.resolution .res-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.resolution .res-body {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+.resolution .res-body strong { color: var(--text); font-weight: 600; }
+.restart-btn {
+  margin-top: 1.5rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 1.2rem;
+  color: var(--accent);
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.restart-btn:hover {
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+.progress {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  margin-right: 0.3rem;
+}
+.tag.covered { background: #064e3b; color: #6ee7b7; }
+.tag.gap { background: #7c2d12; color: #fdba74; }
+.legend {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 0.3rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1><span>K8s</span> App-Platform Troubleshooting</h1>
+    <div class="subtitle">Extended flowchart for application-platform engineer interviews</div>
+  </div>
+  <div class="badge">learnk8s + gaps filled</div>
+</div>
+<div class="container">
+  <div class="legend">
+    <div class="legend-item"><span class="tag covered">covered</span> In learnk8s flowchart</div>
+    <div class="legend-item"><span class="tag gap">new</span> Gap filled</div>
+  </div>
+  <div id="breadcrumb" class="breadcrumb"></div>
+  <div id="content"></div>
+  <div class="progress">
+    <span id="depth"></span>
+    <span id="node-id"></span>
+  </div>
+</div>
+<script>
+const T = {
+  start: {
+    q: "What's the symptom?",
+    hint: "Start with what you can observe. Run: kubectl get pods and kubectl get events --sort-by='.lastTimestamp'",
+    cmd: "kubectl get pods -o wide && kubectl get events --sort-by='.lastTimestamp'",
+    opts: [
+      { label: "Pod not starting (Pending)", next: "pending" },
+      { label: "Pod crashing (CrashLoopBackOff / Error)", next: "crash" },
+      { label: "Pod can't pull image (ImagePullBackOff)", next: "imgpull" },
+      { label: "Pod running but app not reachable", next: "notreachable" },
+      { label: "App reachable but slow / degraded", next: "slow" },
+      { label: "Deployment rollout stuck or failed", next: "rollout" },
+      { label: "Pods can't talk to each other (DNS / networking)", next: "dns" },
+    ]
+  },
+
+  // === PENDING ===
+  pending: {
+    q: "Pod is Pending. What do events show?",
+    hint: "Run kubectl describe pod <name> and look at the Events section at the bottom.",
+    cmd: "kubectl describe pod <pod-name>",
+    tag: "covered",
+    opts: [
+      { label: "Insufficient cpu/memory", next: "pending_resources" },
+      { label: "No nodes match nodeSelector/affinity/taints", next: "pending_scheduling" },
+      { label: "PVC is pending / unbound", next: "pending_pvc" },
+      { label: "ResourceQuota exceeded", next: "res_pending_quota" },
+    ]
+  },
+  pending_resources: {
+    q: "Are your resource requests too high, or is the cluster genuinely full?",
+    cmd: "kubectl top nodes\nkubectl describe node <node-name> | grep -A5 'Allocated resources'",
+    tag: "covered",
+    opts: [
+      { label: "Requests are too high for what the app needs", next: "res_lower_requests" },
+      { label: "Cluster is genuinely at capacity", next: "res_scale_cluster" },
+    ]
+  },
+  res_lower_requests: {
+    resolution: true,
+    title: "Lower resource requests",
+    body: "Reduce <strong>requests</strong> in your pod spec to match actual usage. Check current usage with <strong>kubectl top pod</strong>. Don't confuse requests (scheduling guarantee) with limits (hard ceiling)."
+  },
+  res_scale_cluster: {
+    resolution: true,
+    title: "Scale up the cluster",
+    body: "If using a managed service (EKS/GKE/AKS), trigger the cluster autoscaler or add a node pool. If self-managed, add nodes. Also review whether other workloads are over-requesting."
+  },
+  pending_scheduling: {
+    resolution: true,
+    title: "Fix scheduling constraints",
+    body: "Check <strong>nodeSelector</strong>, <strong>nodeAffinity</strong>, and <strong>tolerations</strong> in your pod spec. Run <strong>kubectl get nodes --show-labels</strong> to see what labels exist. If the node has taints, your pod needs a matching toleration.",
+    tag: "covered"
+  },
+  pending_pvc: {
+    resolution: true,
+    title: "Fix the PersistentVolumeClaim",
+    body: "Check <strong>kubectl get pvc</strong> — if it's Pending, either no PV matches, or the StorageClass can't dynamically provision. Verify the StorageClass exists, the access mode matches, and the requested size is available. For cloud providers, check CSI driver logs.",
+    tag: "covered"
+  },
+  res_pending_quota: {
+    resolution: true,
+    title: "ResourceQuota exceeded",
+    body: "Run <strong>kubectl describe resourcequota -n &lt;namespace&gt;</strong> to see limits vs used. Either reduce your deployment's resource requests or ask the platform team to increase the quota.",
+    tag: "covered"
+  },
+
+  // === CRASHLOOP ===
+  crash: {
+    q: "Can you see useful logs?",
+    cmd: "kubectl logs <pod-name> --previous",
+    tag: "covered",
+    opts: [
+      { label: "Yes — app error visible in logs", next: "crash_app_error" },
+      { label: "No logs / container exits immediately", next: "crash_no_logs" },
+      { label: "OOMKilled in describe output", next: "crash_oom" },
+    ]
+  },
+  crash_app_error: {
+    q: "What kind of app error?",
+    tag: "covered",
+    opts: [
+      { label: "Missing env var / config file / secret", next: "crash_config" },
+      { label: "Can't connect to database or dependency", next: "crash_dependency" },
+      { label: "Application bug / exception", next: "res_crash_app_bug" },
+    ]
+  },
+  crash_config: {
+    q: "Is a ConfigMap or Secret missing or misconfigured?",
+    cmd: "kubectl get configmap -n <ns>\nkubectl get secret -n <ns>\nkubectl describe pod <name> | grep -A10 'Environment'",
+    tag: "gap",
+    opts: [
+      { label: "ConfigMap/Secret doesn't exist in this namespace", next: "res_crash_cm_missing" },
+      { label: "Exists but wrong key name or value", next: "res_crash_cm_wrong" },
+      { label: "RBAC — ServiceAccount can't read the Secret", next: "res_crash_rbac" },
+    ]
+  },
+  res_crash_cm_missing: {
+    resolution: true,
+    title: "Create the missing ConfigMap/Secret",
+    body: "The ConfigMap or Secret referenced in your pod spec doesn't exist in this namespace. Create it, or check if it was deployed to the wrong namespace. If using Helm, check your values file and template.",
+    tag: "gap"
+  },
+  res_crash_cm_wrong: {
+    resolution: true,
+    title: "Fix the ConfigMap/Secret keys",
+    body: "The object exists but the key your app expects doesn't match. Run <strong>kubectl get configmap &lt;name&gt; -o yaml</strong> and compare key names to what your app reads. Common issue: YAML indentation error in Helm values causing keys to nest differently than expected.",
+    tag: "gap"
+  },
+  res_crash_rbac: {
+    resolution: true,
+    title: "Fix RBAC for the ServiceAccount",
+    body: "The pod's ServiceAccount doesn't have permission to read the Secret. Create a <strong>Role</strong> granting <strong>get</strong> on secrets, and a <strong>RoleBinding</strong> to the ServiceAccount. Run <strong>kubectl auth can-i get secrets --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt;</strong> to verify.",
+    tag: "gap"
+  },
+  crash_dependency: {
+    q: "Can you reach the dependency from inside the pod?",
+    cmd: "kubectl exec -it <pod-name> -- sh\n# then: nslookup <service-name>\n# or: curl http://<service-name>:<port>/health",
+    tag: "gap",
+    opts: [
+      { label: "DNS doesn't resolve the service name", next: "dns_resolve" },
+      { label: "DNS resolves but connection refused/timeout", next: "res_crash_dep_down" },
+      { label: "Connects but auth fails", next: "res_crash_dep_auth" },
+    ]
+  },
+  res_crash_dep_down: {
+    resolution: true,
+    title: "Dependency is down or port is wrong",
+    body: "DNS resolves but nothing is listening. Check if the dependency pod is running, if the Service <strong>targetPort</strong> matches the container port, and if a <strong>NetworkPolicy</strong> is blocking the connection.",
+    tag: "gap"
+  },
+  res_crash_dep_auth: {
+    resolution: true,
+    title: "Credentials are wrong",
+    body: "Connection works but authentication fails. The Secret holding the credentials likely has wrong values. Check the Secret contents (base64 decode them) and verify they match what the dependency expects. Common after credential rotation.",
+    tag: "gap"
+  },
+  res_crash_app_bug: {
+    resolution: true,
+    title: "Fix the application code",
+    body: "The logs show an unhandled exception or error in the app itself. This is outside Kubernetes — debug the application, fix the code, build a new image, and redeploy.",
+    tag: "covered"
+  },
+  crash_no_logs: {
+    q: "What does 'kubectl describe pod' show for Last State?",
+    cmd: "kubectl describe pod <pod-name> | grep -A5 'Last State'",
+    tag: "covered",
+    opts: [
+      { label: "Exit code 1 — app crashed before logging", next: "res_crash_entrypoint" },
+      { label: "Exit code 137 — killed by signal (OOM or liveness probe)", next: "crash_137" },
+      { label: "Exit code 0 — container completed normally", next: "res_crash_exit0" },
+    ]
+  },
+  crash_137: {
+    q: "Is it OOMKilled or a liveness probe kill?",
+    cmd: "kubectl describe pod <pod-name> | grep -i oom\nkubectl describe pod <pod-name> | grep -A10 'Liveness'",
+    tag: "gap",
+    opts: [
+      { label: "OOMKilled", next: "crash_oom" },
+      { label: "Liveness probe failed", next: "res_crash_liveness" },
+    ]
+  },
+  res_crash_liveness: {
+    resolution: true,
+    title: "Fix the liveness probe",
+    body: "The liveness probe is killing the container before the app is ready. <strong>Increase initialDelaySeconds</strong> so the app has time to start. Check the probe's <strong>path/port/command</strong> is correct. If the app is slow to respond under load, increase <strong>timeoutSeconds</strong>. Consider adding a <strong>startupProbe</strong> for slow-starting apps.",
+    tag: "gap"
+  },
+  res_crash_entrypoint: {
+    resolution: true,
+    title: "Check CMD / ENTRYPOINT",
+    body: "The container starts and immediately exits. Verify the <strong>command</strong> and <strong>args</strong> in your pod spec, or the <strong>CMD/ENTRYPOINT</strong> in your Dockerfile. Common causes: wrong binary path, missing shell, or the command is a shell script without execute permission.",
+    tag: "covered"
+  },
+  res_crash_exit0: {
+    resolution: true,
+    title: "Container is completing, not crashing",
+    body: "Exit code 0 means the process finished successfully — it's not a long-running server. Check your <strong>CMD</strong>: it might be running a one-off script instead of a server process. If this is a Job, it shouldn't be a Deployment.",
+    tag: "covered"
+  },
+  crash_oom: {
+    resolution: true,
+    title: "OOMKilled — increase memory limits",
+    body: "The container exceeded its memory limit and was killed. Run <strong>kubectl top pod</strong> to see current usage. Increase the <strong>resources.limits.memory</strong> in your pod spec. But also investigate if the app has a memory leak — increasing the limit just delays the crash if so. Check if the JVM (if Java) has <strong>-Xmx</strong> set correctly relative to the container limit.",
+    tag: "gap"
+  },
+
+  // === IMAGE PULL ===
+  imgpull: {
+    q: "What does the describe event say?",
+    cmd: "kubectl describe pod <pod-name> | grep -A5 'Events'",
+    tag: "covered",
+    opts: [
+      { label: "Repository not found / image not found", next: "res_img_name" },
+      { label: "Tag not found", next: "res_img_tag" },
+      { label: "Unauthorized / authentication required", next: "res_img_auth" },
+    ]
+  },
+  res_img_name: {
+    resolution: true,
+    title: "Fix the image name",
+    body: "The image repository doesn't exist. Check for typos in the image name. Verify the registry URL is correct (e.g. your private registry vs Docker Hub).",
+    tag: "covered"
+  },
+  res_img_tag: {
+    resolution: true,
+    title: "Fix the image tag",
+    body: "The repository exists but the tag doesn't. Run <strong>docker manifest inspect &lt;image:tag&gt;</strong> or check your registry UI. If using :latest, the image may have been overwritten. Pin to a specific version.",
+    tag: "covered"
+  },
+  res_img_auth: {
+    resolution: true,
+    title: "Configure image pull credentials",
+    body: "Create an <strong>imagePullSecret</strong> in the namespace and reference it in your pod spec or ServiceAccount. For ECR, the token expires every 12 hours — make sure a credential helper is running.",
+    tag: "covered"
+  },
+
+  // === NOT REACHABLE ===
+  notreachable: {
+    q: "Can you reach the app by port-forwarding directly to the pod?",
+    cmd: "kubectl port-forward pod/<pod-name> 8080:<container-port>",
+    tag: "covered",
+    opts: [
+      { label: "Yes — app responds via port-forward", next: "notreachable_svc" },
+      { label: "No — app doesn't respond even directly", next: "res_notreachable_app" },
+    ]
+  },
+  res_notreachable_app: {
+    resolution: true,
+    title: "App isn't listening on the expected port",
+    body: "The app itself isn't responding. Check it's listening on <strong>0.0.0.0</strong> (not 127.0.0.1) and on the right port. Verify with <strong>kubectl exec -it &lt;pod&gt; -- ss -tlnp</strong> or <strong>netstat -tlnp</strong>. The containerPort in the spec must match.",
+    tag: "covered"
+  },
+  notreachable_svc: {
+    q: "Does the Service have endpoints?",
+    cmd: "kubectl get endpoints <service-name>",
+    tag: "covered",
+    opts: [
+      { label: "No endpoints listed", next: "notreachable_no_ep" },
+      { label: "Endpoints exist — Service looks fine", next: "notreachable_ingress" },
+    ]
+  },
+  notreachable_no_ep: {
+    q: "Do the Service selector labels match the Pod labels?",
+    cmd: "kubectl get svc <name> -o yaml | grep -A5 selector\nkubectl get pod <name> --show-labels",
+    tag: "covered",
+    opts: [
+      { label: "Labels don't match", next: "res_notreachable_selector" },
+      { label: "Labels match but still no endpoints", next: "res_notreachable_readiness" },
+    ]
+  },
+  res_notreachable_selector: {
+    resolution: true,
+    title: "Fix the Service selector",
+    body: "The Service selector labels don't match the pod labels. Update either the Service or the Deployment labels so they match. Common cause: Helm template renders a different label than expected.",
+    tag: "covered"
+  },
+  res_notreachable_readiness: {
+    resolution: true,
+    title: "Readiness probe is failing",
+    body: "Labels match but the pod isn't passing its <strong>readiness probe</strong>, so Kubernetes removes it from the Service endpoints. Check the probe configuration — the path, port, and timing. Run <strong>kubectl describe pod</strong> and look for readiness probe failure events.",
+    tag: "covered"
+  },
+  notreachable_ingress: {
+    q: "Are you accessing via Ingress or directly via Service?",
+    tag: "covered",
+    opts: [
+      { label: "Via Ingress — it's not routing correctly", next: "notreachable_ingress_detail" },
+      { label: "Via Service (NodePort/LoadBalancer) — something else is wrong", next: "res_notreachable_targetport" },
+    ]
+  },
+  notreachable_ingress_detail: {
+    q: "Does the Ingress backend match the Service name and port?",
+    cmd: "kubectl describe ingress <name>",
+    tag: "covered",
+    opts: [
+      { label: "Backend Service name or port is wrong", next: "res_notreachable_ingress_backend" },
+      { label: "Backend looks correct", next: "res_notreachable_ingress_controller" },
+    ]
+  },
+  res_notreachable_ingress_backend: {
+    resolution: true,
+    title: "Fix the Ingress backend",
+    body: "Update the Ingress <strong>service.name</strong> and <strong>service.port.number</strong> to match the actual Service. The port on the Ingress must match the Service's port, not the container's port.",
+    tag: "covered"
+  },
+  res_notreachable_ingress_controller: {
+    resolution: true,
+    title: "Issue is with the Ingress controller",
+    body: "The Ingress config looks correct but traffic isn't flowing. Check the Ingress controller logs (e.g. <strong>kubectl logs -n ingress-nginx &lt;controller-pod&gt;</strong>). Verify the Ingress class annotation matches the controller. Check if TLS termination is misconfigured.",
+    tag: "covered"
+  },
+  res_notreachable_targetport: {
+    resolution: true,
+    title: "Check Service targetPort",
+    body: "The Service's <strong>targetPort</strong> must match the port your app is listening on inside the container. The Service's <strong>port</strong> is what clients connect to; <strong>targetPort</strong> is where traffic actually goes. These are often mixed up.",
+    tag: "covered"
+  },
+
+  // === SLOW APP (GAP) ===
+  slow: {
+    q: "Is the pod being throttled on CPU or near its memory limit?",
+    cmd: "kubectl top pod <pod-name>\nkubectl describe pod <pod-name> | grep -A5 'Limits'",
+    tag: "gap",
+    opts: [
+      { label: "Yes — high CPU/memory usage relative to limits", next: "slow_resources" },
+      { label: "No — resource usage looks fine", next: "slow_not_resources" },
+    ]
+  },
+  slow_resources: {
+    q: "Is it CPU throttling or memory pressure?",
+    tag: "gap",
+    opts: [
+      { label: "CPU near limits (throttling)", next: "res_slow_cpu" },
+      { label: "Memory near limits (about to OOM)", next: "res_slow_mem" },
+    ]
+  },
+  res_slow_cpu: {
+    resolution: true,
+    title: "CPU throttling — raise limits or optimise",
+    body: "When a container hits its CPU limit, Kubernetes throttles it — the process runs but slower. <strong>Increase resources.limits.cpu</strong> or investigate why the app is CPU-hungry. Note: some teams remove CPU limits entirely and rely only on requests, to avoid throttling.",
+    tag: "gap"
+  },
+  res_slow_mem: {
+    resolution: true,
+    title: "Memory pressure — raise limits or fix leak",
+    body: "The app is using most of its memory limit. It hasn't been OOMKilled yet but GC pressure or swap is slowing it. Increase limits, but also check for memory leaks. For JVM apps, ensure <strong>-Xmx</strong> is ~75% of the container limit to leave room for non-heap memory.",
+    tag: "gap"
+  },
+  slow_not_resources: {
+    q: "Is a dependency slow (database, external API, another service)?",
+    cmd: "kubectl exec -it <pod-name> -- sh\n# then: time curl http://<dependency-service>:<port>/health",
+    tag: "gap",
+    opts: [
+      { label: "Yes — dependency is slow or timing out", next: "res_slow_dependency" },
+      { label: "No — dependencies respond fine", next: "slow_other" },
+    ]
+  },
+  res_slow_dependency: {
+    resolution: true,
+    title: "Dependency latency",
+    body: "The app is slow because something it calls is slow. Identify which dependency: database, cache, external API, or another internal service. Check the dependency's own pod metrics. This is now an app-level problem — consider connection pooling, timeouts, retries with backoff, or circuit breakers.",
+    tag: "gap"
+  },
+  slow_other: {
+    q: "Is the pod restarting frequently?",
+    cmd: "kubectl get pods | grep <pod-name>  # check RESTARTS column",
+    tag: "gap",
+    opts: [
+      { label: "Yes — high restart count", next: "res_slow_restarts" },
+      { label: "No — stable but slow", next: "res_slow_hpa" },
+    ]
+  },
+  res_slow_restarts: {
+    resolution: true,
+    title: "Frequent restarts causing intermittent slowness",
+    body: "The app keeps crashing and restarting, causing downtime between restarts. Check <strong>kubectl logs --previous</strong> and the liveness probe config. An overly aggressive liveness probe can kill a pod that's just temporarily slow under load.",
+    tag: "gap"
+  },
+  res_slow_hpa: {
+    resolution: true,
+    title: "Consider scaling out with HPA",
+    body: "The app is healthy but slow, and resources per pod look fine. You may just need more replicas. Check if an <strong>HPA</strong> exists: <strong>kubectl get hpa</strong>. If not, create one targeting CPU or custom metrics. If HPA exists but isn't scaling, verify <strong>metrics-server</strong> is running and the HPA's target metric is being reported.",
+    tag: "gap"
+  },
+
+  // === ROLLOUT (GAP) ===
+  rollout: {
+    q: "What does the rollout status show?",
+    cmd: "kubectl rollout status deployment/<name>\nkubectl describe deployment <name>",
+    tag: "gap",
+    opts: [
+      { label: "New pods are in CrashLoopBackOff / ImagePullBackOff", next: "rollout_crash" },
+      { label: "New pods stuck Pending (no resources)", next: "pending" },
+      { label: "Rollout is progressing but very slowly", next: "rollout_slow" },
+      { label: "ProgressDeadlineExceeded", next: "res_rollout_deadline" },
+    ]
+  },
+  rollout_crash: {
+    resolution: true,
+    title: "Roll back, then fix the new version",
+    body: "The new image is broken. Roll back immediately: <strong>kubectl rollout undo deployment/&lt;name&gt;</strong>. Then debug the new version (bad image, missing config, etc.) before re-deploying. Use <strong>kubectl rollout history deployment/&lt;name&gt;</strong> to see revisions.",
+    tag: "gap"
+  },
+  rollout_slow: {
+    resolution: true,
+    title: "Check maxUnavailable and maxSurge",
+    body: "The rolling update is progressing slowly because <strong>maxSurge</strong> and <strong>maxUnavailable</strong> are set too conservatively (e.g. 1 at a time). Also check if new pods are slow to pass readiness probes, which blocks the rollout from continuing.",
+    tag: "gap"
+  },
+  res_rollout_deadline: {
+    resolution: true,
+    title: "ProgressDeadlineExceeded",
+    body: "The deployment couldn't complete within its <strong>progressDeadlineSeconds</strong> (default 600s). The new pods are failing somehow — check their status. If unsure, roll back with <strong>kubectl rollout undo</strong> and investigate. Increase the deadline if the app legitimately takes a long time to start.",
+    tag: "gap"
+  },
+
+  // === DNS / NETWORKING (GAP) ===
+  dns: {
+    q: "Can the pod resolve DNS at all?",
+    cmd: "kubectl exec -it <pod-name> -- nslookup kubernetes.default",
+    tag: "gap",
+    opts: [
+      { label: "DNS doesn't resolve anything", next: "dns_broken" },
+      { label: "DNS works for some services but not the one I need", next: "dns_resolve" },
+      { label: "DNS resolves but connection is refused or times out", next: "dns_blocked" },
+    ]
+  },
+  dns_broken: {
+    resolution: true,
+    title: "CoreDNS is down or misconfigured",
+    body: "If no DNS works at all, check CoreDNS: <strong>kubectl get pods -n kube-system -l k8s-app=kube-dns</strong>. If the pods are down, that's your issue. Also check the pod's <strong>dnsPolicy</strong> — if set to 'Default' it uses the node's DNS, not cluster DNS.",
+    tag: "gap"
+  },
+  dns_resolve: {
+    q: "Is the target service in the same namespace?",
+    cmd: "kubectl exec -it <pod-name> -- nslookup <service-name>.<namespace>.svc.cluster.local",
+    tag: "gap",
+    opts: [
+      { label: "Different namespace — wasn't using FQDN", next: "res_dns_fqdn" },
+      { label: "Same namespace — service just doesn't exist", next: "res_dns_svc_missing" },
+    ]
+  },
+  res_dns_fqdn: {
+    resolution: true,
+    title: "Use the fully qualified service name",
+    body: "Short names like <strong>my-service</strong> only resolve within the same namespace. For cross-namespace, use <strong>my-service.other-namespace.svc.cluster.local</strong> or at minimum <strong>my-service.other-namespace</strong>.",
+    tag: "gap"
+  },
+  res_dns_svc_missing: {
+    resolution: true,
+    title: "The Service doesn't exist",
+    body: "Run <strong>kubectl get svc -n &lt;namespace&gt;</strong>. The Service your app is trying to reach either wasn't deployed, was deployed to the wrong namespace, or has a different name than expected.",
+    tag: "gap"
+  },
+  dns_blocked: {
+    q: "Is a NetworkPolicy blocking the traffic?",
+    cmd: "kubectl get networkpolicy -n <namespace>\nkubectl describe networkpolicy <name>",
+    tag: "gap",
+    opts: [
+      { label: "Yes — there's a deny policy blocking it", next: "res_dns_netpol" },
+      { label: "No NetworkPolicies — something else", next: "res_dns_port_mismatch" },
+    ]
+  },
+  res_dns_netpol: {
+    resolution: true,
+    title: "NetworkPolicy is blocking traffic",
+    body: "A NetworkPolicy in the source or destination namespace is blocking the connection. You need to add an <strong>egress</strong> rule on the source pod and an <strong>ingress</strong> rule on the destination pod allowing the traffic. Match by pod labels and namespace selectors.",
+    tag: "gap"
+  },
+  res_dns_port_mismatch: {
+    resolution: true,
+    title: "Port mismatch or app not listening",
+    body: "DNS resolves and no NetworkPolicy blocks, but the connection fails. The Service <strong>targetPort</strong> likely doesn't match what the app is actually listening on. Verify with <strong>kubectl exec</strong> into the destination pod and check what's listening.",
+    tag: "gap"
+  },
+};
+
+let history = [];
+
+function render(nodeId) {
+  const node = T[nodeId];
+  if (!node) return;
+
+  // Update history
+  const existingIdx = history.findIndex(h => h.id === nodeId);
+  if (existingIdx >= 0) {
+    history = history.slice(0, existingIdx + 1);
+  } else {
+    history.push({ id: nodeId, label: node.q || node.title || nodeId });
+  }
+
+  // Breadcrumb
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = history.map((h, i) => {
+    const isLast = i === history.length - 1;
+    const crumb = `<span class="crumb" onclick="render('${h.id}')" style="${isLast ? 'color:var(--accent)' : ''}">${h.id === 'start' ? 'START' : h.id}</span>`;
+    return i < history.length - 1 ? crumb + '<span class="sep">›</span>' : crumb;
+  }).join('');
+
+  // Depth
+  document.getElementById('depth').textContent = `depth: ${history.length - 1}`;
+  document.getElementById('node-id').textContent = nodeId;
+
+  const content = document.getElementById('content');
+
+  if (node.resolution) {
+    content.innerHTML = `
+      <div class="resolution ${node.warning ? 'warning' : ''}">
+        <div class="res-label">${node.tag === 'gap' ? '<span class="tag gap">new</span>' : '<span class="tag covered">covered</span>'} Resolution</div>
+        <div class="res-title">${node.title}</div>
+        <div class="res-body">${node.body}</div>
+        <button class="restart-btn" onclick="history=[];render('start')">↩ Start over</button>
+      </div>
+    `;
+    return;
+  }
+
+  const tagHtml = node.tag ? `<span class="tag ${node.tag}">${node.tag === 'gap' ? 'new' : 'covered'}</span> ` : '';
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="question-label">${tagHtml}Step ${history.length - 1}</div>
+      <div class="question">${node.q}</div>
+      ${node.hint ? `<div class="hint">${node.hint}</div>` : ''}
+      ${node.cmd ? `<div class="cmd">${node.cmd}</div>` : ''}
+      <div class="options">
+        ${node.opts.map((o, i) => `
+          <button class="opt" onclick="render('${o.next}')">
+            <span class="key">${String.fromCharCode(65 + i)}</span>
+            ${o.label}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+render('start');
+</script>
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kubernetes Troubleshooting</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a30;
+      --panel-2: #0f1730;
+      --text: #eaf0ff;
+      --muted: #a8b4d1;
+      --line: #2a3963;
+      --accent: #7cc4ff;
+      --accent-2: #8ef0c3;
+      --warn: #ffd27a;
+      --danger: #ff9d9d;
+      --pill: #1a2647;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(124,196,255,.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(142,240,195,.12), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .page {
+      width: 1280px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.4fr .9fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 24px 26px 22px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 34px;
+      line-height: 1.05;
+      letter-spacing: -.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .step {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 122px;
+      position: relative;
+    }
+
+    .step .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: var(--pill);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .step h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .step p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .hero-side {
+      padding: 20px 20px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mini-title {
+      font-size: 12px;
+      color: var(--accent-2);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .mantra {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0 0 14px;
+    }
+
+    .bullets {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+    }
+
+    .views, .signals, .commands, .concepts {
+      padding: 18px;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: -.01em;
+    }
+
+    .view-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .view {
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 152px;
+    }
+
+    .view h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .diagram {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      white-space: pre-line;
+      color: var(--accent);
+      background: #0b1328;
+      border: 1px solid #22345f;
+      border-radius: 12px;
+      padding: 10px 11px;
+      margin: 0 0 9px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--pill);
+      color: var(--accent-2);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .view p, .signals p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .signals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .signal {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,.025);
+    }
+
+    .signal h4 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .signal .hint {
+      color: var(--text);
+      font-weight: 600;
+      font-size: 13px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .right-col {
+      display: grid;
+      gap: 18px;
+    }
+
+    .commands code {
+      display: block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #0b1328;
+      color: var(--accent);
+      border: 1px solid #22345f;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12px;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+    }
+
+    .concepts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 10px;
+    }
+
+    .concept {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,.02);
+    }
+
+    .concept strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .concept span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .footer {
+      margin-top: 18px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 18px;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(124,196,255,.09), rgba(142,240,195,.05));
+      box-shadow: var(--shadow);
+    }
+
+    .footer .left {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .footer .right {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .accent { color: var(--accent); }
+    .green { color: var(--accent-2); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="card hero-main">
+        <h1>Kubernetes Troubleshooting Interview Cheat Sheet</h1>
+        <p class="subtitle">Use the flow first. Use the views underneath only as support. This is for reasoning fast under pressure, not memorising the whole theory tree.</p>
+
+        <div class="flow">
+          <div class="step">
+            <div class="num">1</div>
+            <h3>Start</h3>
+            <p>Did the Pod get created? Did the container start? Think image, command, env, mounts, resources.</p>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <h3>Stay up</h3>
+            <p>Does it keep running? Is it Ready? Think crashes, OOM, liveness, readiness, startup, bad config.</p>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <h3>Receive traffic</h3>
+            <p>Can the Service reach the Pod? Think selectors, endpoints, ports, targetPort, Ingress routing.</p>
+          </div>
+          <div class="step">
+            <div class="num">4</div>
+            <h3>Reach Dep</h3>
+            <p>Can the app reach DB, DNS, APIs, cluster services, secrets-backed resources, permissions?</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card hero-side">
+        <div>
+          <div class="mini-title">Memory hook</div>
+          <p class="mantra">Start → Stay up → Receive traffic → Reach Dep</p>
+        </div>
+        <div>
+          <div class="mini-title">What interviewers feel</div>
+          <ul class="bullets">
+            <li>You orient quickly.</li>
+            <li>You follow evidence, not guesses.</li>
+            <li>You know the next 1–3 checks.</li>
+            <li>You explain why you are checking something.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div>
+        <div class="card views">
+          <h2 class="section-title">Support views: use these only to locate the problem</h2>
+          <div class="view-grid">
+            <div class="view">
+              <div class="tag">Supports Start</div>
+              <h4>Management view</h4>
+              <div class="diagram">Deployment
+↓
+ReplicaSet
+↓
+Pods</div>
+              <p>Use when asking: are the right Pods being created, updated, and kept alive?</p>
+            </div>
+            <div class="view">
+              <div class="tag">Supports Stay up & Traffic</div>
+              <h4>Health view</h4>
+              <div class="diagram">kubelet / probes
+↓
+Pod / container</div>
+              <p>Readiness = should traffic be sent? Liveness = should it restart? Startup = has boot finished?</p>
+            </div>
+            <div class="view">
+              <div class="tag">Supports Traffic & Dep</div>
+              <h4>Traffic view</h4>
+              <div class="diagram">Client
+↓
+Ingress
+↓
+Service
+↓
+Pod
+↓
+app</div>
+              <p>Use when asking: does internal routing work, and does external routing work?</p>
+            </div>
+            <div class="view">
+              <div class="tag">Supports Start & Stay up & Dep</div>
+              <h4>Dependencies view</h4>
+              <div class="diagram">Config / Secret / DNS / DB / API
+↓
+Pod / app</div>
+              <p>Use when asking: did the app get what it needs, and can it reach what it needs?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card signals" style="margin-top:18px;">
+          <h2 class="section-title">Fast symptom map</h2>
+          <div class="signals-grid">
+            <div class="signal">
+              <h4>Won’t start</h4>
+              <span class="hint">Think <span class="accent">Start</span></span>
+              <p>ImagePullBackOff, ErrImagePull, bad command, missing env, bad mounts, bad image tag.</p>
+            </div>
+            <div class="signal">
+              <h4>Starts but not serving</h4>
+              <span class="hint">Think <span class="green">Stay up</span></span>
+              <p>CrashLoopBackOff, 0/1 Ready, readiness failure, liveness restart, app not listening, OOMKilled.</p>
+            </div>
+            <div class="signal">
+              <h4>Works internally, fails externally</h4>
+              <span class="hint">Think <span class="warn">Receive traffic</span></span>
+              <p>Ingress host/path, backend Service, TLS, controller issue, service port/targetPort mismatch.</p>
+            </div>
+            <div class="signal">
+              <h4>Starts and routes, still broken</h4>
+              <span class="hint">Think <span class="danger">Reach Dep</span></span>
+              <p>DB auth, DNS, RBAC, IAM, NetworkPolicy, external API creds, storage, upstream service failures.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="card commands">
+          <h2 class="section-title">5 commands that matter most</h2>
+          <code>kubectl get pods</code>
+          <code>kubectl describe pod &lt;pod&gt;</code>
+          <code>kubectl logs &lt;pod&gt; --previous</code>
+          <code>kubectl get svc</code>
+          <code>kubectl get endpoints</code>
+          <p style="margin:8px 0 0;color:var(--muted);font-size:13px;">These cover state, events, app output, Service definition, and real Service backends.</p>
+        </div>
+
+        <div class="card concepts">
+          <h2 class="section-title">Core concepts to actually know</h2>
+          <div class="concepts-grid">
+            <div class="concept"><strong>Pod</strong><span>Where the app runs.</span></div>
+            <div class="concept"><strong>Deployment</strong><span>Manager of Pods.</span></div>
+            <div class="concept"><strong>Service</strong><span>Stable path to Pods.</span></div>
+            <div class="concept"><strong>Ingress</strong><span>External HTTP(S) router.</span></div>
+            <div class="concept"><strong>Labels/selectors</strong><span>Matching glue.</span></div>
+            <div class="concept"><strong>Endpoints</strong><span>Real Service backends.</span></div>
+            <div class="concept"><strong>Probes</strong><span>Health and readiness judgment.</span></div>
+            <div class="concept"><strong>ConfigMap/Secret</strong><span>Inputs to the app.</span></div>
+          </div>
+        </div>
+
+        <div class="card concepts">
+          <h2 class="section-title">What to say in the interview</h2>
+          <div class="concept" style="padding:12px 13px;">
+            <strong>Senior-sounding narration</strong>
+            <span>“I’m starting with the symptom, putting it into the likely failure bucket, and checking the fastest evidence first: pod state, describe output, logs, service backends, then ingress if needed.”</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <div class="left">Deployment manages Pods. Probes judge Pods. Services send to Pods. Ingress sends to Services. Config and Secrets feed Pods.</div>
+      <div class="right">Do not memorise isolated terms first. Attach each concept to a job, a failure shape, and a first check.</div>
+    </section>
+  </div>
+</body>
+</html>

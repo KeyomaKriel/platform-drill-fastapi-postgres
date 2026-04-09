@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Orientation Crammer</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182243;
+      --text: #eef2ff;
+      --muted: #b8c2e0;
+      --line: #2b396d;
+      --accent: #7aa2ff;
+      --accent-2: #90f0c8;
+      --warn: #ffd38a;
+      --danger: #ff9b9b;
+      --shadow: 0 16px 40px rgba(0,0,0,.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(122,162,255,.16), transparent 30%),
+        radial-gradient(circle at top right, rgba(144,240,200,.12), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.05;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .mental-model {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pill {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 12px 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .arrow-row {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .section-title {
+      font-size: 22px;
+      margin: 30px 0 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .step {
+      grid-column: span 12;
+    }
+
+    .step-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      background: var(--accent);
+      color: #08101f;
+      font-weight: 900;
+    }
+
+    .step h3 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .goal {
+      color: var(--accent-2);
+      font-weight: 700;
+      margin: 2px 0 0;
+    }
+
+    .cols {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1.1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .mini {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .mini h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--warn);
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li + li { margin-top: 6px; }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      border-radius: 14px;
+      background: #0a0f1d;
+      border: 1px solid var(--line);
+      overflow: auto;
+      color: #d9e3ff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    blockquote {
+      margin: 0;
+      padding: 14px 16px;
+      border-left: 4px solid var(--accent);
+      background: rgba(122,162,255,.08);
+      border-radius: 12px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .five {
+      grid-column: span 7;
+    }
+
+    .flow {
+      grid-column: span 5;
+    }
+
+    .question-list ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .flow pre { height: 100%; }
+
+    .extract, .dont, .memo {
+      grid-column: span 4;
+    }
+
+    .extract ul li::marker { color: var(--accent-2); }
+    .dont ul li::marker { color: var(--danger); }
+    .memo ul li::marker { color: var(--accent); }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .mental-model,
+      .arrow-row,
+      .cols { grid-template-columns: 1fr; }
+      .five, .flow, .extract, .dont, .memo { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Interview Repo Orientation</div>
+      <h1>Repo Orientation Crammer</h1>
+      <p class="sub">Map the repo fast. Understand startup fast. Know the likely failure points before touching fixes.</p>
+
+      <div class="section-title">Mental model</div>
+      <div class="mental-model">
+        <div class="pill">Shape</div>
+        <div class="pill">Start</div>
+        <div class="pill">Supply</div>
+        <div class="pill">Ship</div>
+        <div class="pill">Signals</div>
+      </div>
+      <div class="arrow-row">
+        <div></div><div>→</div><div></div><div>→</div><div></div><div>→</div><div></div><div>→</div><div></div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card step">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Shape</h3>
+            <div class="goal">Goal: get the repo map.</div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="mini">
+            <h4>Check</h4>
+            <ul>
+              <li>Where app code lives</li>
+              <li>Where Docker/build files live</li>
+              <li>Where K8s manifests or Helm chart live</li>
+              <li>Whether it is one app or multiple services</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Commands</h4>
+            <pre>pwd
+ls
+tree -L 2
+find . -maxdepth 2 -type f | sort</pre>
+          </div>
+          <div class="mini">
+            <h4>Narration</h4>
+            <blockquote>“I’m getting the repo shape first: where the application code is, where the container/build config is, and where the Kubernetes deployment config lives.”</blockquote>
+          </div>
+        </div>
+      </section>
+
+      <section class="card step">
+        <div class="step-head">
+          <div class="step-num">2</div>
+          <div>
+            <h3>Start</h3>
+            <div class="goal">Goal: understand how the app actually runs.</div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="mini">
+            <h4>Check</h4>
+            <ul>
+              <li>Entrypoint or main file</li>
+              <li>Dockerfile</li>
+              <li>command / args</li>
+              <li>Listening port</li>
+              <li>Health endpoints</li>
+              <li>Whether startup depends on DB or another service</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Look at</h4>
+            <ul>
+              <li>Dockerfile</li>
+              <li>Main app file</li>
+              <li>package.json / requirements.txt / pyproject.toml</li>
+              <li>Deployment command / args</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Narration</h4>
+            <blockquote>“Now I’m finding the startup path: what process runs in the container, what port it listens on, and whether startup depends on config or external services.”</blockquote>
+          </div>
+        </div>
+      </section>
+
+      <section class="card step">
+        <div class="step-head">
+          <div class="step-num">3</div>
+          <div>
+            <h3>Supply</h3>
+            <div class="goal">Goal: understand what the app needs.</div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="mini">
+            <h4>Check</h4>
+            <ul>
+              <li>Env vars</li>
+              <li>ConfigMaps / Secrets</li>
+              <li>DB URL / host / creds</li>
+              <li>Upstream service names / URLs</li>
+              <li>Mounted files</li>
+              <li>Anything mandatory for startup</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Look at</h4>
+            <ul>
+              <li>App config reads in code</li>
+              <li>Deployment env section</li>
+              <li>ConfigMap / Secret manifests</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Narration</h4>
+            <blockquote>“Next I’m checking the input surface: env vars, config, secrets, and any dependencies the app needs to talk to.”</blockquote>
+          </div>
+        </div>
+      </section>
+
+      <section class="card step">
+        <div class="step-head">
+          <div class="step-num">4</div>
+          <div>
+            <h3>Ship</h3>
+            <div class="goal">Goal: understand how Kubernetes runs and exposes it.</div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="mini">
+            <h4>Check</h4>
+            <ul>
+              <li>Deployment</li>
+              <li>Labels on Pod template</li>
+              <li>Service selector</li>
+              <li>Service port and targetPort</li>
+              <li>Probes</li>
+              <li>Ingress host/path/backend</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Look at</h4>
+            <ul>
+              <li>k8s/</li>
+              <li>manifests/</li>
+              <li>helm/templates/</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Narration</h4>
+            <blockquote>“Now I’m tracing how Kubernetes is expected to run and expose the app: Deployment, probes, Service wiring, and any Ingress routing.”</blockquote>
+          </div>
+        </div>
+      </section>
+
+      <section class="card step">
+        <div class="step-head">
+          <div class="step-num">5</div>
+          <div>
+            <h3>Signals</h3>
+            <div class="goal">Goal: know where truth will show up when it breaks.</div>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="mini">
+            <h4>Check</h4>
+            <ul>
+              <li>Health endpoints</li>
+              <li>Log output location</li>
+              <li>What <code>describe pod</code> would likely show</li>
+              <li>How to prove Pod vs Service vs Ingress quickly</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h4>Narration</h4>
+            <blockquote>“Finally, I want the quickest signals: where startup failures, readiness problems, service wiring issues, or ingress issues would show up first.”</blockquote>
+          </div>
+          <div class="mini">
+            <h4>What this buys you</h4>
+            <ul>
+              <li>You stop guessing</li>
+              <li>You know where evidence should appear first</li>
+              <li>You can separate startup, readiness, wiring, and exposure fast</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card five question-list">
+        <h3>The 5 questions to answer before touching fixes</h3>
+        <ol>
+          <li>What is this app and stack?</li>
+          <li>What starts it?</li>
+          <li>What does it need to work?</li>
+          <li>How is it exposed in Kubernetes?</li>
+          <li>Where would failure show up first?</li>
+        </ol>
+      </section>
+
+      <section class="card flow">
+        <h3>Fast repo-orientation flow</h3>
+        <pre>pwd
+ls
+tree -L 2
+find . -maxdepth 2 -type f | sort
+cat README.md
+cat Dockerfile
+find k8s -maxdepth 2 -type f | sort
+
+Then inspect:
+- app entry file
+- Deployment
+- Service
+- Ingress
+- ConfigMap / Secret</pre>
+      </section>
+
+      <section class="card extract">
+        <h3>What you are trying to extract</h3>
+        <ul>
+          <li><strong>App:</strong> language, main file, port, health endpoints</li>
+          <li><strong>Container:</strong> how it starts</li>
+          <li><strong>Inputs:</strong> env vars, secrets, dependencies</li>
+          <li><strong>K8s:</strong> Deployment, probes, Service, Ingress</li>
+          <li><strong>Likely breakpoints:</strong> startup, readiness, service wiring, ingress routing, dependency config</li>
+        </ul>
+      </section>
+
+      <section class="card dont">
+        <h3>What not to do</h3>
+        <ul>
+          <li>Do not read the whole codebase</li>
+          <li>Do not explain business logic in depth</li>
+          <li>Do not open every file</li>
+          <li>Do not start fixing before you know startup path and K8s wiring</li>
+        </ul>
+      </section>
+
+      <section class="card memo">
+        <h3>Memorize this</h3>
+        <ul>
+          <li>What is it?</li>
+          <li>How does it start?</li>
+          <li>What does it need?</li>
+          <li>How is it deployed?</li>
+          <li>Where will it fail first?</li>
+        </ul>
+      </section>
+
+      <section class="card step">
+        <div class="step-head">
+          <div>
+            <h3>Ultra-short narration script</h3>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="mini"><blockquote>“I’m mapping the repo first.”</blockquote></div>
+          <div class="mini"><blockquote>“Now I’m checking how the app starts and what port and health endpoints it uses.”</blockquote></div>
+          <div class="mini"><blockquote>“Next I’m checking config, secrets, and dependencies.”</blockquote></div>
+          <div class="mini"><blockquote>“Now I’m looking at Deployment, probes, Service, and Ingress.”</blockquote></div>
+          <div class="mini"><blockquote>“At this point I should know the quickest likely failure points and where the evidence will show up.”</blockquote></div>
+        </div>
+        <div class="footer-note">Use this as a first-pass interview orientation sheet, not as a substitute for actual evidence from kubectl, logs, describe output, and the repo itself.</div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

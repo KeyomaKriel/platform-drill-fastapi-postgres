@@ -1,51 +1,53 @@
 # Scenario 01 — Healthy Orientation
 
-**Date:** 2026-04-07 ~16:27
+**Date:** 2026-04-08 13:38–14:00
 **Task type:** Healthy orientation
-**Prompt:** "This is the app we've been running in Kubernetes. Can you walk me through what it does, how it's deployed, and how you'd verify everything is working?"
+**Result:** Partial
+
+## Prompt given
+
+> You've just joined a team and opened their application repository for the first time. The app is already deployed to a Kubernetes cluster you have access to (namespace: `drill`). Walk me through what this application does, how it's deployed, and how you'd verify it's working correctly.
 
 ## What was required
 
-Explore the repo, understand the application (purpose, endpoints, dependencies), identify the deploy path (Dockerfile → image → K8s manifests), and verify everything is working live. Narrate throughout.
+Demonstrate understanding of:
+- App purpose: FastAPI with 3 endpoints (`/`, `/health`, `/items`), Postgres dependency
+- Deploy path: Dockerfile builds image, K8s manifests deploy to `drill` namespace
+- Key config: env vars from ConfigMap/Secret, init container, probes, RBAC, network policies, ingress
+- End-to-end verification: pods, endpoints, curl all three routes
 
-**Succeeded:** No — orientation was incomplete.
+## Commands run
+
+1. `ls` — directory listing
+2. `tree` — full tree view
+3. `kubectl get pods -n drill` — pod status
+4. `kubectl get endpoints -n drill` — endpoint check
+5. `curl -i localhost/` — root endpoint
+6. `curl -i localhost/items` — items endpoint
+7. `curl -i localhost/health` — health endpoint
 
 ## Evaluation
 
-| Criteria | Rating | Explanation |
-|---|---|---|
-| Repo orientation | Needs Work | Ran `ls`, `tree`, and read the README. Did not read application code, Dockerfile, or K8s manifests. |
-| Comprehension accuracy | Needs Work | Identified startup command from Dockerfile (via Claude Code) but didn't discover endpoints, DB dependency, or config flow. |
-| Systematic verification | Needs Work | No kubectl commands. No curl tests. Live cluster never checked. |
-| Communication | Needs Work | No narration in the session log. An interviewer would see file listings and a partial README read with no reasoning. |
+| Criterion | Rating | Notes |
+|-----------|--------|-------|
+| Repo orientation | Needs Work | Saw structure via tree but never opened any files |
+| Comprehension accuracy | Needs Work | No evidence of understanding app logic, deploy config, or dependencies |
+| Systematic verification | Solid | Checked pods, endpoints, and all three curl routes with -i |
+| Communication | Needs Work | No narration visible in session log |
 
-## Notable commands
+## Notable good actions
 
-**Good:**
-- `tree` — good structural overview early on
+- Used `curl -i` to include headers
+- Checked endpoints, not just pod status
+- Did verify all three routes
 
-**Missing / would improve:**
-- `cat app/main.py` — discover endpoints and app behaviour
-- `cat app/db.py` — understand database connection
-- `cat Dockerfile` — understand build/run path
-- `cat k8s/app.yaml`, `cat k8s/app-config.yaml`, etc. — understand deployment config
-- `kubectl get pods -n drill` — check live cluster state
-- `kubectl get svc -n drill`, `kubectl get ingress -n drill` — understand routing
-- `curl localhost/`, `curl localhost/health`, `curl localhost/items` — end-to-end verification
+## Unnecessary/redundant actions
 
-## Suggested narration
+- None — the issue was insufficient depth, not wasted effort
 
-At `tree`:
-> "OK, I see app code in app/, a Dockerfile, K8s manifests in k8s/, and a docker-compose for local Postgres. Let me read the application code first."
+## Suggested narration at key decision points
 
-After reading main.py:
-> "This is a FastAPI app with three endpoints: root returns app info, /health checks Postgres connectivity, /items returns rows from an items table. It depends on Postgres via environment variables."
-
-After reading K8s manifests:
-> "The app is deployed as a Deployment with an init container, behind an nginx Ingress. Postgres runs as a single-replica Deployment with a PVC. Config is split across ConfigMaps and Secrets."
-
-After kubectl checks:
-> "Both pods are Running and Ready. Services have endpoints. Let me verify end-to-end with curl."
-
-After curl tests:
-> "All three endpoints respond correctly. The app is healthy and serving through Ingress."
+- After `tree`: "I can see this is a Python app with K8s manifests. Let me read the main application code first to understand what it does."
+- After reading app code: "This is a FastAPI app with three endpoints. It depends on Postgres — let me check how that dependency is configured in the manifests."
+- After reading manifests: "The app gets its DB config from a ConfigMap and Secret. There's an init container, liveness/readiness probes, and network policies. Let me verify this matches what's running."
+- After curl tests: "All three endpoints return expected data. The app is healthy and the full request path — ingress to service to pod to database — is working."
