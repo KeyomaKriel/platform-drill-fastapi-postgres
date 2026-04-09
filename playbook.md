@@ -1,9 +1,9 @@
 # Kubernetes Troubleshooting Handbook
 
-A practical handbook for repo-based Platform Engineer interview practice. Built around the troubleshooting routing tree: symptom first, root cause second.
+A practical handbook for repo-based Platform Engineer interview practice. Symptoms tell you where to start. Four buckets — Start, Stay up, Receive Traffic, Reach Dependencies — give you a high-level lens. The 11 failure domains are where the actual fix lives.
 
 This handbook covers:
-- The troubleshooting method (how to route from symptom to root cause)
+- The troubleshooting method (symptoms → buckets → failure domains)
 - The 11 root-cause failure domains (what to check, how to fix, what to say)
 - Reference material (commands, exit codes, HTTP codes)
 
@@ -12,6 +12,7 @@ It is scoped to **repo-based practical interviews**: orientation, debugging, sma
 ## Table of Contents
 
 - [Rule 0](#rule-0)
+- [The Four Buckets](#four-buckets)
 - [Repo-First Orientation](#repo-first-orientation)
 - [Entry Modes](#entry-modes)
 - [Troubleshooting Sequence](#troubleshooting-sequence)
@@ -46,8 +47,38 @@ Do not start by guessing the root cause.
 Start by answering:
 
 1. What is the visible symptom?
-2. Which Kubernetes object is closest to that symptom?
-3. What command will show the truth fastest?
+2. Which bucket does it most likely belong to? (Start / Stay up / Receive Traffic / Reach Dependencies)
+3. Which Kubernetes object is closest to that symptom?
+4. What command will show the truth fastest?
+
+---
+
+<a id="four-buckets"></a>
+## The Four Buckets
+
+Every Kubernetes failure falls into one of four buckets. Use these to frame your thinking before diving into specifics.
+
+**Start** — the container never gets properly going.
+- Image not found or wrong tag (`ImagePullBackOff`, `ErrImageNeverPull`)
+- Missing ConfigMap/Secret blocks container creation (`CreateContainerConfigError`)
+- Pod stuck `Pending` — can't be scheduled (insufficient resources, PVC won't bind)
+
+**Stay up** — the container starts but crashes, restarts, or fails health checks.
+- App crashes on startup (`CrashLoopBackOff`, exit code 1)
+- OOMKilled (exit code 137)
+- Liveness or readiness probe fails (wrong path, wrong port, timing too aggressive)
+
+**Receive Traffic** — the app is running but traffic can't reach it.
+- Service selector doesn't match pod labels (empty endpoints)
+- Ingress backend points to wrong service or port
+- Wrong `targetPort` on the Service
+
+**Reach Dependencies** — the app can't reach what it needs.
+- Postgres hostname wrong or service doesn't exist (`connection refused`, DNS failure)
+- NetworkPolicy blocks egress to database or DNS
+- Wrong credentials in Secret (`password authentication failed`)
+
+Use symptoms to enter the playbook. Use buckets to orient your mental model. Use the detailed failure domain sections below to diagnose and fix precisely.
 
 ---
 
@@ -200,6 +231,8 @@ The rule: **known app + known symptom + unknown cause = Fast Path.**
 4. If pod responds, test service: `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl -i localhost:8080/`
 5. If service works, test ingress: `curl -i localhost/` or `curl -i -H "Host: <host>" localhost/` if the Ingress has a host rule
 
+Note: repo orientation or live verification (Step 8 of [Repo-First Orientation](#repo-first-orientation)) may already give you a strong signal — a crashing pod, empty endpoints, a curl failure. If so, you can skip broad triage and enter the troubleshooting sequence directly at the relevant step.
+
 You can start with full triage and switch to fast path once you have a signal. That is usually the safest pattern: 20-40 seconds of orientation, then commit.
 
 ---
@@ -252,7 +285,7 @@ kubectl get pods -n <ns>
 <a id="step-4"></a>
 ### 4. Classify pod symptom
 
-**"The pod status tells me where to look — it's not the root cause itself."** See [Symptom vs Root Cause](#symptom-vs-root-cause).
+**"The pod status tells me where to look — it's not the root cause itself."** The status also tells you which bucket you are in: image/creation errors → Start, crashes → Stay up, not-Ready → Stay up. See [Symptom vs Root Cause](#symptom-vs-root-cause).
 
 | Pod symptom | Route to |
 |---|---|
@@ -444,7 +477,9 @@ The 11 primary root-cause domains aligned with the drill model. Each section fol
 
 **You are here because** logs (from [step 5](#step-5)) show an app-level crash: unhandled exception, missing module, bad syntax, stack trace, or exit code 1 with an application error. The container process itself is failing.
 
-**"The logs show the app is crashing on startup with [error]. This is the app itself failing, not a config or dependency issue."** If logs point to a wrong config value or an unreachable dependency, route to [Config / Secret / Env](#config-env) or [App-Level Dependency](#app-level) instead.
+**"The logs show the app is crashing on startup with [error]. This is the app itself failing, not a config or dependency issue."** If logs point to a wrong config value or an unreachable dependency, route to [Config / Secret / Env](#config-env) or [App-Level Dependency](#app-level) instead. If the container never started at all (image pull or creation error), you are in [Image Pull / Container Creation](#image-pull), not here.
+
+**Primary bucket:** Stay up
 
 #### Commands
 
@@ -515,6 +550,8 @@ kubectl logs <pod> -n <ns>
 **You are here because** the pod shows `ImagePullBackOff`, `ErrImagePull`, `ErrImageNeverPull`, `CreateContainerConfigError`, or `CreateContainerError`.
 
 **"The pod is stuck at [status]. Let me check the Events section to see exactly what failed."** Note: `ErrImageNeverPull` means `imagePullPolicy: Never` but the image doesn't exist on the node — common in kind/minikube where images are loaded directly.
+
+**Primary bucket:** Start
 
 #### Commands
 
@@ -590,6 +627,8 @@ kubectl get pods -n <ns> -w
 
 **"The pod is Running but [not Ready / restarts are climbing]. Let me check which probe is failing and what it's targeting."**
 
+**Primary bucket:** Stay up
+
 #### Readiness probe
 
 Pod is `Running` but `0/1` — won't receive traffic until readiness passes.
@@ -664,9 +703,12 @@ kubectl get endpoints <svc> -n <ns>       # endpoints populate once readiness pa
 
 **You are here because** events show a missing ConfigMap or Secret, [step 5](#step-5) log routing found a wrong or missing value, or a `CreateContainerConfigError` pointed to a missing config reference.
 
-This is one of the most common failure domains. It covers: missing objects, wrong reference names, wrong keys, wrong values, and mount issues.
+This is one of the most common failure domains. It covers: missing objects, wrong reference names, wrong keys, wrong values, and mount issues. A missing object that blocks container creation is a Start problem. A wrong value that crashes the app is Stay up. A wrong hostname or credential that breaks a dependency connection is Reach Dependencies.
 
 **"This is a configuration problem. I need to check what the pod references versus what actually exists, and compare the values."**
+
+**Primary bucket:** Cross-cutting
+**Also overlaps:** Start, Stay up, Reach Dependencies
 
 #### Commands
 
@@ -732,6 +774,8 @@ kubectl logs <pod> -n <ns>                        # clean startup
 
 **"Pods are healthy but I can't reach them through the Service. Let me check selectors, endpoints, and ports."**
 
+**Primary bucket:** Receive Traffic
+
 #### Commands
 
 ```bash
@@ -787,6 +831,8 @@ Do not stop at port-forward. The external curl proves the full path. **"Endpoint
 
 **"I need to check whether I'm looking in the right place, and whether DNS resolution is working inside the cluster."**
 
+**Primary bucket:** Reach Dependencies
+
 #### Namespace confusion
 
 Resources exist but `kubectl get` returns nothing — **"I can't find the resources I expect. Let me check if they're in a different namespace."**
@@ -841,6 +887,9 @@ kubectl exec <pod> -n <ns> -- nslookup <service>
 **You are here because** the pod is `Pending`, exit code is 137 (OOMKilled), or PVC is stuck in `Pending`.
 
 **"The pod is [Pending / OOMKilled / has a storage issue]. Let me find the specific constraint that's blocking it."**
+
+**Primary bucket:** Start
+**Also overlaps:** Stay up
 
 #### Pending pods
 
@@ -912,6 +961,8 @@ curl -s localhost/             # end-to-end
 
 **"I can reach the app through port-forward, so the Service and pods are fine. The problem is in the Ingress layer."**
 
+**Primary bucket:** Receive Traffic
+
 #### Commands
 
 ```bash
@@ -970,6 +1021,9 @@ curl -s -H "Host: <host>" localhost/             # if Ingress has a host rule
 **You are here because** everything looks correct — pods Running, Ready, endpoints populated — but traffic silently fails or times out with no error message.
 
 **"Everything looks healthy but traffic is failing silently. When all the obvious things check out, NetworkPolicy is the first thing I check — but I'll also verify the ingress controller is healthy."** Also consider ingress controller issues, external routing problems, or hung backends before committing.
+
+**Primary bucket:** Reach Dependencies
+**Also overlaps:** Receive Traffic
 
 #### Commands
 
@@ -1080,6 +1134,8 @@ curl -s localhost/                   # traffic flows end-to-end
 
 **"I see a Forbidden error. I need to check the ServiceAccount, Role, and RoleBinding to find the broken link in the chain."**
 
+**Primary bucket:** Reach Dependencies
+
 #### Commands
 
 ```bash
@@ -1151,7 +1207,10 @@ kubectl auth can-i --as=system:serviceaccount:<ns>:<sa> <verb> <resource> -n <ns
 
 **You are here because** pods are Running and Ready, endpoints are populated, but the app returns errors, doesn't respond, or the reachability path ([step 6A](#step-6a)) found the pod itself is not working correctly. Kubernetes thinks everything is fine — this is an app-level issue.
 
-**"Everything looks healthy from a Kubernetes perspective. This is an application-level issue. Logs should tell me what's going on."**
+**"Everything looks healthy from a Kubernetes perspective. This is an application-level issue. Logs should tell me what's going on."** If the root cause turns out to be a wrong config value rather than a genuine dependency or runtime problem, the fix may live in [Config / Secret / Env](#config-env).
+
+**Primary bucket:** Reach Dependencies
+**Also overlaps:** Stay up
 
 #### Commands
 
