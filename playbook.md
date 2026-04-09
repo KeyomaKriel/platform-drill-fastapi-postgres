@@ -85,52 +85,166 @@ Use symptoms to enter the playbook. Use buckets to orient your mental model. Use
 <a id="repo-first-orientation"></a>
 ## Repo-First Orientation
 
-### What this is for
+During repo orientation, do not try to understand the whole repo or remember everything. Use the sections below as a worksheet. As you open files, extract only the facts needed to fill in each section and note any mismatches. The goal is to build an expected-vs-actual model quickly, not to read every file.
 
-Before you touch the cluster, spend 60-90 seconds building a mental model of four things:
+You do not need to read files in a strict order. Jump to whichever file fills the next missing field. **Narrate as you go** — talking fills silence, shows prioritisation, and lets the interviewer follow your thinking in real time.
 
-1. **What the app does** — endpoints, purpose, expected behaviour.
-2. **What it depends on** — databases, caches, external services, env vars.
-3. **How it runs in a container** — base image, startup command, exposed port.
-4. **How it runs in Kubernetes** — deployments, services, ingress, config injection, network rules.
+If you hit a strong signal at any point (a clear mismatch, a crashing pod, a broken curl), stop filling in the worksheet and transition to [Entry Modes](#entry-modes) and the [Troubleshooting Sequence](#troubleshooting-sequence).
 
-This model is what lets you define "healthy," spot mismatches between intent and reality, and reason about where a fault could live. Without it, you are guessing.
+### Fill in: App shape
 
-The README may be incomplete or absent. You will often have to infer the system from code, manifests, Dockerfile, and config files. That is normal — the interviewer is watching whether you can orient yourself from primary sources, not whether you found a wiki page.
+**Goal:** Identify the app, its main file, endpoints, health routes, and components.
 
-**Narrate as you go** — don't read silently then summarise. Each step below is written as a narration flow: do this, say this, look for this. Talking fills silence, shows prioritisation, and lets the interviewer follow your thinking in real time.
+**Look in:** repo structure (`ls`), README (glance), main app file (e.g. `main.py`, `app.js`, `main.go`).
 
-### Step 1 — Repo structure (always do this first)
+**Write down:**
+- Language / runtime / framework
+- Main file path
+- Registered endpoints (these are what you curl to verify)
+- Health endpoint path
+- What the app appears to do
+- Components / services (single app or multiple?)
 
-`ls` the top level. **"Let me start by looking at the repo structure."** Scan for app code directory, Dockerfile, manifest directory (`k8s/`, `deploy/`, `manifests/`), `Chart.yaml` / `kustomization.yaml`, Makefile, README. **"I can see [what's there]. This looks like a [language] app with [deploy method]."**
+**Mismatch checks:**
+- Are the routes clear from the code?
+- Is the health path obvious or ambiguous?
+- Are there multiple components and you don't yet know which one matters?
 
-### Step 2 — App entrypoint (almost always open this)
+**Narrate:** **"This is a [language] [framework] app. Main file is [path]. I can see [N] endpoints: [list]. Health check is at [path]."**
 
-Open the main application file (e.g. `main.py`, `app.js`, `main.go`). **"Opening the main app file to understand what it serves and what it depends on."** Look for **registered routes/endpoints** (these are what you curl to verify), **startup logic** (database connections, migrations, seed data), and **error handling** (crash vs retry). **"I can see [N] endpoints: [list them]. At startup it [what it does]. If [dependency] is down, it will [crash / retry / degrade]."**
+### Fill in: Start
 
-If the entrypoint shows which env vars it reads, note them. Otherwise, move to step 3.
+**Goal:** Understand how the container starts — image, command, ports, init containers, and what must be true for startup to succeed.
 
-### Step 3 — Dockerfile (almost always open this)
+**Look in:** Dockerfile, main app file (startup logic), Deployment manifest (image, command/args, init containers).
 
-**"Checking the Dockerfile for the listening port and startup command."** Key lines: `FROM` (base image, debug tools?), **`EXPOSE`** (the **container port** — cross-reference with Service `targetPort` and probes later), `CMD`/`ENTRYPOINT` (if wrong, container crashes or hangs). **"Container listens on port [port], started by [command]. I'll check the Service and probes target the same port."**
+**Write down:**
+- Dockerfile path
+- `EXPOSE` port (the container port)
+- `ENTRYPOINT` / `CMD`
+- Deployment `command` / `args` overrides (if any)
+- `image` and `imagePullPolicy`
+- Init containers (what they wait for)
+- Startup dependencies (what must be up before the app starts)
+- Startup failure behaviour (crash vs retry vs degrade)
 
-### Step 4 — Deployment manifest (always open this)
+**Mismatch checks:**
+- App listening port vs Dockerfile `EXPOSE` — do they match?
+- Dockerfile `CMD`/`ENTRYPOINT` vs Deployment `command`/`args` — does the Deployment override the image default?
+- Init container target hostname vs actual Service name — do they match?
 
-The most important manifest. **"Now looking at the Deployment to see how the app is configured in the cluster."** Look for and name each out loud: **image** and **imagePullPolicy**, **env/envFrom** (where config comes from), **readiness/liveness probes** (path, port, timing), **init containers**, **resources**, **serviceAccountName**. **"Image is [name], pull policy is [policy]. Env vars come from [source]. Probes target [path] on port [port] — that [matches / doesn't match] the Dockerfile EXPOSE."** Connect layers as you go: **"targetPort [X] matches the container port"** shows you are verifying consistency, not just reading.
+**Narrate:** **"Container listens on port [port], started by [command]. Pull policy is [policy]. [Has / no] init containers. If [dependency] is down at startup, the app will [crash / retry]."**
 
-### Step 5 — Service manifest (always open this)
+### Fill in: Stay up
 
-**"Checking the Service to see how traffic reaches the app."** Look for **selector** (must match pod labels exactly) and **port/targetPort** (targetPort must match the container port from step 3). **"Service selects [label]. Maps port [X] to targetPort [Y] — lines up with the container port."**
+**Goal:** Understand what keeps the app alive after startup — probes and health definition.
 
-### Step 6 — Ingress manifest (open if it exists)
+**Look in:** Deployment manifest (probe specs), app code (what the health endpoint actually checks).
 
-**"Checking the Ingress for external routing."** Look for **ingressClassName**, **host and path rules**, backend **service name and port** (must match Service `port`, not `targetPort`). **"Traffic flows: client → [entrypoint] → Ingress → Service:[port] → pod:[port]. Ports line up across all layers."**
+**Write down:**
+- Readiness probe: path, port, timing (`initialDelaySeconds`, `periodSeconds`, `failureThreshold`)
+- Liveness probe: path, port, timing (`timeoutSeconds`, `periodSeconds`, `failureThreshold`)
+- Startup probe: path, port, timing (if present)
+- Resource limits (`memory`, `cpu`)
+- What "healthy" means for this app (e.g. "returns 200 on `/health` when DB is reachable")
 
-### Step 7 — ConfigMap and Secret (open if debugging, skim if orienting)
+**Mismatch checks:**
+- Probe path vs actual app route — does the path exist?
+- Probe port vs container port — do they match?
+- Probe timing vs startup behaviour — will the app be ready before the first probe fires?
 
-During orientation: **"ConfigMap and Secret exist and are referenced by the Deployment — I'll verify values if I need to debug."**
+**Narrate:** **"Readiness probe hits [path] on port [port]. Liveness probe hits [path] on port [port]. That [matches / doesn't match] the container port. Timing looks [reasonable / tight]."**
 
-During debugging: compare actual values against what the app reads and what exists in the cluster. **"[Key] is set to [value] — that [matches / doesn't match] what the app expects."** See [Config / Secret / Env](#config-env) for detailed diagnostics.
+### Fill in: Receive Traffic
+
+**Goal:** Trace the full traffic path from outside the cluster to the container.
+
+**Look in:** Deployment manifest (pod labels), Service manifest, Ingress manifest.
+
+**Write down:**
+- Deployment name and pod labels (from `template.metadata.labels`)
+- Service name and type
+- Service selector
+- Service `port` → `targetPort`
+- Ingress host, path rules, `ingressClassName`
+- Ingress backend service name and port
+
+**Mismatch checks:**
+- Service selector vs pod labels — exact match?
+- Service `targetPort` vs container port — same?
+- Ingress backend service name vs actual Service name — exact match?
+- Ingress backend port vs Service `port` (not `targetPort`) — same?
+
+**Narrate:** **"Traffic flows: client → Ingress → Service [name]:[port] → pod:[targetPort]. Service selects [label], pods have [label]. Ports line up across all layers."**
+
+### Fill in: Reach Dependencies
+
+**Goal:** Identify what the app connects to and how those connections are configured.
+
+**Look in:** main app file (env var reads, connection logic), Deployment manifest (`env` / `envFrom`), ConfigMap and Secret manifests, NetworkPolicy and RBAC manifests (note existence).
+
+**Write down:**
+- Required env vars (from app code)
+- ConfigMap names and keys
+- Secret names and keys
+- Database / internal service hostnames and ports
+- Credentials source
+- Service account name
+- Whether NetworkPolicy or RBAC manifests exist
+
+**Mismatch checks:**
+- Env var names in app code vs names in Deployment `env` / `envFrom` — same?
+- ConfigMap/Secret names referenced in Deployment vs names of actual manifests — exact match?
+- Hostnames in config vs actual Service names (`kubectl get svc`) — same?
+- Ports in config vs actual dependency ports — same?
+
+During orientation, note existence of config objects and references. During debugging, decode and compare values: **"[Key] is set to [value] — that [matches / doesn't match] what the app expects."** See [Config / Secret / Env](#config-env) for detailed diagnostics.
+
+**Narrate:** **"Env vars come from ConfigMap [name] and Secret [name]. DB hostname is [value], which should match Service [name]. Credentials are in [source]."**
+
+### Fill in: Deploy path
+
+**Goal:** Know how repo changes become running changes in the cluster. You need this before you make any fix.
+
+**Look in:** repo structure, Dockerfile, manifest directory.
+
+| Clue | Deploy method |
+|------|--------------|
+| `k8s/*.yaml` with no `Chart.yaml` or `kustomization.yaml` | Raw manifests — `kubectl apply -f k8s/` |
+| `Chart.yaml` + `values.yaml` + `templates/` | Helm — `helm install` or `helm upgrade` |
+| `kustomization.yaml` | Kustomize — `kubectl apply -k` |
+| `Makefile` / `justfile` with deploy targets | Scripted — read the target |
+| `imagePullPolicy: Never` with `:local` tag | Images loaded directly (kind/minikube) |
+
+**Write down:**
+- Build step (e.g. `docker build`)
+- Load step (e.g. `kind load docker-image`, or push to registry)
+- Apply step (e.g. `kubectl apply -f k8s/`)
+
+**Narrate:** **"The deploy path is: [build step] → [load step] → [apply step]."**
+
+### Fill in: Quick live checks
+
+**Goal:** Verify the running state matches what the repo says. Move to the cluster.
+
+```bash
+kubectl get pods -n <ns>
+kubectl get endpoints -n <ns>
+curl -i localhost/
+curl -i -H "Host: <host>" localhost/    # if Ingress has a host rule
+```
+
+Test all known endpoints from the App shape section.
+
+**Write down:**
+- Pod status (Running? Ready? Restarts?)
+- Endpoints (populated or empty?)
+- Curl result for each endpoint
+- Strongest signal so far
+
+**Narrate:** **"Pods are [status], endpoints are [populated/empty]. Curling through Ingress: [result]. [Working end-to-end / something is wrong at the [X] layer]."**
+
+If something fails, say what you **expected** versus what you **got**. That is the start of debugging — transition to [Entry Modes](#entry-modes) and the [Troubleshooting Sequence](#troubleshooting-sequence).
 
 ### Files you can usually skip or skim
 
@@ -143,41 +257,12 @@ During debugging: compare actual values against what the app reads and what exis
 | **RBAC manifests** | Only if debugging Forbidden errors. Not needed during orientation. |
 | **Helper scripts / Makefile / CI config** | Only if you can't figure out the deploy path from the manifests and Dockerfile. |
 
-### Deploy path (identify this during orientation, don't skip it)
-
-The deploy path answers: **how do repo changes become running changes in the cluster?** You need this before you make any fix.
-
-| Clue | Deploy method |
-|------|--------------|
-| `k8s/*.yaml` with no `Chart.yaml` or `kustomization.yaml` | Raw manifests — `kubectl apply -f k8s/` |
-| `Chart.yaml` + `values.yaml` + `templates/` | Helm — `helm install` or `helm upgrade` |
-| `kustomization.yaml` | Kustomize — `kubectl apply -k` |
-| `Makefile` / `justfile` with deploy targets | Scripted — read the target |
-| `imagePullPolicy: Never` with `:local` tag | Images loaded directly (kind/minikube) |
-
-You usually identify the deploy path from what you saw in steps 1, 3, and 4 — no separate step needed. **"The deploy path is: [build step] → [load step] → [apply step]."**
-
-### Step 8 — Verify it live
-
-Move to the cluster. **"Now I'll verify the running state matches what the repo says."**
-
-```bash
-kubectl get pods -n <ns>
-kubectl get endpoints -n <ns>
-curl -i localhost/
-curl -i -H "Host: <host>" localhost/    # if Ingress has a host rule
-```
-
-Test all known endpoints from step 2. **"Pods are [status], endpoints are [populated/empty]. Curling through Ingress: [result]. Working end-to-end."**
-
-If something fails, say what you **expected** versus what you **got**. That is the start of debugging — transition to [Entry Modes](#entry-modes) and the [Troubleshooting Sequence](#troubleshooting-sequence).
-
 ### Orientation tips
 
-- **Name specific things.** "It reads [VAR] from [source]" beats "it uses env vars."
-- **Mention failure modes.** "No retry logic means [dependency] must be up at startup" shows operational understanding.
+- **Name specific things.** "It reads `POSTGRES_HOST` from the ConfigMap" beats "it uses env vars."
+- **Mention failure modes.** "No retry logic means Postgres must be up at startup" shows operational understanding.
 - **Say what you have not checked.** "I haven't verified the NetworkPolicies" is better than skipping silently.
-- **Aim for about two minutes total.** Hit the key facts per file, then verify.
+- **Aim for about two minutes total.** Fill in the key fields, then verify live.
 
 ---
 
@@ -231,7 +316,7 @@ The rule: **known app + known symptom + unknown cause = Fast Path.**
 4. If pod responds, test service: `kubectl port-forward svc/<svc> 8080:<svc-port> -n <ns>` then `curl -i localhost:8080/`
 5. If service works, test ingress: `curl -i localhost/` or `curl -i -H "Host: <host>" localhost/` if the Ingress has a host rule
 
-Note: repo orientation or live verification (Step 8 of [Repo-First Orientation](#repo-first-orientation)) may already give you a strong signal — a crashing pod, empty endpoints, a curl failure. If so, you can skip broad triage and enter the troubleshooting sequence directly at the relevant step.
+Note: repo orientation or the quick live checks in [Repo-First Orientation](#repo-first-orientation) may already give you a strong signal — a crashing pod, empty endpoints, a curl failure. If so, you can skip broad triage and enter the troubleshooting sequence directly at the relevant step.
 
 You can start with full triage and switch to fast path once you have a signal. That is usually the safest pattern: 20-40 seconds of orientation, then commit.
 
