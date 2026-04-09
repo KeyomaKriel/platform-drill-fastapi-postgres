@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracker-svc
+  namespace: fleet-ops
+spec:
+  selector:
+    component: api
+  ports:
+    - port: 80
+      targetPort: 7600

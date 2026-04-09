@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-tracker
+  namespace: fleet-ops
+  labels:
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: api
+  template:
+    metadata:
+      labels:
+        component: api
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z fleet-db-svc 5432; do
+                echo "waiting for fleet-db-svc:5432..."
+                sleep 2
+              done
+      containers:
+        - name: tracker
+          image: fleet-tracker:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 7600
+          envFrom:
+            - configMapRef:
+                name: tracker-settings
+            - secretRef:
+                name: tracker-db-auth
+          readinessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: 7600
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: 7600
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

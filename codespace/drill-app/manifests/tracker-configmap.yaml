@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracker-settings
+  namespace: fleet-ops
+data:
+  PGHOST: fleet-db-svc
+  PGPORT: "5432"
+  PGDATABASE: fleet_registry
+  LISTEN_PORT: "7600"
