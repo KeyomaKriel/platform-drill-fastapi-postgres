@@ -95,16 +95,20 @@ Then use one of these prompts. Claude generates the app locally, then you copy i
 > - Do NOT deploy it. Just generate the files.
 > - Tell me when it's ready to copy.
 
-### 5. Copy the app to the Codespace
+### 5. Push and pull the app to the Codespace
+
+Locally — commit and push:
 
 ```bash
-gh cs cp -e ./codespace/drill-app/ remote:~/drill-app/ -c <codespace-name>
+git add ./codespace/drill-app/
+git commit -m "Add drill app"
+git push
 ```
 
-To find your codespace name:
+In the Codespace terminal — pull and copy (single line):
 
 ```bash
-gh cs list
+git clone -b mac-eks-drill https://github.com/KeyomaKriel/platform-drill-fastapi-postgres.git ~/tmp-clone && cp -r ~/tmp-clone/codespace/drill-app ~/drill-app && rm -rf ~/tmp-clone
 ```
 
 ### 6. In the Codespace: deploy and drill

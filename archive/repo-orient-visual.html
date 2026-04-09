@@ -225,27 +225,21 @@
 
     .summary-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
     }
 
     .summary-bucket {
       background: var(--panel);
-      border-left: 4px solid;
-      border-radius: 0 12px 12px 0;
-      padding: 16px 20px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
     }
-    .summary-bucket.shape   { border-left-color: var(--shape); }
-    .summary-bucket.start   { border-left-color: var(--start); }
-    .summary-bucket.supply  { border-left-color: var(--supply); }
-    .summary-bucket.ship    { border-left-color: var(--ship); }
-    .summary-bucket.signals { border-left-color: var(--signals); }
-
     .summary-bucket h4 {
-      margin: 0 0 10px;
-      font-size: 15px;
+      margin: 0 0 6px;
+      font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: .08em;
+      letter-spacing: .06em;
     }
     .summary-bucket.shape h4   { color: var(--shape); }
     .summary-bucket.start h4   { color: var(--start); }
@@ -255,23 +249,8 @@
 
     .summary-bucket p {
       margin: 0;
-      font-size: 15px;
-      line-height: 1.7;
-      color: var(--text);
-    }
-
-    .summary-bucket .kw {
-      color: var(--accent-2);
-      font-weight: 700;
-    }
-
-    .summary-bucket .slot {
-      background: rgba(255,255,255,.08);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
       font-size: 13px;
-      color: var(--warn);
+      color: var(--muted);
     }
 
     ul { margin: 0; padding-left: 18px; }
@@ -420,76 +399,23 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
         <div class="summary-grid">
           <div class="summary-bucket shape">
             <h4>Shape</h4>
-            <p>
-              "This is a <span class="slot">[framework]</span> API
-              with <span class="slot">[N]</span> endpoints
-              for <span class="slot">[purpose]</span>,<br>
-              backed by <span class="slot">[database]</span>,
-              deployed via <span class="slot">[raw manifests / Helm / Kustomize]</span>
-              into the <span class="slot">[namespace]</span> namespace."
-            </p>
+            <p>"This is a [framework] API with [N] endpoints for [purpose], backed by [database], deployed via [raw manifests / Helm / Kustomize] into the [namespace] namespace."</p>
           </div>
           <div class="summary-bucket start">
             <h4>Start</h4>
-            <p>
-              "<span class="kw">Containerized</span> with Docker &mdash;
-              runs <span class="slot">[process]</span>
-              on port <span class="slot">[N]</span>.<br>
-              On <span class="kw">startup</span> it
-              <span class="slot">[connects to DB / runs migrations / seeds data]</span>.<br>
-              If the DB isn't reachable,
-              <span class="slot">[it crashes / retries / degrades]</span>.<br>
-              <span class="slot">[Init container waits for X / no init container]</span>."
-            </p>
+            <p>"It's containerized with Docker &mdash; runs [process] on port [N]. On startup it [connects to DB / runs migrations / seeds data]. If the DB isn't reachable, [it crashes / retries / degrades]. There's [an init container that waits for X / no init container]."</p>
           </div>
           <div class="summary-bucket supply">
             <h4>Supply</h4>
-            <p>
-              "The app needs <span class="slot">[N]</span> env vars for
-              <span class="slot">[database]</span> &mdash;
-              <span class="slot">[list them]</span>.<br>
-              These come from <span class="kw">ConfigMap</span>
-              <span class="slot">[name]</span> and
-              <span class="kw">Secret</span>
-              <span class="slot">[name]</span>.<br>
-              DB host points to service <span class="slot">[name]</span>.<br>
-              Creds and DB name
-              <span class="slot">[match / don't match]</span>
-              between the app config and the database config."
-            </p>
+            <p>"The app needs [N] env vars for [database] &mdash; [list them]. These come from ConfigMap [name] and Secret [name]. DB host points to service [name]. Creds and DB name [match / don't match] between the app config and the database config."</p>
           </div>
           <div class="summary-bucket ship">
             <h4>Ship</h4>
-            <p>
-              "<span class="kw">Deployment</span> runs
-              <span class="slot">[N]</span> replicas with
-              <span class="slot">[readiness / liveness]</span> probes
-              on <span class="slot">[path:port]</span>.<br>
-              <span class="kw">Service</span> maps
-              port <span class="slot">[X]</span> to
-              targetPort <span class="slot">[Y]</span>.<br>
-              <span class="kw">Ingress</span> routes
-              <span class="slot">[path]</span> to the service
-              on port <span class="slot">[X]</span>
-              via <span class="slot">[nginx / traefik]</span>.<br>
-              Labels and selectors
-              <span class="slot">[match / don't match]</span> throughout."
-            </p>
+            <p>"Deployment runs [N] replicas with [readiness/liveness] probes on [path:port]. Service maps port [X] to targetPort [Y]. Ingress routes [path] to the service on port [X] via [nginx/traefik]. Labels and selectors [match / don't match] throughout."</p>
           </div>
           <div class="summary-bucket signals">
             <h4>Signals</h4>
-            <p>
-              "If the <span class="kw">DB is down</span>, the app
-              <span class="slot">[crashes / degrades]</span> &mdash;
-              I'd see <span class="slot">[CrashLoopBackOff / 503s]</span>
-              and connection errors in logs.<br>
-              If <span class="kw">probes fail</span>,
-              endpoints would be empty.<br>
-              If the <span class="kw">Service selector is wrong</span>,
-              endpoints empty but pods Running.<br>
-              If <span class="kw">Ingress is wrong</span>,
-              direct pod curl works but external curl doesn't."
-            </p>
+            <p>"If the DB is down, the app [crashes / degrades] &mdash; I'd see [CrashLoopBackOff / 503s] and connection errors in logs. If probes fail, endpoints would be empty. If the Service selector is wrong, endpoints empty but pods Running. If Ingress is wrong, direct pod curl works but external curl doesn't."</p>
           </div>
         </div>
       </section>

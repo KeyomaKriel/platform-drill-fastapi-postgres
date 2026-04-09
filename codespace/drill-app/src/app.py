@@ -92,6 +92,8 @@ def create_vehicle():
     conn.close()
     return jsonify({"vid": new_id}), 201
 
-if __name__ == "__main__":
+with app.app_context():
     init_db()
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("LISTEN_PORT", "7600")))

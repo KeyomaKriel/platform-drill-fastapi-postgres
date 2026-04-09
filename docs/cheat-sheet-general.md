@@ -1,282 +1,175 @@
-## Bash / Linux quick cheat sheet
+# Interview Cheat Sheet
 
-### Edit a file in a terminal editor
+## Fix a live cluster (no manifest to edit)
 
-**nano**
+### Env var — fastest
+
 ```bash
-nano path/to/file.yaml
+kubectl set env deployment/<name> -n <ns> KEY=value
+```
 
-Useful keys:
-	•	Ctrl+O save
-	•	Enter confirm filename
-	•	Ctrl+X exit
-	•	Ctrl+K cut line
-	•	Ctrl+U paste line
-	•	Ctrl+W search
+Pods restart automatically.
 
-vim
+### Edit a resource with nano
 
-vim path/to/file.yaml
+```bash
+EDITOR=nano kubectl edit deployment/<name> -n <ns>
+```
 
-Useful keys:
-	•	i enter insert mode
-	•	Esc leave insert mode
-	•	:w save
-	•	:q quit
-	•	:wq save and quit
-	•	:q! quit without saving
-	•	/text search
-	•	n next match
+In nano:
+- `Ctrl+W` — search (type text, Enter)
+- Arrow keys — navigate
+- Backspace/type — edit
+- `Ctrl+O` then Enter — save
+- `Ctrl+X` — exit
 
-force kubectl edit to use nano
+Pods restart automatically after save.
 
-KUBE_EDITOR=nano kubectl edit svc platform-drill-api -n drill
+### Patch a resource (no editor needed)
 
-or:
+```bash
+# Change a single field
+kubectl patch deployment/<name> -n <ns> --type='json' \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"myapp:v2"}]'
 
-export KUBE_EDITOR=nano
-kubectl edit deployment my-app -n drill
+# Remove a field
+kubectl patch deployment/<name> -n <ns> --type='json' \
+  -p='[{"op":"remove","path":"/spec/template/spec/containers/0/env/0"}]'
+```
 
+Pods restart automatically.
 
-⸻
+### When to use which
 
-View a markdown file in VS Code preview
+| Situation | Use |
+|-----------|-----|
+| Fix an env var | `kubectl set env` |
+| Fix an image tag | `kubectl set image` |
+| Fix a probe, port, label, or anything else | `kubectl edit` with nano |
+| Script a precise change | `kubectl patch` |
+| Manifest is wrong and you have the file | Edit the file in VS Code, `kubectl apply -f` |
 
-Open the file in VS Code:
+---
 
-code playbook.md
+## Fix via manifest (bug is in the repo)
 
-Open markdown preview:
+```bash
+# Edit in VS Code (what you know)
+code manifests/tracker-deployment.yaml
 
-code -r playbook.md
+# Apply
+kubectl apply -f manifests/tracker-deployment.yaml -n <ns>
 
-Inside VS Code:
-	•	Cmd+Shift+V open Markdown preview
-	•	Cmd+K V open preview to the side
+# If apply says "unchanged" but cluster is wrong, force recreate:
+kubectl rollout restart deployment/<name> -n <ns>
+```
 
-If using Linux proper instead of Mac:
-	•	Ctrl+Shift+V
-	•	Ctrl+K V
+---
 
-⸻
+## Triage commands
 
-Show current repo structure
+```bash
+# Overview
+kubectl get all -n <ns>
+kubectl get pods -n <ns>
+kubectl get endpoints -n <ns>
 
-basic
+# Dig into a pod
+kubectl describe pod <name> -n <ns>
+kubectl logs <name> -n <ns>
+kubectl logs <name> -n <ns> --previous    # crashed container
 
-pwd
+# Check config
+kubectl get configmap <name> -n <ns> -o yaml
+kubectl get secret <name> -n <ns> -o yaml
+kubectl get deployment <name> -n <ns> -o yaml
+
+# Test connectivity
+kubectl port-forward svc/<name> -n <ns> 8080:80 &
+curl localhost:8080/
+kubectl exec -it <pod> -n <ns> -- sh
+
+# End-to-end
+curl localhost/
+curl localhost/health
+curl localhost/items
+```
+
+---
+
+## Nano survival
+
+```
+Ctrl+W     search
+Ctrl+O     save (then Enter to confirm)
+Ctrl+X     exit
+Ctrl+K     cut line
+Ctrl+U     paste line
+Arrow keys navigate
+```
+
+Set as default for kubectl:
+
+```bash
+export EDITOR=nano
+```
+
+---
+
+## Vim survival (if nano is not available)
+
+```
+i          enter insert mode (now you can type)
+Esc        exit insert mode
+:wq Enter  save and quit
+:q! Enter  quit without saving
+/text      search for "text"
+dd         delete a line
+u          undo
+```
+
+---
+
+## Repo orientation
+
+```bash
 ls
-ls -la
-
-recursive with find
-
-find .
-
-better: only a few levels deep
-
-find . -maxdepth 3 | sort
-
-files only
-
-find . -maxdepth 3 -type f | sort
-
-directories only
-
-find . -maxdepth 3 -type d | sort
-
-tree if installed
-
-tree
 tree -L 2
-tree -L 3
+cat README.md
+cat Dockerfile
+find . -name "*.yaml" -path "*/k8s/*" -o -name "*.yaml" -path "*/manifests/*"
+```
 
-If tree is not installed on Linux:
+---
 
-sudo apt-get install tree
+## Search
 
-On Mac with Homebrew:
-
-brew install tree
-
-
-⸻
-
-Search for a file or text in the repo
-
-find file by name
-
-find . -name "app.yaml"
+```bash
+# Find a file
+find . -name "*.yaml"
 find . -iname "*service*"
 
-search text with grep
-
-grep -R "platform-drill-api" .
-grep -R "namespace: drill" .
-
-better search with ripgrep
-
-rg "platform-drill-api"
-rg "namespace:\s*drill"
+# Search file contents
+grep -r "PGHOST" .
+grep -r "containerPort" manifests/
 rg "kind:\s*Service"
+```
 
+---
 
-⸻
+## Docker + k3d
 
-Print part of a file
-
-show whole file
-
-cat path/to/file.yaml
-
-page through file
-
-less path/to/file.yaml
-
-Useful in less:
-	•	q quit
-	•	/text search
-	•	n next match
-
-show line numbers
-
-nl -ba path/to/file.yaml | less
-
-show specific lines
-
-sed -n '1,80p' path/to/file.yaml
-sed -n '42,70p' k8s/app.yaml
-
-
-⸻
-
-Check current directory and git repo status
-
-pwd
-git status
-git branch
-git rev-parse --show-toplevel
-
-
-⸻
-
-Useful kubectl file/edit workflow
-
-Inspect live object:
-
-kubectl get svc platform-drill-api -n drill -o yaml
-
-Edit live object:
-
-KUBE_EDITOR=nano kubectl edit svc platform-drill-api -n drill
-
-Export live object to a file:
-
-kubectl get svc platform-drill-api -n drill -o yaml > svc-drill.yaml
-
-Apply a file:
-
-kubectl apply -f k8s/app.yaml
-
-Diff before apply:
-
-kubectl diff -f k8s/app.yaml
-
-
-⸻
-
-Minimal practical set to remember
-
-nano file.yaml
-vim file.yaml
-find . -maxdepth 3 | sort
-find . -name "app.yaml"
-rg "platform-drill-api"
-sed -n '42,70p' k8s/app.yaml
-code playbook.md
-
-Here is the same thing without the markdown fence so you can paste it straight into a file if needed.
-
-## Bash / Linux quick cheat sheet
-
-### Edit a file in a terminal editor
-
-**nano**
 ```bash
-nano path/to/file.yaml
+docker build -t <image>:local .
+k3d image import <image>:local -c <cluster-name>
+k3d cluster list
+```
 
-Useful keys:
-	•	Ctrl+O save
-	•	Enter confirm filename
-	•	Ctrl+X exit
-	•	Ctrl+K cut line
-	•	Ctrl+U paste line
-	•	Ctrl+W search
+---
 
-vim
+## Key precedence rules
 
-vim path/to/file.yaml
-
-Useful keys:
-	•	i enter insert mode
-	•	Esc leave insert mode
-	•	:w save
-	•	:q quit
-	•	:wq save and quit
-	•	:q! quit without saving
-	•	/text search
-	•	n next match
-
-force kubectl edit to use nano
-
-KUBE_EDITOR=nano kubectl edit svc platform-drill-api -n drill
-
-View a markdown file in VS Code preview
-
-Open the file in VS Code:
-
-code playbook.md
-
-Inside VS Code:
-	•	Cmd+Shift+V open Markdown preview
-	•	Cmd+K V open preview to the side
-
-Show current repo structure
-
-pwd
-ls -la
-find . -maxdepth 3 | sort
-find . -maxdepth 3 -type f | sort
-find . -maxdepth 3 -type d | sort
-tree -L 3
-
-Search for a file or text in the repo
-
-find . -name "app.yaml"
-grep -R "platform-drill-api" .
-rg "platform-drill-api"
-rg "namespace:\s*drill"
-rg "kind:\s*Service"
-
-Print part of a file
-
-cat path/to/file.yaml
-less path/to/file.yaml
-nl -ba path/to/file.yaml | less
-sed -n '42,70p' k8s/app.yaml
-
-Check current directory and git repo status
-
-pwd
-git status
-git branch
-git rev-parse --show-toplevel
-
-Useful kubectl file/edit workflow
-
-kubectl get svc platform-drill-api -n drill -o yaml
-KUBE_EDITOR=nano kubectl edit svc platform-drill-api -n drill
-kubectl get svc platform-drill-api -n drill -o yaml > svc-drill.yaml
-kubectl apply -f k8s/app.yaml
-kubectl diff -f k8s/app.yaml
-
-If you want, I can turn this into a tighter interview-focused cheat sheet with only the 15 commands you’re most likely to actually use.
+- Inline `env` on a Deployment **overrides** `envFrom` (ConfigMap/Secret) for the same key
+- `imagePullPolicy: Never` means Kubernetes won't pull from a registry — image must be loaded locally
+- Readiness probe failure → pod removed from Service endpoints (no traffic)
+- Liveness probe failure → pod restarted
