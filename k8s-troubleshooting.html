@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Troubleshooting Interview Sheet</title>
+<style>
+  :root {
+    --start: #e74c3c;
+    --start-bg: #fdf0ef;
+    --start-border: #f5c6cb;
+    --stayup: #e67e22;
+    --stayup-bg: #fef5ec;
+    --stayup-border: #f8d7b0;
+    --traffic: #2980b9;
+    --traffic-bg: #eaf2f8;
+    --traffic-border: #b8d4e8;
+    --dep: #8e44ad;
+    --dep-bg: #f4ecf7;
+    --dep-border: #d5b8e2;
+    --neutral: #2c3e50;
+    --neutral-bg: #f8f9fa;
+    --neutral-border: #dee2e6;
+    --code-bg: #1e1e2e;
+    --code-fg: #cdd6f4;
+    --card-radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: #2c3e50;
+    background: #f0f2f5;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+
+  /* --- Sticky top bar --- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .topbar h1 {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .topbar nav {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .topbar nav a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: background .15s;
+  }
+  .topbar nav a:hover { background: rgba(255,255,255,.15); }
+  .topbar nav a.bucket-start  { border-left: 3px solid var(--start); }
+  .topbar nav a.bucket-stayup { border-left: 3px solid var(--stayup); }
+  .topbar nav a.bucket-traffic { border-left: 3px solid var(--traffic); }
+  .topbar nav a.bucket-dep    { border-left: 3px solid var(--dep); }
+
+  /* --- Layout --- */
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+
+  /* --- Hero / Compressed summary --- */
+  .hero {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+  .hero h2 { color: #fff; font-size: 18px; margin-bottom: 12px; }
+  .hero .rule { color: #a5d6a7; font-weight: 600; margin-bottom: 8px; }
+  .hero .loop { color: #90caf9; margin-bottom: 8px; }
+  .hero .guard { color: #ffcc80; font-size: 13px; }
+  .hero .guard span { display: inline-block; margin-right: 14px; white-space: nowrap; }
+
+  /* --- Frame buckets row --- */
+  .frame-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 800px) {
+    .frame-row { grid-template-columns: 1fr 1fr; }
+  }
+  .bucket-card {
+    border-radius: var(--card-radius);
+    padding: 16px;
+    border-top: 4px solid;
+    min-width: 0;
+  }
+  .bucket-card h3 { font-size: 15px; margin-bottom: 6px; }
+  .bucket-card .question { font-style: italic; font-size: 13px; margin-bottom: 8px; opacity: .85; }
+  .bucket-card .say {
+    background: rgba(0,0,0,.05);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    margin-bottom: 8px;
+    line-height: 1.45;
+  }
+  .bucket-card .say::before { content: 'Say: '; font-weight: 700; }
+  .bucket-card pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .bucket-card ul { font-size: 13px; padding-left: 18px; }
+  .bucket-card li { margin-bottom: 2px; }
+
+  .b-start  { background: var(--start-bg);  border-color: var(--start); }
+  .b-stayup { background: var(--stayup-bg); border-color: var(--stayup); }
+  .b-traffic { background: var(--traffic-bg); border-color: var(--traffic); }
+  .b-dep    { background: var(--dep-bg);    border-color: var(--dep); }
+
+  .b-start h3  { color: var(--start); }
+  .b-stayup h3 { color: var(--stayup); }
+  .b-traffic h3 { color: var(--traffic); }
+  .b-dep h3    { color: var(--dep); }
+
+  /* --- Sections --- */
+  section { margin-bottom: 28px; }
+  section > h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ddd;
+  }
+
+  /* --- Triage loop --- */
+  .triage-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .triage-step {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .triage-step .num {
+    background: var(--neutral);
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .triage-step .arrow { color: #aaa; font-size: 18px; }
+
+  /* --- Nearest truth --- */
+  .truth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 700px) { .truth-grid { grid-template-columns: 1fr; } }
+  .truth-item {
+    background: #fff;
+    border-left: 4px solid;
+    border-radius: 0 var(--card-radius) var(--card-radius) 0;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .truth-item strong { display: block; margin-bottom: 2px; }
+
+  /* --- Do not over-infer --- */
+  .caution-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .caution-item {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: var(--card-radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* --- Symptom cards --- */
+  .likelihood-label {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 12px;
+  }
+  .likelihood-high { background: #e74c3c; color: #fff; }
+  .likelihood-moderate { background: #e67e22; color: #fff; }
+  .likelihood-low { background: #95a5a6; color: #fff; }
+
+  .symptom-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: box-shadow .15s;
+  }
+  .symptom-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+
+  .symptom-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    border-left: 4px solid;
+  }
+  .symptom-header .chevron {
+    font-size: 12px;
+    transition: transform .2s;
+    flex-shrink: 0;
+    color: #888;
+  }
+  .symptom-card.open .symptom-header .chevron { transform: rotate(90deg); }
+  .symptom-header h4 { font-size: 14px; flex: 1; }
+  .symptom-header .bucket-tag {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .tag-start  { background: var(--start-bg);  color: var(--start);  border: 1px solid var(--start-border); }
+  .tag-stayup { background: var(--stayup-bg); color: var(--stayup); border: 1px solid var(--stayup-border); }
+  .tag-traffic { background: var(--traffic-bg); color: var(--traffic); border: 1px solid var(--traffic-border); }
+  .tag-dep    { background: var(--dep-bg);    color: var(--dep);    border: 1px solid var(--dep-border); }
+
+  .sh-start  { border-left-color: var(--start); }
+  .sh-stayup { border-left-color: var(--stayup); }
+  .sh-traffic { border-left-color: var(--traffic); }
+  .sh-dep    { border-left-color: var(--dep); }
+  .sh-neutral { border-left-color: #95a5a6; }
+
+  .symptom-body {
+    display: none;
+    padding: 0 16px 16px 30px;
+    font-size: 13px;
+  }
+  .symptom-card.open .symptom-body { display: block; }
+
+  .symptom-body .say-block {
+    background: #f1f8e9;
+    border-left: 3px solid #66bb6a;
+    padding: 8px 12px;
+    border-radius: 0 4px 4px 0;
+    margin: 8px 0;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .symptom-body .say-block::before { content: 'Say: '; font-weight: 700; color: #388e3c; }
+
+  .symptom-body pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.5;
+    margin: 8px 0;
+  }
+  .symptom-body .prove {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .symptom-body .prove::before { content: 'What these prove: '; font-weight: 600; color: #333; }
+  .symptom-body h5 { font-size: 13px; margin: 10px 0 4px; }
+  .symptom-body ul { padding-left: 18px; margin-bottom: 6px; }
+  .symptom-body li { margin-bottom: 2px; }
+  .symptom-body .docs { font-size: 12px; color: #777; margin-top: 8px; font-style: italic; }
+
+  /* --- Support views --- */
+  .views-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 700px) { .views-grid { grid-template-columns: 1fr; } }
+  .view-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 14px 16px;
+  }
+  .view-card h4 { font-size: 14px; margin-bottom: 6px; }
+  .view-card .flow {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--neutral);
+    margin-bottom: 6px;
+  }
+  .view-card ul { font-size: 13px; padding-left: 18px; }
+  .view-card li { margin-bottom: 2px; }
+  .view-card .docs { font-size: 12px; color: #777; margin-top: 6px; font-style: italic; }
+
+  /* --- Verification --- */
+  .verify-steps {
+    counter-reset: verify;
+  }
+  .verify-step {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 10px 14px 10px 44px;
+    margin-bottom: 8px;
+    position: relative;
+    font-size: 13px;
+  }
+  .verify-step::before {
+    counter-increment: verify;
+    content: counter(verify);
+    position: absolute;
+    left: 14px;
+    top: 10px;
+    background: #27ae60;
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .verify-step strong { font-size: 14px; }
+  .verify-step code {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .verify-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: var(--card-radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+  }
+
+  /* --- Interview phrases --- */
+  .phrases {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .phrase {
+    background: #f1f8e9;
+    border-left: 3px solid #66bb6a;
+    padding: 8px 14px;
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  /* --- Commands reference --- */
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .cmd-group {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    overflow: hidden;
+  }
+  .cmd-group h4 {
+    background: #f8f9fa;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .cmd-group pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 10px 14px;
+    margin: 0;
+    white-space: pre;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  /* --- Interview scope --- */
+  .scope-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 600px) { .scope-grid { grid-template-columns: 1fr; } }
+  .scope-likely {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: var(--card-radius);
+    padding: 14px;
+    font-size: 13px;
+  }
+  .scope-unlikely {
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 14px;
+    font-size: 13px;
+    color: #777;
+  }
+  .scope-likely h4, .scope-unlikely h4 { font-size: 14px; margin-bottom: 6px; }
+  .scope-likely h4 { color: #2e7d32; }
+
+  /* --- Expand/Collapse all --- */
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .controls button {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .controls button:hover { background: #f0f0f0; }
+
+  /* --- Print tweaks --- */
+  @media print {
+    .topbar { position: static; }
+    .symptom-card.open .symptom-body, .symptom-body { display: block !important; }
+    body { background: #fff; font-size: 11px; }
+    .container { padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>K8s Troubleshooting</h1>
+  <nav>
+    <a href="#frame" class="bucket-start">Frame</a>
+    <a href="#triage">Triage</a>
+    <a href="#truth">Truth Source</a>
+    <a href="#caution">Cautions</a>
+    <a href="#scope">Scope</a>
+    <a href="#symptoms-high" class="bucket-start">Symptoms</a>
+    <a href="#views">Views</a>
+    <a href="#verify">Verify</a>
+    <a href="#say">Say</a>
+    <a href="#commands">Commands</a>
+  </nav>
+</div>
+
+<div class="container">
+
+<!-- Hero — compressed summary -->
+<div class="hero">
+  <h2>Execution Model</h2>
+  <div class="rule">Symptom first, root cause second.</div>
+  <div class="loop">Loop: classify the symptom &rarr; inspect the nearest layer/object &rarr; route by evidence &rarr; make the smallest justified fix &rarr; verify end to end.</div>
+  <div class="guard">
+    <span>CrashLoopBackOff &ne; cause</span>
+    <span>Running &ne; healthy</span>
+    <span>Ready &ne; ingress works</span>
+    <span>Service exists &ne; endpoints exist</span>
+    <span>Ingress exists &ne; external routing works</span>
+  </div>
+</div>
+
+<!-- Core Frame — Four Buckets -->
+<section id="frame">
+  <h2>Core Frame &mdash; What to Run First</h2>
+  <div class="frame-row">
+
+    <!-- 1. Start -->
+    <div class="bucket-card b-start">
+      <h3>1. Start</h3>
+      <div class="question">Was the Pod created, scheduled, and able to start its container?</div>
+      <div class="say">The workload is failing before it can become a healthy running pod, so I want the scheduler/container creation signal first.</div>
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
+      <ul>
+        <li>ErrImagePull / ImagePullBackOff</li>
+        <li>Pending &rarr; scheduling / PVC / node</li>
+        <li>CreateContainerConfigError</li>
+        <li>Init container failure</li>
+        <li>Command / entrypoint / args problem</li>
+        <li>Missing ConfigMap / Secret / volume</li>
+        <li>PVC not binding</li>
+        <li>Node capacity / taints / affinity</li>
+      </ul>
+    </div>
+
+    <!-- 2. Stay Up -->
+    <div class="bucket-card b-stayup">
+      <h3>2. Stay Up</h3>
+      <div class="question">Did the app keep running and become Ready?</div>
+      <div class="say">The pod exists but is not stabilising, so I want pod state, describe output, and logs before I decide what branch this belongs to.</div>
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
+      <ul>
+        <li>CrashLoopBackOff &rarr; logs route to cause</li>
+        <li>0/1 Ready &rarr; probe path/port/timing</li>
+        <li>Restarts climbing &rarr; liveness / OOM</li>
+        <li>OOMKilled / exit 137</li>
+        <li>Error / app boot failure</li>
+        <li>Startup dependency failure</li>
+      </ul>
+    </div>
+
+    <!-- 3. Receive Traffic -->
+    <div class="bucket-card b-traffic">
+      <h3>3. Receive Traffic</h3>
+      <div class="question">Can traffic reach the app through the K8s routing path?</div>
+      <div class="say">If the pod is healthy, I want to check routing layer by layer rather than guessing whether this is ingress or service.</div>
+      <pre>kubectl get svc -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;
+kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;
+curl localhost:8080/</pre>
+      <ul>
+        <li>No endpoints &rarr; selector mismatch / not Ready</li>
+        <li>Service works but not externally &rarr; ingress</li>
+        <li>Wrong port &rarr; svc port/targetPort vs container</li>
+        <li>Ingress host / path / backend mismatch</li>
+      </ul>
+    </div>
+
+    <!-- 4. Reach Dep -->
+    <div class="bucket-card b-dep">
+      <h3>4. Reach Dep</h3>
+      <div class="question">Can the app reach what it depends on?</div>
+      <div class="say">The app may be up but broken against something it depends on, so I want logs and then in-container checks if needed.</div>
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh</pre>
+      <ul>
+        <li>DNS &rarr; nslookup &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</li>
+        <li>TCP &rarr; nc -zv &lt;host&gt; &lt;port&gt;</li>
+        <li>Env &rarr; env | grep POSTGRES</li>
+        <li>Auth/RBAC &rarr; kubectl auth can-i ...</li>
+        <li>NetworkPolicy / egress restriction</li>
+        <li>Storage dependency problem</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- Default Triage Loop -->
+<section id="triage">
+  <h2>Default Triage Loop</h2>
+  <p style="font-size:13px;color:#666;margin-bottom:10px;">Use when the symptom is unclear or you just sat down.</p>
+  <div class="triage-steps">
+    <div class="triage-step"><span class="num">1</span> kubectl get pods</div>
+    <div class="triage-step"><span class="num">2</span> Pod unhealthy? &rarr; describe + logs + --previous</div>
+    <div class="triage-step"><span class="num">3</span> Pod healthy? &rarr; get svc + get endpoints</div>
+    <div class="triage-step"><span class="num">4</span> Service works? &rarr; check ingress / external route</div>
+    <div class="triage-step"><span class="num">5</span> App still fails? &rarr; dependency path from inside pod</div>
+    <div class="triage-step"><span class="num">6</span> Make one fix</div>
+    <div class="triage-step"><span class="num">7</span> Verify end to end</div>
+  </div>
+</section>
+
+<!-- Nearest Truth Source -->
+<section id="truth">
+  <h2>Nearest Truth Source</h2>
+  <div class="truth-grid">
+    <div class="truth-item" style="border-left-color:var(--start)"><strong>Pod not healthy</strong>describe pod + logs</div>
+    <div class="truth-item" style="border-left-color:var(--traffic)"><strong>Pod healthy but app unreachable</strong>Service / endpoints</div>
+    <div class="truth-item" style="border-left-color:var(--traffic)"><strong>Service works but external path fails</strong>Ingress</div>
+    <div class="truth-item" style="border-left-color:var(--dep)"><strong>App responds but feature fails</strong>Dependency path from inside pod</div>
+  </div>
+</section>
+
+<!-- Do Not Over-Infer -->
+<section id="caution">
+  <h2>Do Not Over-Infer</h2>
+  <div class="caution-grid">
+    <div class="caution-item">CrashLoopBackOff does not tell you the cause</div>
+    <div class="caution-item">Running does not mean healthy</div>
+    <div class="caution-item">Ready does not prove ingress works</div>
+    <div class="caution-item">Existing Service does not mean it has usable endpoints</div>
+    <div class="caution-item">Ingress object existing does not mean external routing works</div>
+  </div>
+</section>
+
+<!-- Interview Scope -->
+<section id="scope">
+  <h2>Interview Scope</h2>
+  <div class="scope-grid">
+    <div class="scope-likely">
+      <h4>Most Likely</h4>
+      <ul>
+        <li>Pod startup / crash</li>
+        <li>Probes</li>
+        <li>Config / Secret / env</li>
+        <li>Service selector / port / endpoints</li>
+        <li>Ingress path / backend</li>
+        <li>Dependency connectivity</li>
+        <li>DNS / namespace mistakes</li>
+        <li>Maybe RBAC / NetworkPolicy</li>
+      </ul>
+    </div>
+    <div class="scope-unlikely">
+      <h4>Less Likely</h4>
+      <ul>
+        <li>Deep scheduler theory</li>
+        <li>Obscure storage edge cases</li>
+        <li>Advanced controller internals</li>
+        <li>Node-level issues</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Fast Symptom Map -->
+<section id="symptoms-high">
+  <h2>Fast Symptom Map</h2>
+
+  <div class="controls">
+    <button onclick="toggleAll(true)">Expand All</button>
+    <button onclick="toggleAll(false)">Collapse All</button>
+  </div>
+
+  <!-- HIGH LIKELIHOOD -->
+  <div class="likelihood-label likelihood-high">High Likelihood</div>
+
+  <!-- Pod missing, Pending -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod missing, Pending, or never becomes Running</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section: scheduling reason
+kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
+      <div class="prove">why the scheduler can't place it, or why the container can't be created.</div>
+      <div class="say-block">The pod isn't even running yet, so I want the describe events to tell me whether this is scheduling, image pull, or container creation.</div>
+      <h5>Then branch by what describe shows:</h5>
+      <ul>
+        <li>scheduling / resource pressure &rarr; check node capacity, taints, affinity</li>
+        <li>PVC / storage binding &rarr; <code>kubectl get pvc -n &lt;ns&gt;</code></li>
+        <li>image pull failure &rarr; check image spec in deployment</li>
+        <li>container creation failure &rarr; check config/secret/volume refs</li>
+        <li>taints / affinity / node placement &rarr; <code>kubectl describe node</code></li>
+      </ul>
+      <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
+    </div>
+  </div>
+
+  <!-- ErrImagePull -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>ErrImagePull / ImagePullBackOff</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section shows the pull error
+kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].image}'</pre>
+      <div class="prove">the exact image reference the cluster is trying to pull, and why it can't.</div>
+      <div class="say-block">The image can't be pulled, so I want to compare the image spec in the deployment against what's actually available.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong image name or tag &rarr; typo, wrong registry, tag doesn't exist</li>
+        <li>registry auth problem &rarr; imagePullSecrets configured?</li>
+        <li>pull policy &rarr; imagePullPolicy vs what's loaded locally</li>
+      </ul>
+      <div class="docs">Docs: Debug Pods, Pod Lifecycle, Images (container images reference).</div>
+    </div>
+  </div>
+
+  <!-- CreateContainerConfigError -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>CreateContainerConfigError / CreateContainerError</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section names the broken ref
+kubectl get configmap -n &lt;ns&gt;
+kubectl get secret -n &lt;ns&gt;</pre>
+      <div class="prove">which specific ConfigMap, Secret, or volume reference is missing or invalid.</div>
+      <div class="say-block">The container can't be created due to a config reference, so I need describe to tell me which Secret, ConfigMap, or volume mount is missing or wrong.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>missing Secret / ConfigMap &rarr; does the named object exist?</li>
+        <li>bad env reference &rarr; envFrom or valueFrom pointing at wrong key?</li>
+        <li>bad volume or mount &rarr; volume name mismatch, wrong path</li>
+        <li>bad command / args &rarr; entrypoint override broken</li>
+      </ul>
+      <div class="docs">Docs: Debug Pods, Debug Running Pods, ConfigMaps, Secrets.</div>
+    </div>
+  </div>
+
+  <!-- CrashLoopBackOff -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>CrashLoopBackOff</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <p style="color:var(--stayup);font-weight:600;margin-bottom:6px;">Important: this is a symptom, not the root cause.</p>
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State section: exit code, reason</pre>
+      <div class="prove">what the app printed before it died. The logs route you to the actual root cause.</div>
+      <div class="say-block">CrashLoopBackOff is a symptom, not the cause. The logs will tell me what actually failed &mdash; config, dependency, DNS, OOM, or code.</div>
+      <h5>Then branch by what logs show:</h5>
+      <ul>
+        <li>config/env/secret error &rarr; check env vars, configmap, secret values</li>
+        <li>connection refused / host not found &rarr; dependency or DNS problem (branch to Reach Dep)</li>
+        <li>app stack trace / boot failure &rarr; code or entrypoint problem</li>
+        <li>no logs + exit 137 &rarr; OOMKilled (check describe pod Last State)</li>
+        <li>probe-driven restart &rarr; check probe config in describe</li>
+      </ul>
+      <div class="docs">Docs: Pod Lifecycle, Debug Running Pods, Configure Liveness Readiness and Startup Probes, DNS for Services and Pods, Resource Management for Pods and Containers.</div>
+    </div>
+  </div>
+
+  <!-- Running but 0/1 Ready -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Running but 0/1 Ready</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Conditions section + readiness probe spec
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">the readiness probe configuration and whether the app is failing it or just not serving yet.</div>
+      <div class="say-block">The container is alive but not passing readiness, so I want the probe spec from describe and any app errors from logs.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>readiness probe path/port wrong &rarr; compare probe spec vs what app actually serves</li>
+        <li>app boot incomplete &rarr; logs show slow startup, needs startupProbe or longer initialDelaySeconds</li>
+        <li>dependency reachable enough to start but not enough to serve &rarr; partial failure in logs</li>
+      </ul>
+      <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Debug Running Pods.</div>
+    </div>
+  </div>
+
+  <!-- Pod healthy, Service path fails -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod healthy, but Service path fails</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;      # check selector
+kubectl get pods -n &lt;ns&gt; --show-labels</pre>
+      <div class="prove">whether the Service actually has backends, and whether the selector matches pod labels.</div>
+      <div class="say-block">The pod looks fine, so the break is between the Service and the Pod. I want endpoints first to see if the Service selector matches.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>endpoints empty &rarr; selector doesn't match pod labels, or pods are not Ready</li>
+        <li>endpoints present but wrong port &rarr; compare svc port/targetPort with container port</li>
+        <li>service exists but points nowhere useful &rarr; selector matches wrong pods</li>
+      </ul>
+      <div class="docs">Docs: Debug Services, Service, EndpointSlices.</div>
+    </div>
+  </div>
+
+  <!-- Endpoints empty -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Endpoints / EndpointSlices empty or wrong</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;      # Selector field
+kubectl get pods -n &lt;ns&gt; --show-labels       # compare against selector</pre>
+      <div class="prove">whether the selector matches and whether matching pods are Ready.</div>
+      <div class="say-block">Empty endpoints means the Service selector doesn't match any Ready pods. I want to compare the selector against actual pod labels.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>selector mismatch &rarr; label key/value typo between svc and deployment</li>
+        <li>pods not Ready &rarr; route to Stay up (readiness problem)</li>
+        <li>backend set wrong &rarr; selector matches unintended pods</li>
+      </ul>
+      <div class="docs">Docs: Debug Services, EndpointSlices, Service.</div>
+    </div>
+  </div>
+
+  <!-- App responds but feature fails -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>App responds, but feature fails when calling DB / API / storage</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;                          # look for connection errors
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;VAR&gt;  # check config values
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;dep-service&gt;.&lt;ns&gt;.svc.cluster.local</pre>
+      <div class="prove">whether the app has the right config and can actually reach the dependency at network level.</div>
+      <div class="say-block">The app is up but something it depends on is broken. Logs will show the error, then I'll check env vars and connectivity from inside the pod.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong env / secret value &rarr; value exists but is wrong (typo, wrong secret key)</li>
+        <li>DNS failure &rarr; hostname doesn't resolve (wrong name, wrong namespace)</li>
+        <li>connection refused &rarr; dependency is down or wrong port</li>
+        <li>RBAC / service account issue &rarr; <code>kubectl auth can-i</code> checks</li>
+        <li>NetworkPolicy blocking &rarr; <code>kubectl get networkpolicy -n &lt;ns&gt;</code></li>
+      </ul>
+      <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Using RBAC Authorization, Service Accounts, Network Policies, Persistent Volumes.</div>
+    </div>
+  </div>
+
+  <!-- MODERATE LIKELIHOOD -->
+  <div class="likelihood-label likelihood-moderate" id="symptoms-moderate" style="margin-top:20px;">Moderate Likelihood</div>
+
+  <!-- Init container failure -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Init container failure</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                  # Init Containers section
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;init-container-name&gt;</pre>
+      <div class="prove">which init container failed and why.</div>
+      <div class="say-block">The init container is blocking the main container from starting. I need its specific logs.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>dependency setup failure &rarr; init container waiting for something that isn't ready</li>
+        <li>bad image / command / mount &rarr; wrong image, bad script, missing volume</li>
+      </ul>
+      <div class="docs">Docs: Debug Running Pods, Pod Lifecycle, Init Containers.</div>
+    </div>
+  </div>
+
+  <!-- Running, Ready, but restarts increasing -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Running, Ready, but restarts increasing</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State, liveness probe config, restart count
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
+      <div class="prove">whether restarts are probe-driven or crash-driven, and what happened in the last run.</div>
+      <div class="say-block">Restarts are climbing, so something is killing the container after it starts. I want the liveness probe config and the previous logs.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>liveness probe failure &rarr; probe path/port/timing wrong</li>
+        <li>intermittent crash &rarr; error in previous logs</li>
+        <li>OOM &rarr; Last State shows OOMKilled, exit 137</li>
+        <li>app error after boot &rarr; works at start then fails under load or after timeout</li>
+      </ul>
+      <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Assign Memory Resources to Containers and Pods.</div>
+    </div>
+  </div>
+
+  <!-- OOMKilled -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>OOMKilled / exit 137</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State shows OOMKilled
+kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].resources}'</pre>
+      <div class="prove">the memory limit vs what the app needs.</div>
+      <div class="say-block">Exit 137 is OOMKilled. I want to compare the memory limit in the spec against what the app uses at startup.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>memory limit too low &rarr; raise limits.memory</li>
+        <li>boot spike &rarr; app allocates heavily at startup then settles</li>
+        <li>no limit set but node is under pressure &rarr; <code>kubectl describe node</code>, check Conditions</li>
+      </ul>
+      <div class="docs">Docs: Assign Memory Resources to Containers and Pods, Node-pressure Eviction, Pod Lifecycle.</div>
+    </div>
+  </div>
+
+  <!-- Service works internally, external fails -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Service works internally, external route fails</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
+kubectl get pods -n ingress-nginx            # is the controller healthy?</pre>
+      <div class="prove">whether the ingress rule is correct and the controller is running.</div>
+      <div class="say-block">Internal service path works, so the break is at the ingress layer. I want the ingress spec and controller status.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong host / path &rarr; ingress rules don't match the request</li>
+        <li>wrong backend service or port &rarr; service.name or service.port.number wrong</li>
+        <li>ingress controller issue &rarr; controller pod not running or misconfigured</li>
+        <li>ingressClassName missing or wrong</li>
+      </ul>
+      <div class="docs">Docs: Ingress, Ingress Controllers, Debug Services.</div>
+    </div>
+  </div>
+
+  <!-- DNS failures -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"Name or service not known", lookup failures, wrong hostname</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;hostname&gt;
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- cat /etc/resolv.conf
+kubectl get svc -n &lt;ns&gt;                     # verify actual service names</pre>
+      <div class="prove">whether the DNS name is correct and resolvable from the pod.</div>
+      <div class="say-block">This is a DNS failure. I want to test resolution from inside the pod and compare the hostname against the actual service name and namespace.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>bad service DNS name &rarr; typo, wrong service name</li>
+        <li>wrong namespace assumption &rarr; need &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</li>
+        <li>hostname correct but DNS broken &rarr; check coredns pods in kube-system</li>
+      </ul>
+      <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution.</div>
+    </div>
+  </div>
+
+  <!-- LOWER LIKELIHOOD -->
+  <div class="likelihood-label likelihood-low" id="symptoms-low" style="margin-top:20px;">Lower Likelihood</div>
+
+  <!-- Forbidden -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Forbidden / Unauthorized</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # check serviceAccountName
+kubectl auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">which service account the pod uses and what permissions it has.</div>
+      <div class="say-block">This is an auth failure. I want to check which service account the pod uses and what permissions it has.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>missing RBAC permission &rarr; create or fix Role/RoleBinding</li>
+        <li>wrong service account &rarr; pod spec references wrong SA</li>
+        <li>wrong identity assumptions &rarr; SA exists but bindings are in wrong namespace</li>
+      </ul>
+      <div class="docs">Docs: Using RBAC Authorization, Service Accounts, Authenticating, Authorization Overview.</div>
+    </div>
+  </div>
+
+  <!-- NetworkPolicy -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Traffic silently blocked despite objects looking correct</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get networkpolicy -n &lt;ns&gt;
+kubectl describe networkpolicy &lt;policy&gt; -n &lt;ns&gt;
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;target-host&gt; &lt;target-port&gt;</pre>
+      <div class="prove">whether a NetworkPolicy is blocking the traffic path.</div>
+      <div class="say-block">Everything looks correct but traffic is being dropped. I want to check NetworkPolicies and test connectivity from inside the pod.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>default-deny policy with no matching allow rule</li>
+        <li>allow rule exists but podSelector or namespaceSelector is wrong</li>
+        <li>egress policy blocking outbound traffic</li>
+      </ul>
+      <div class="docs">Docs: Network Policies, Cluster Networking.</div>
+    </div>
+  </div>
+
+  <!-- Rollout stuck -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Rollout stuck or deployment not progressing</h4>
+      <span class="bucket-tag" style="background:#f5f5f5;color:#666;border:1px solid #ccc;">Route to bucket</span>
+    </div>
+    <div class="symptom-body">
+      <p style="color:#666;font-weight:600;margin-bottom:6px;">Not a root cause by itself; inspect the new Pods.</p>
+      <pre>kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;
+kubectl get replicaset -n &lt;ns&gt;              # is the new RS scaling up?
+kubectl get pods -n &lt;ns&gt;                    # are new pods stuck?</pre>
+      <div class="prove">where in the rollout the deployment is stuck.</div>
+      <div class="say-block">A stuck rollout isn't the root cause &mdash; the new pods are failing. I want to find those pods and route into the right bucket.</div>
+      <h5>Route to:</h5>
+      <ul>
+        <li><strong style="color:var(--start)">Start</strong>, if new Pods cannot start</li>
+        <li><strong style="color:var(--stayup)">Stay up</strong>, if new Pods crash or fail probes</li>
+        <li><strong style="color:var(--traffic)">Receive Traffic</strong>, if Pods are healthy but not serving</li>
+        <li><strong style="color:var(--dep)">Reach Dep</strong>, if the app is up but broken against dependencies</li>
+      </ul>
+      <div class="docs">Docs: Deployments, Debug Pods.</div>
+    </div>
+  </div>
+
+  <!-- Job/CronJob -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Job / CronJob issue</h4>
+      <span class="bucket-tag" style="background:#f5f5f5;color:#666;border:1px solid #ccc;">Route to bucket</span>
+    </div>
+    <div class="symptom-body">
+      <p style="color:#666;font-weight:600;margin-bottom:6px;">Same root-cause buckets as Pods.</p>
+      <pre>kubectl get jobs -n &lt;ns&gt;
+kubectl describe job &lt;job&gt; -n &lt;ns&gt;
+kubectl get pods -n &lt;ns&gt; --selector=job-name=&lt;job&gt;
+kubectl logs &lt;job-pod&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">whether the job pod started, ran, and completed or failed.</div>
+      <div class="say-block">I'll treat the job pod like any other pod &mdash; same triage flow applies.</div>
+      <h5>Route to:</h5>
+      <ul>
+        <li><strong style="color:var(--start)">Start</strong>, if Job Pod cannot start</li>
+        <li><strong style="color:var(--stayup)">Stay up</strong>, if Job Pod crashes</li>
+        <li><strong style="color:var(--dep)">Reach Dep</strong>, if job logic fails against dependencies</li>
+      </ul>
+      <div class="docs">Docs: Jobs, CronJobs, Debug Pods, Debug Running Pods.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Support Views -->
+<section id="views">
+  <h2>Support Views</h2>
+  <div class="views-grid">
+    <div class="view-card">
+      <h4>Management View</h4>
+      <div class="flow">Deployment &rarr; ReplicaSet &rarr; Pods</div>
+      <ul>
+        <li>Are the right Pods being created?</li>
+        <li>Is the rollout progressing?</li>
+        <li>Is the expected replica set healthy?</li>
+      </ul>
+      <div class="docs">Docs: Deployments, ReplicaSets.</div>
+    </div>
+    <div class="view-card">
+      <h4>Health View</h4>
+      <div class="flow">kubelet / probes &rarr; Pod / container</div>
+      <ul>
+        <li>Did the app start?</li>
+        <li>Did it stay alive?</li>
+        <li>Is it Ready to receive traffic?</li>
+        <li>Is kubelet restarting it?</li>
+      </ul>
+      <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Debug Running Pods.</div>
+    </div>
+    <div class="view-card">
+      <h4>Traffic View</h4>
+      <div class="flow">Client &rarr; Ingress &rarr; Service &rarr; Endpoints &rarr; Pod &rarr; app</div>
+      <ul>
+        <li>Internal service-routing issue or external?</li>
+        <li>Is the Service pointing to healthy backends?</li>
+      </ul>
+      <div class="docs">Docs: Service, EndpointSlices, Debug Services, Ingress.</div>
+    </div>
+    <div class="view-card">
+      <h4>Dependencies View</h4>
+      <div class="flow">Config / Secret / DNS / DB / API / storage / identity &rarr; Pod</div>
+      <ul>
+        <li>Did the app get the inputs it needs?</li>
+        <li>Can it reach the systems it depends on?</li>
+        <li>Does it have the permissions it needs?</li>
+      </ul>
+      <div class="docs">Docs: DNS for Services and Pods, Using RBAC Authorization, Service Accounts, Persistent Volumes, Network Policies.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Verification -->
+<section id="verify">
+  <h2>Verification Commands</h2>
+  <p style="font-size:13px;color:#666;margin-bottom:12px;">After any fix, verify in this order:</p>
+  <div class="verify-steps">
+    <div class="verify-step"><strong>Pod state</strong> &mdash; <code>kubectl get pods -n &lt;ns&gt;</code></div>
+    <div class="verify-step"><strong>Readiness</strong> &mdash; confirm 1/1 Ready, RESTARTS stable</div>
+    <div class="verify-step"><strong>Endpoints</strong> &mdash; <code>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;</code></div>
+    <div class="verify-step"><strong>Service path</strong> &mdash; <code>kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;</code>, then <code>curl localhost:8080/health</code></div>
+    <div class="verify-step"><strong>Ingress path</strong> &mdash; <code>curl localhost/</code> (or <code>curl -H "Host: &lt;host&gt;" http://&lt;ingress-ip&gt;/</code>)</div>
+    <div class="verify-step"><strong>App end to end</strong> &mdash; <code>curl localhost/health</code> and <code>curl localhost/items</code></div>
+  </div>
+  <div class="verify-warning">Do not stop at "Pods are Running". Services depend on backend endpoints, and ingress only proves the external edge if the backend chain is sound.</div>
+</section>
+
+<!-- What to Say -->
+<section id="say">
+  <h2>What to Say in the Interview</h2>
+  <div class="phrases">
+    <div class="phrase">"I'm going to start with the symptom, not jump to a root cause."</div>
+    <div class="phrase">"First I want the nearest truth source."</div>
+    <div class="phrase">"If the Pod is broken, I'll inspect Pod state, describe output, and logs."</div>
+    <div class="phrase">"If the Pod is healthy, I'll move outward from Pod to Service to Ingress."</div>
+    <div class="phrase">"I want to make one justified change, then verify end to end."</div>
+  </div>
+  <p style="font-size:12px;color:#888;margin-top:8px;">This matches the official debugging flow and shows controlled reasoning rather than guesswork.</p>
+</section>
+
+<!-- Core Commands -->
+<section id="commands">
+  <h2>Core Commands</h2>
+  <div class="cmd-grid">
+    <div class="cmd-group">
+      <h4>Pods</h4>
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Services &amp; Endpoints</h4>
+      <pre>kubectl get svc -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;
+kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Ingress</h4>
+      <pre>kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Events</h4>
+      <pre>kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Connectivity</h4>
+      <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh
+kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;</pre>
+    </div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<script>
+function toggleAll(open) {
+  document.querySelectorAll('.symptom-card').forEach(card => {
+    if (open) card.classList.add('open');
+    else card.classList.remove('open');
+  });
+}
+</script>
+</body>
+</html>
