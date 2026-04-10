@@ -315,17 +315,6 @@
   .symptom-body li { margin-bottom: 2px; }
   .symptom-body .docs { font-size: 12px; color: #777; margin-top: 8px; font-style: italic; }
 
-  /* --- Branch links inside symptom cards --- */
-  .symptom-body a.fix-link {
-    color: #2980b9;
-    text-decoration: none;
-    border-bottom: 1px dotted #2980b9;
-  }
-  .symptom-body a.fix-link:hover {
-    color: #1a5276;
-    border-bottom-style: solid;
-  }
-
   /* --- Support views --- */
   .views-grid {
     display: grid;
@@ -484,65 +473,6 @@
   }
   .controls button:hover { background: #f0f0f0; }
 
-  /* --- Fix / Resolution sections --- */
-  .fix-section {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: var(--card-radius);
-    padding: 20px 24px;
-    margin-bottom: 14px;
-  }
-  .fix-section h3 {
-    font-size: 16px;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #eee;
-  }
-  .fix-section .fix-means {
-    font-size: 13px;
-    color: #555;
-    margin-bottom: 10px;
-    line-height: 1.5;
-  }
-  .fix-section .fix-means::before { content: 'What it usually means: '; font-weight: 600; color: #333; }
-  .fix-section pre {
-    background: var(--code-bg);
-    color: var(--code-fg);
-    font-size: 12px;
-    padding: 10px 12px;
-    border-radius: 4px;
-    overflow-x: auto;
-    white-space: pre;
-    line-height: 1.5;
-    margin: 8px 0;
-  }
-  .fix-section h4 {
-    font-size: 13px;
-    font-weight: 700;
-    margin: 12px 0 4px;
-  }
-  .fix-section ul {
-    font-size: 13px;
-    padding-left: 18px;
-    margin-bottom: 6px;
-  }
-  .fix-section li { margin-bottom: 3px; }
-  .fix-section .docs {
-    font-size: 12px;
-    color: #777;
-    margin-top: 10px;
-    font-style: italic;
-  }
-  .fix-section .back-link {
-    display: inline-block;
-    margin-top: 10px;
-    font-size: 12px;
-    color: #2980b9;
-    text-decoration: none;
-    border-bottom: 1px dotted #2980b9;
-  }
-  .fix-section .back-link:hover { border-bottom-style: solid; }
-
   /* --- Print tweaks --- */
   @media print {
     .topbar { position: static; }
@@ -564,7 +494,6 @@
     <a href="#caution">Cautions</a>
     <a href="#scope">Scope</a>
     <a href="#symptoms-high" class="bucket-start">Symptoms</a>
-    <a href="#fixes">Fixes</a>
     <a href="#views">Views</a>
     <a href="#verify">Verify</a>
     <a href="#say">Say</a>
@@ -765,11 +694,11 @@ kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
       <div class="say-block">The pod isn't even running yet, so I want the describe events to tell me whether this is scheduling, image pull, or container creation.</div>
       <h5>Then branch by what describe shows:</h5>
       <ul>
-        <li>scheduling / resource pressure &rarr; <a class="fix-link" href="#fix-scheduling">check node capacity, taints, affinity</a></li>
-        <li>PVC / storage binding &rarr; <a class="fix-link" href="#fix-pvc">kubectl get pvc -n &lt;ns&gt;</a></li>
-        <li>image pull failure &rarr; <a class="fix-link" href="#fix-image-pull">check image spec in deployment</a></li>
-        <li>container creation failure &rarr; <a class="fix-link" href="#fix-config-ref">check config/secret/volume refs</a></li>
-        <li>taints / affinity / node placement &rarr; <a class="fix-link" href="#fix-scheduling">kubectl describe node</a></li>
+        <li>scheduling / resource pressure &rarr; check node capacity, taints, affinity</li>
+        <li>PVC / storage binding &rarr; <code>kubectl get pvc -n &lt;ns&gt;</code></li>
+        <li>image pull failure &rarr; check image spec in deployment</li>
+        <li>container creation failure &rarr; check config/secret/volume refs</li>
+        <li>taints / affinity / node placement &rarr; <code>kubectl describe node</code></li>
       </ul>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
     </div>
@@ -789,9 +718,9 @@ kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spe
       <div class="say-block">The image can't be pulled, so I want to compare the image spec in the deployment against what's actually available.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>wrong image name or tag &rarr; <a class="fix-link" href="#fix-image-pull">typo, wrong registry, tag doesn't exist</a></li>
-        <li>registry auth problem &rarr; <a class="fix-link" href="#fix-image-pull">imagePullSecrets configured?</a></li>
-        <li>pull policy &rarr; <a class="fix-link" href="#fix-image-pull">imagePullPolicy vs what's loaded locally</a></li>
+        <li>wrong image name or tag &rarr; typo, wrong registry, tag doesn't exist</li>
+        <li>registry auth problem &rarr; imagePullSecrets configured?</li>
+        <li>pull policy &rarr; imagePullPolicy vs what's loaded locally</li>
       </ul>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Images (container images reference).</div>
     </div>
@@ -812,10 +741,10 @@ kubectl get secret -n &lt;ns&gt;</pre>
       <div class="say-block">The container can't be created due to a config reference, so I need describe to tell me which Secret, ConfigMap, or volume mount is missing or wrong.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>missing Secret / ConfigMap &rarr; <a class="fix-link" href="#fix-config-ref">does the named object exist?</a></li>
-        <li>bad env reference &rarr; <a class="fix-link" href="#fix-config-ref">envFrom or valueFrom pointing at wrong key?</a></li>
-        <li>bad volume or mount &rarr; <a class="fix-link" href="#fix-config-ref">volume name mismatch, wrong path</a></li>
-        <li>bad command / args &rarr; <a class="fix-link" href="#fix-app-startup">entrypoint override broken</a></li>
+        <li>missing Secret / ConfigMap &rarr; does the named object exist?</li>
+        <li>bad env reference &rarr; envFrom or valueFrom pointing at wrong key?</li>
+        <li>bad volume or mount &rarr; volume name mismatch, wrong path</li>
+        <li>bad command / args &rarr; entrypoint override broken</li>
       </ul>
       <div class="docs">Docs: Debug Pods, Debug Running Pods, ConfigMaps, Secrets.</div>
     </div>
@@ -837,11 +766,11 @@ kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State section: ex
       <div class="say-block">CrashLoopBackOff is a symptom, not the cause. The logs will tell me what actually failed &mdash; config, dependency, DNS, OOM, or code.</div>
       <h5>Then branch by what logs show:</h5>
       <ul>
-        <li>config/env/secret error &rarr; <a class="fix-link" href="#fix-config-values">check env vars, configmap, secret values</a></li>
-        <li>connection refused / host not found &rarr; <a class="fix-link" href="#fix-dep-connectivity">dependency</a> or <a class="fix-link" href="#fix-dns">DNS problem</a> (branch to Reach Dep)</li>
-        <li>app stack trace / boot failure &rarr; <a class="fix-link" href="#fix-app-startup">code or entrypoint problem</a></li>
-        <li>no logs + exit 137 &rarr; <a class="fix-link" href="#fix-oom">OOMKilled</a> (check describe pod Last State)</li>
-        <li>probe-driven restart &rarr; <a class="fix-link" href="#fix-probes">check probe config in describe</a></li>
+        <li>config/env/secret error &rarr; check env vars, configmap, secret values</li>
+        <li>connection refused / host not found &rarr; dependency or DNS problem (branch to Reach Dep)</li>
+        <li>app stack trace / boot failure &rarr; code or entrypoint problem</li>
+        <li>no logs + exit 137 &rarr; OOMKilled (check describe pod Last State)</li>
+        <li>probe-driven restart &rarr; check probe config in describe</li>
       </ul>
       <div class="docs">Docs: Pod Lifecycle, Debug Running Pods, Configure Liveness Readiness and Startup Probes, DNS for Services and Pods, Resource Management for Pods and Containers.</div>
     </div>
@@ -861,9 +790,9 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
       <div class="say-block">The container is alive but not passing readiness, so I want the probe spec from describe and any app errors from logs.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>readiness probe path/port wrong &rarr; <a class="fix-link" href="#fix-probes">compare probe spec vs what app actually serves</a></li>
-        <li>app boot incomplete &rarr; <a class="fix-link" href="#fix-probes">logs show slow startup, needs startupProbe or longer initialDelaySeconds</a></li>
-        <li>dependency reachable enough to start but not enough to serve &rarr; <a class="fix-link" href="#fix-dep-connectivity">partial failure in logs</a></li>
+        <li>readiness probe path/port wrong &rarr; compare probe spec vs what app actually serves</li>
+        <li>app boot incomplete &rarr; logs show slow startup, needs startupProbe or longer initialDelaySeconds</li>
+        <li>dependency reachable enough to start but not enough to serve &rarr; partial failure in logs</li>
       </ul>
       <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Debug Running Pods.</div>
     </div>
@@ -884,9 +813,9 @@ kubectl get pods -n &lt;ns&gt; --show-labels</pre>
       <div class="say-block">The pod looks fine, so the break is between the Service and the Pod. I want endpoints first to see if the Service selector matches.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>endpoints empty &rarr; <a class="fix-link" href="#fix-service-selector">selector doesn't match pod labels, or pods are not Ready</a></li>
-        <li>endpoints present but wrong port &rarr; <a class="fix-link" href="#fix-service-selector">compare svc port/targetPort with container port</a></li>
-        <li>service exists but points nowhere useful &rarr; <a class="fix-link" href="#fix-service-selector">selector matches wrong pods</a></li>
+        <li>endpoints empty &rarr; selector doesn't match pod labels, or pods are not Ready</li>
+        <li>endpoints present but wrong port &rarr; compare svc port/targetPort with container port</li>
+        <li>service exists but points nowhere useful &rarr; selector matches wrong pods</li>
       </ul>
       <div class="docs">Docs: Debug Services, Service, EndpointSlices.</div>
     </div>
@@ -907,9 +836,9 @@ kubectl get pods -n &lt;ns&gt; --show-labels       # compare against selector</p
       <div class="say-block">Empty endpoints means the Service selector doesn't match any Ready pods. I want to compare the selector against actual pod labels.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>selector mismatch &rarr; <a class="fix-link" href="#fix-service-selector">label key/value typo between svc and deployment</a></li>
-        <li>pods not Ready &rarr; <a class="fix-link" href="#fix-probes">route to Stay up (readiness problem)</a></li>
-        <li>backend set wrong &rarr; <a class="fix-link" href="#fix-service-selector">selector matches unintended pods</a></li>
+        <li>selector mismatch &rarr; label key/value typo between svc and deployment</li>
+        <li>pods not Ready &rarr; route to Stay up (readiness problem)</li>
+        <li>backend set wrong &rarr; selector matches unintended pods</li>
       </ul>
       <div class="docs">Docs: Debug Services, EndpointSlices, Service.</div>
     </div>
@@ -930,11 +859,11 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;dep-service&gt;.&lt;n
       <div class="say-block">The app is up but something it depends on is broken. Logs will show the error, then I'll check env vars and connectivity from inside the pod.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>wrong env / secret value &rarr; <a class="fix-link" href="#fix-config-values">value exists but is wrong (typo, wrong secret key)</a></li>
-        <li>DNS failure &rarr; <a class="fix-link" href="#fix-dns">hostname doesn't resolve (wrong name, wrong namespace)</a></li>
-        <li>connection refused &rarr; <a class="fix-link" href="#fix-dep-connectivity">dependency is down or wrong port</a></li>
-        <li>RBAC / service account issue &rarr; <a class="fix-link" href="#fix-rbac">kubectl auth can-i checks</a></li>
-        <li>NetworkPolicy blocking &rarr; <a class="fix-link" href="#fix-networkpolicy">kubectl get networkpolicy -n &lt;ns&gt;</a></li>
+        <li>wrong env / secret value &rarr; value exists but is wrong (typo, wrong secret key)</li>
+        <li>DNS failure &rarr; hostname doesn't resolve (wrong name, wrong namespace)</li>
+        <li>connection refused &rarr; dependency is down or wrong port</li>
+        <li>RBAC / service account issue &rarr; <code>kubectl auth can-i</code> checks</li>
+        <li>NetworkPolicy blocking &rarr; <code>kubectl get networkpolicy -n &lt;ns&gt;</code></li>
       </ul>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Using RBAC Authorization, Service Accounts, Network Policies, Persistent Volumes.</div>
     </div>
@@ -957,8 +886,8 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;init-container-name&gt;</pre>
       <div class="say-block">The init container is blocking the main container from starting. I need its specific logs.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>dependency setup failure &rarr; <a class="fix-link" href="#fix-init-container">init container waiting for something that isn't ready</a></li>
-        <li>bad image / command / mount &rarr; <a class="fix-link" href="#fix-init-container">wrong image, bad script, missing volume</a></li>
+        <li>dependency setup failure &rarr; init container waiting for something that isn't ready</li>
+        <li>bad image / command / mount &rarr; wrong image, bad script, missing volume</li>
       </ul>
       <div class="docs">Docs: Debug Running Pods, Pod Lifecycle, Init Containers.</div>
     </div>
@@ -978,10 +907,10 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
       <div class="say-block">Restarts are climbing, so something is killing the container after it starts. I want the liveness probe config and the previous logs.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>liveness probe failure &rarr; <a class="fix-link" href="#fix-probes">probe path/port/timing wrong</a></li>
-        <li>intermittent crash &rarr; <a class="fix-link" href="#fix-app-startup">error in previous logs</a></li>
-        <li>OOM &rarr; <a class="fix-link" href="#fix-oom">Last State shows OOMKilled, exit 137</a></li>
-        <li>app error after boot &rarr; <a class="fix-link" href="#fix-app-startup">works at start then fails under load or after timeout</a></li>
+        <li>liveness probe failure &rarr; probe path/port/timing wrong</li>
+        <li>intermittent crash &rarr; error in previous logs</li>
+        <li>OOM &rarr; Last State shows OOMKilled, exit 137</li>
+        <li>app error after boot &rarr; works at start then fails under load or after timeout</li>
       </ul>
       <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Assign Memory Resources to Containers and Pods.</div>
     </div>
@@ -1001,9 +930,9 @@ kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spe
       <div class="say-block">Exit 137 is OOMKilled. I want to compare the memory limit in the spec against what the app uses at startup.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>memory limit too low &rarr; <a class="fix-link" href="#fix-oom">raise limits.memory</a></li>
-        <li>boot spike &rarr; <a class="fix-link" href="#fix-oom">app allocates heavily at startup then settles</a></li>
-        <li>no limit set but node is under pressure &rarr; <a class="fix-link" href="#fix-oom"><code>kubectl describe node</code>, check Conditions</a></li>
+        <li>memory limit too low &rarr; raise limits.memory</li>
+        <li>boot spike &rarr; app allocates heavily at startup then settles</li>
+        <li>no limit set but node is under pressure &rarr; <code>kubectl describe node</code>, check Conditions</li>
       </ul>
       <div class="docs">Docs: Assign Memory Resources to Containers and Pods, Node-pressure Eviction, Pod Lifecycle.</div>
     </div>
@@ -1024,10 +953,10 @@ kubectl get pods -n ingress-nginx            # is the controller healthy?</pre>
       <div class="say-block">Internal service path works, so the break is at the ingress layer. I want the ingress spec and controller status.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>wrong host / path &rarr; <a class="fix-link" href="#fix-ingress">ingress rules don't match the request</a></li>
-        <li>wrong backend service or port &rarr; <a class="fix-link" href="#fix-ingress">service.name or service.port.number wrong</a></li>
-        <li>ingress controller issue &rarr; <a class="fix-link" href="#fix-ingress">controller pod not running or misconfigured</a></li>
-        <li>ingressClassName missing or wrong &rarr; <a class="fix-link" href="#fix-ingress">add or fix ingressClassName</a></li>
+        <li>wrong host / path &rarr; ingress rules don't match the request</li>
+        <li>wrong backend service or port &rarr; service.name or service.port.number wrong</li>
+        <li>ingress controller issue &rarr; controller pod not running or misconfigured</li>
+        <li>ingressClassName missing or wrong</li>
       </ul>
       <div class="docs">Docs: Ingress, Ingress Controllers, Debug Services.</div>
     </div>
@@ -1048,9 +977,9 @@ kubectl get svc -n &lt;ns&gt;                     # verify actual service names<
       <div class="say-block">This is a DNS failure. I want to test resolution from inside the pod and compare the hostname against the actual service name and namespace.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>bad service DNS name &rarr; <a class="fix-link" href="#fix-dns">typo, wrong service name</a></li>
-        <li>wrong namespace assumption &rarr; <a class="fix-link" href="#fix-dns">need &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</a></li>
-        <li>hostname correct but DNS broken &rarr; <a class="fix-link" href="#fix-dns">check coredns pods in kube-system</a></li>
+        <li>bad service DNS name &rarr; typo, wrong service name</li>
+        <li>wrong namespace assumption &rarr; need &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</li>
+        <li>hostname correct but DNS broken &rarr; check coredns pods in kube-system</li>
       </ul>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution.</div>
     </div>
@@ -1073,9 +1002,9 @@ kubectl auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;
       <div class="say-block">This is an auth failure. I want to check which service account the pod uses and what permissions it has.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>missing RBAC permission &rarr; <a class="fix-link" href="#fix-rbac">create or fix Role/RoleBinding</a></li>
-        <li>wrong service account &rarr; <a class="fix-link" href="#fix-rbac">pod spec references wrong SA</a></li>
-        <li>wrong identity assumptions &rarr; <a class="fix-link" href="#fix-rbac">SA exists but bindings are in wrong namespace</a></li>
+        <li>missing RBAC permission &rarr; create or fix Role/RoleBinding</li>
+        <li>wrong service account &rarr; pod spec references wrong SA</li>
+        <li>wrong identity assumptions &rarr; SA exists but bindings are in wrong namespace</li>
       </ul>
       <div class="docs">Docs: Using RBAC Authorization, Service Accounts, Authenticating, Authorization Overview.</div>
     </div>
@@ -1096,9 +1025,9 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;target-host&gt; &lt;tar
       <div class="say-block">Everything looks correct but traffic is being dropped. I want to check NetworkPolicies and test connectivity from inside the pod.</div>
       <h5>Then check:</h5>
       <ul>
-        <li>default-deny policy with no matching allow rule &rarr; <a class="fix-link" href="#fix-networkpolicy">add allow rule</a></li>
-        <li>allow rule exists but podSelector or namespaceSelector is wrong &rarr; <a class="fix-link" href="#fix-networkpolicy">fix selectors</a></li>
-        <li>egress policy blocking outbound traffic &rarr; <a class="fix-link" href="#fix-networkpolicy">add egress allow</a></li>
+        <li>default-deny policy with no matching allow rule</li>
+        <li>allow rule exists but podSelector or namespaceSelector is wrong</li>
+        <li>egress policy blocking outbound traffic</li>
       </ul>
       <div class="docs">Docs: Network Policies, Cluster Networking.</div>
     </div>
@@ -1153,367 +1082,6 @@ kubectl logs &lt;job-pod&gt; -n &lt;ns&gt;</pre>
       <div class="docs">Docs: Jobs, CronJobs, Debug Pods, Debug Running Pods.</div>
     </div>
   </div>
-</section>
-
-<!-- Fix / Resolution Sections -->
-<section id="fixes">
-  <h2>Fix / Resolution Sections</h2>
-  <p style="font-size:13px;color:#666;margin-bottom:16px;">Multiple symptom branches converge on the same underlying fix. Each section below is referenced by the symptom map above. After any fix, run the <a href="#verify" style="color:#2980b9;">verification commands</a> to confirm the full path works end to end.</p>
-
-  <!-- 1. Image pull failure -->
-  <div class="fix-section" id="fix-image-pull">
-    <h3>Fix: Image pull failure</h3>
-    <div class="fix-means">The image reference in the Deployment spec doesn't match what's available &mdash; wrong name, wrong tag, missing from registry, or wrong pull policy for a locally loaded image.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
-kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].image}'
-kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Wrong image name or tag &rarr; fix the image field in the Deployment spec</li>
-      <li>Image loaded locally but imagePullPolicy is Always &rarr; set to IfNotPresent or Never</li>
-      <li>Private registry without credentials &rarr; add imagePullSecrets to the pod spec</li>
-      <li>For kind/local clusters &rarr; verify image is loaded: <code>kind load docker-image &lt;image&gt; --name &lt;cluster&gt;</code></li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;
-kubectl get pods -n &lt;ns&gt;    # should transition from ErrImagePull to Running</pre>
-    <div class="docs">Docs: Images, Debug Pods, Pod Lifecycle.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 2. Config / Secret / volume reference -->
-  <div class="fix-section" id="fix-config-ref">
-    <h3>Fix: Config / Secret / volume reference</h3>
-    <div class="fix-means">The pod spec references a ConfigMap, Secret, or volume that doesn't exist, or references a key that doesn't exist in an object that does.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section names the broken ref
-kubectl get configmap -n &lt;ns&gt;
-kubectl get secret -n &lt;ns&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Referenced ConfigMap or Secret doesn't exist &rarr; create it, or fix the name in the pod spec</li>
-      <li>envFrom or valueFrom points at a key that doesn't exist &rarr; fix the key name or add the key to the object</li>
-      <li>Volume references a non-existent ConfigMap/Secret &rarr; fix the volume definition</li>
-      <li>Optional: false (default) on a missing ref &rarr; either create the object or mark the ref optional: true if appropriate</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl get pods -n &lt;ns&gt;    # should clear CreateContainerConfigError
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;    # no config-related errors in Events</pre>
-    <div class="docs">Docs: ConfigMaps, Secrets, Debug Pods.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 3. Config / Secret values -->
-  <div class="fix-section" id="fix-config-values">
-    <h3>Fix: Config / Secret values</h3>
-    <div class="fix-means">The ConfigMap or Secret exists and the reference is valid, but the actual data value is wrong &mdash; a typo, wrong hostname, wrong port, wrong password, or wrong key mapping.</div>
-    <h4>First commands</h4>
-    <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;VAR&gt;
-kubectl get configmap &lt;cm&gt; -n &lt;ns&gt; -o yaml
-kubectl get secret &lt;secret&gt; -n &lt;ns&gt; -o jsonpath='{.data.&lt;key&gt;}' | base64 -d</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Wrong value in ConfigMap &rarr; <code>kubectl edit configmap &lt;cm&gt; -n &lt;ns&gt;</code> or patch it</li>
-      <li>Wrong value in Secret &rarr; fix and re-apply (remember base64 encoding)</li>
-      <li>Env var mapped to wrong key &rarr; fix the valueFrom.key reference in the Deployment</li>
-      <li>After fixing ConfigMap/Secret data, the pod must be restarted to pick up changes (unless using mounted volumes with auto-refresh)</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;
-kubectl exec -it &lt;new-pod&gt; -n &lt;ns&gt; -- env | grep &lt;VAR&gt;    # confirm correct value
-kubectl logs &lt;new-pod&gt; -n &lt;ns&gt;    # confirm app starts without config errors</pre>
-    <div class="docs">Docs: ConfigMaps, Secrets, Debug Running Pods.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 4. Probe configuration -->
-  <div class="fix-section" id="fix-probes">
-    <h3>Fix: Probe configuration</h3>
-    <div class="fix-means">A readiness, liveness, or startup probe is misconfigured &mdash; wrong path, wrong port, or timing too aggressive for the app's boot time.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # probe spec + Conditions section
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Wrong probe path &rarr; fix httpGet.path to match what the app actually serves (e.g. /health not /healthz)</li>
-      <li>Wrong probe port &rarr; fix httpGet.port or tcpSocket.port to match the container port</li>
-      <li>App too slow to boot &rarr; add a startupProbe with generous failureThreshold, or increase initialDelaySeconds</li>
-      <li>Liveness killing before ready &rarr; increase liveness initialDelaySeconds or periodSeconds, or add a startupProbe to cover boot time</li>
-      <li>Readiness probe correct but app genuinely not ready &rarr; route to dependency or config fix</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl get pods -n &lt;ns&gt;    # should show 1/1 Ready, RESTARTS stable
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;    # Conditions: Ready True</pre>
-    <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 5. App startup / entrypoint failure -->
-  <div class="fix-section" id="fix-app-startup">
-    <h3>Fix: App startup / entrypoint failure</h3>
-    <div class="fix-means">The container starts but the process exits immediately &mdash; bad command/args override, wrong entrypoint, missing startup dependency, failed migration, or unhandled exception during boot. Logs exist but the container never reaches steady state.</div>
-    <h4>First commands</h4>
-    <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
-kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State: exit code, command/args spec
-kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].command}'
-kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].args}'</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Wrong command or args in Deployment spec &rarr; fix or remove the override so the Dockerfile entrypoint runs</li>
-      <li>Entrypoint overridden accidentally &rarr; command in the pod spec replaces ENTRYPOINT; args replaces CMD. Remove the override if the Dockerfile is correct</li>
-      <li>Startup migration or seed script fails &rarr; fix the script, or fix the dependency it needs (DB not ready, wrong credentials). Check logs for the specific error</li>
-      <li>Unhandled exception at boot &rarr; logs show the stack trace. Fix the app code or the config it depends on</li>
-      <li>Missing startup dependency with no retry &rarr; app crashes because a dependency isn't ready yet. Add an init container that waits, or add retry logic</li>
-      <li>Wrong working directory or missing file &rarr; command references a path that doesn't exist in the image. Check the Dockerfile and the command</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;    # or re-apply after fix
-kubectl get pods -n &lt;ns&gt;    # Running, RESTARTS not climbing
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;    # clean startup, no stack trace</pre>
-    <div class="docs">Docs: Debug Running Pods, Pod Lifecycle, Define a Command and Arguments for a Container.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 6. Init container failure -->
-  <div class="fix-section" id="fix-init-container">
-    <h3>Fix: Init container failure</h3>
-    <div class="fix-means">An init container is blocking the main container from starting &mdash; it's crashing, waiting on an unmet condition, or misconfigured.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Init Containers section: state, exit code, image, command
-kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;init-container-name&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Init container image wrong &rarr; fix the image reference (same as image pull fix, but check the initContainers array specifically)</li>
-      <li>Bad command or script &rarr; fix the command/args in the init container spec. Check logs for the exact error</li>
-      <li>Waiting for a dependency that isn't ready &rarr; the init container is doing a wait loop (e.g. waiting for a database). Fix the dependency first, or fix the hostname/port the init container is checking</li>
-      <li>Missing ConfigMap/Secret/volume mount &rarr; same as config reference fix, but check the init container's env and volumeMounts separately from the main container</li>
-      <li>Wrong permissions or working directory &rarr; init container runs as a different user or in a different context than expected</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;    # Init Containers: all show State: Terminated, Reason: Completed
-kubectl get pods -n &lt;ns&gt;    # pod progresses past Init to Running</pre>
-    <div class="docs">Docs: Init Containers, Debug Running Pods, Pod Lifecycle.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 7. Memory limits (OOMKilled) -->
-  <div class="fix-section" id="fix-oom">
-    <h3>Fix: Memory limits (OOMKilled)</h3>
-    <div class="fix-means">The container's memory limit is lower than what the app needs, especially at startup.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State: OOMKilled
-kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].resources}'</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Memory limit too low &rarr; increase resources.limits.memory in the Deployment spec</li>
-      <li>No memory limit but node under pressure &rarr; set an explicit limit above the app's peak usage</li>
-      <li>App has a startup spike &rarr; set limit to cover the spike, or fix the app's boot memory profile</li>
-      <li>Also check requests &mdash; if requests &gt; node capacity, pods won't schedule</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;
-kubectl get pods -n &lt;ns&gt;    # Running, no OOMKilled in describe Last State
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;    # Last State: Running (not Terminated/OOMKilled)</pre>
-    <div class="docs">Docs: Assign Memory Resources to Containers and Pods, Resource Management for Pods and Containers.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 8. Service selector and port mapping -->
-  <div class="fix-section" id="fix-service-selector">
-    <h3>Fix: Service selector and port mapping</h3>
-    <div class="fix-means">The Service selector doesn't match the pod labels, or the port/targetPort mapping is wrong, so the Service has no usable endpoints.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe svc &lt;service&gt; -n &lt;ns&gt;      # Selector and Ports
-kubectl get pods -n &lt;ns&gt; --show-labels
-kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Selector mismatch &rarr; fix the Service selector to match the pod labels (or vice versa, fix the Deployment labels)</li>
-      <li>targetPort wrong &rarr; set targetPort to the port the container actually listens on</li>
-      <li>Port wrong &rarr; set the Service port to what clients expect</li>
-      <li>Named port mismatch &rarr; ensure the port name in the Service matches the container port name</li>
-      <li>Pods not Ready &rarr; fix readiness (route to <a class="fix-link" href="#fix-probes">probe fix</a>) so they appear in endpoints</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;    # should list pod IPs
-kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;
-curl localhost:8080/health    # confirm Service routes to the app</pre>
-    <div class="docs">Docs: Service, EndpointSlices, Debug Services.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 9. Ingress routing -->
-  <div class="fix-section" id="fix-ingress">
-    <h3>Fix: Ingress routing</h3>
-    <div class="fix-means">The Ingress object exists but its rules don't route traffic to the backend correctly &mdash; wrong host, wrong path, wrong service reference, or the controller isn't running.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
-kubectl get pods -n ingress-nginx
-kubectl get svc -n &lt;ns&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Wrong host &rarr; fix the host field, or remove it to match any host</li>
-      <li>Wrong path &rarr; fix the path or pathType (Prefix vs Exact)</li>
-      <li>Wrong backend service name or port &rarr; fix service.name and service.port.number to match the actual Service</li>
-      <li>ingressClassName missing or wrong &rarr; add or fix ingressClassName (e.g. nginx)</li>
-      <li>Ingress controller not running &rarr; check controller pod, restart if crashed, verify it's installed</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre># 1. Confirm the ingress controller is running
-kubectl get pods -n ingress-nginx
-# 2. Confirm the ingress object has an ADDRESS assigned
-kubectl get ingress -n &lt;ns&gt;
-# 3. Test through the ingress using the correct host header and ingress address
-#    Local cluster with host port mapping:
-curl localhost/
-#    Remote or LoadBalancer setup:
-curl -H "Host: &lt;host&gt;" http://&lt;ingress-address&gt;/
-# 4. Verify app endpoints through the external path
-curl &lt;same-base&gt;/health
-curl &lt;same-base&gt;/items</pre>
-    <div class="docs">Docs: Ingress, Ingress Controllers.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 10. DNS / service discovery -->
-  <div class="fix-section" id="fix-dns">
-    <h3>Fix: DNS / service discovery</h3>
-    <div class="fix-means">The app is using a hostname that doesn't resolve &mdash; typo in service name, wrong namespace, or DNS infrastructure is broken.</div>
-    <h4>First commands</h4>
-    <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;hostname&gt;
-kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- cat /etc/resolv.conf
-kubectl get svc --all-namespaces | grep &lt;expected-name&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Typo in service name &rarr; fix the hostname in the app config or env var</li>
-      <li>Wrong namespace &rarr; use the fully qualified name: &lt;service&gt;.&lt;namespace&gt;.svc.cluster.local</li>
-      <li>Service doesn't exist &rarr; create it</li>
-      <li>CoreDNS broken &rarr; check coredns pods in kube-system: <code>kubectl get pods -n kube-system -l k8s-app=kube-dns</code></li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;corrected-hostname&gt;
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;    # no more "name or service not known"</pre>
-    <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 11. Dependency connectivity -->
-  <div class="fix-section" id="fix-dep-connectivity">
-    <h3>Fix: Dependency connectivity</h3>
-    <div class="fix-means">DNS resolves correctly but the connection fails &mdash; the dependency is down, the port is wrong, or a NetworkPolicy is blocking traffic.</div>
-    <h4>First commands</h4>
-    <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;host&gt; &lt;port&gt;
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;
-kubectl get pods -n &lt;ns&gt;    # is the dependency pod running?</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Dependency pod not running &rarr; fix the dependency first (same triage flow)</li>
-      <li>Wrong port in app config &rarr; fix the port env var or ConfigMap value</li>
-      <li>NetworkPolicy blocking &rarr; route to <a class="fix-link" href="#fix-networkpolicy">NetworkPolicy fix</a></li>
-      <li>Dependency running but not accepting connections &rarr; check dependency logs and readiness</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;host&gt; &lt;port&gt;    # should succeed
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;    # no connection errors
-curl localhost/health    # app-level health check passes</pre>
-    <div class="docs">Docs: Network Policies, Debug Services, Debug Running Pods.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 12. NetworkPolicy rules -->
-  <div class="fix-section" id="fix-networkpolicy">
-    <h3>Fix: NetworkPolicy rules</h3>
-    <div class="fix-means">A default-deny policy exists and the allow rules don't match the traffic path &mdash; wrong selectors, missing rules, or egress blocked.</div>
-    <h4>First commands</h4>
-    <pre>kubectl get networkpolicy -n &lt;ns&gt;
-kubectl describe networkpolicy &lt;policy&gt; -n &lt;ns&gt;
-kubectl get pods -n &lt;ns&gt; --show-labels</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Default-deny with no allow rule for the traffic path &rarr; add an ingress or egress allow rule</li>
-      <li>Allow rule exists but podSelector is wrong &rarr; fix the label selector to match the source/target pods</li>
-      <li>Allow rule exists but namespaceSelector is wrong &rarr; fix to match the source namespace</li>
-      <li>Egress policy blocking outbound &rarr; add egress allow for the destination</li>
-      <li>DNS blocked by egress policy &rarr; ensure egress allows UDP 53 to kube-system (CoreDNS)</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;target-host&gt; &lt;target-port&gt;    # should succeed
-kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;hostname&gt;    # DNS still works</pre>
-    <div class="docs">Docs: Network Policies, Cluster Networking.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 13. RBAC / service account -->
-  <div class="fix-section" id="fix-rbac">
-    <h3>Fix: RBAC / service account</h3>
-    <div class="fix-means">The pod's service account doesn't have the permissions the app needs &mdash; missing Role, missing RoleBinding, or wrong service account assigned.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # serviceAccountName
-kubectl auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;
-kubectl get rolebinding -n &lt;ns&gt;</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Missing Role &rarr; create a Role with the required permissions</li>
-      <li>Missing RoleBinding &rarr; create a RoleBinding linking the Role to the ServiceAccount</li>
-      <li>Wrong service account in pod spec &rarr; fix serviceAccountName in the Deployment</li>
-      <li>RoleBinding in wrong namespace &rarr; move it to the namespace where the SA operates</li>
-      <li>ClusterRole needed &rarr; if the resource is cluster-scoped, use ClusterRole + ClusterRoleBinding</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;    # should return yes
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;    # no Forbidden errors</pre>
-    <div class="docs">Docs: Using RBAC Authorization, Service Accounts.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 14. Scheduling / node placement -->
-  <div class="fix-section" id="fix-scheduling">
-    <h3>Fix: Scheduling / node placement</h3>
-    <div class="fix-means">The pod can't be placed on any node &mdash; insufficient resources, unmet node affinity, or unmatched tolerations.</div>
-    <h4>First commands</h4>
-    <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events: scheduling reason
-kubectl describe node                        # Allocatable, Conditions, Taints</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>Insufficient CPU or memory &rarr; reduce resource requests, or free capacity on nodes</li>
-      <li>Taint with no matching toleration &rarr; add the toleration to the pod spec, or remove the taint</li>
-      <li>Node affinity/selector doesn't match any node &rarr; fix the affinity rules or label the node</li>
-      <li>Multiple constraints compounding &rarr; check all of nodeSelector, affinity, tolerations, and resource requests together</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl get pods -n &lt;ns&gt;    # should transition from Pending to Running
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;    # Events show successful scheduling</pre>
-    <div class="docs">Docs: Assigning Pods to Nodes, Taints and Tolerations, Resource Management for Pods and Containers.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
-  <!-- 15. PVC / storage binding -->
-  <div class="fix-section" id="fix-pvc">
-    <h3>Fix: PVC / storage binding</h3>
-    <div class="fix-means">A PersistentVolumeClaim can't bind to a volume &mdash; missing StorageClass, provisioner not running, access mode mismatch, or topology constraint.</div>
-    <h4>First commands</h4>
-    <pre>kubectl get pvc -n &lt;ns&gt;
-kubectl describe pvc &lt;pvc&gt; -n &lt;ns&gt;          # Events: why it can't bind
-kubectl get storageclass
-kubectl get pv                               # is there a matching PV?</pre>
-    <h4>Likely fixes</h4>
-    <ul>
-      <li>StorageClass doesn't exist &rarr; create it, or fix the storageClassName in the PVC</li>
-      <li>Provisioner not running &rarr; check the provisioner pods (e.g. in kube-system or a storage namespace)</li>
-      <li>Access mode mismatch &rarr; PVC requests ReadWriteMany but the provisioner only supports ReadWriteOnce</li>
-      <li>Capacity mismatch &rarr; PVC requests more than any available PV offers</li>
-      <li>Topology constraint &rarr; volumeBindingMode is WaitForFirstConsumer and no node matches both the pod's scheduling constraints and the volume's topology. Check node labels and zone/region affinity</li>
-      <li>Static PV not matching &rarr; check that the PV's capacity, access modes, and storageClassName match the PVC's requirements</li>
-    </ul>
-    <h4>Verification</h4>
-    <pre>kubectl get pvc -n &lt;ns&gt;    # should show Bound
-kubectl get pods -n &lt;ns&gt;    # pod should transition from Pending to Running</pre>
-    <div class="docs">Docs: Persistent Volumes, Storage Classes, Debug Pods.</div>
-    <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
-  </div>
-
 </section>
 
 <!-- Support Views -->

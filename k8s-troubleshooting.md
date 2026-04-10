@@ -626,3 +626,427 @@ Frame: Start → Stay up → Receive Traffic → Reach Dep
 Rule: Symptom first, root cause second
 Loop: classify → inspect nearest layer → route by evidence → smallest fix → verify end to end
 Guard: CrashLoopBackOff ≠ cause, Running ≠ healthy, Ready ≠ ingress works, Service exists ≠ endpoints exist
+
+---
+
+Fix / Resolution Sections
+
+Multiple symptom branches converge on the same underlying fix. Each section below is referenced by the symptom map above. After any fix, run the verification commands section to confirm the full path works end to end.
+
+---
+
+Fix: Image pull failure
+
+What it usually means: The image reference in the Deployment spec doesn't match what's available — wrong name, wrong tag, missing from registry, or wrong pull policy for a locally loaded image.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>
+	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].image}'
+	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'
+
+Likely fixes:
+	•	Wrong image name or tag → fix the image field in the Deployment spec
+	•	Image loaded locally but imagePullPolicy is Always → set to IfNotPresent or Never
+	•	Private registry without credentials → add imagePullSecrets to the pod spec
+	•	For kind/local clusters → verify image is loaded: kind load docker-image <image> --name <cluster>
+
+Verification:
+
+	kubectl rollout status deploy/<deploy> -n <ns>
+	kubectl get pods -n <ns>    # should transition from ErrImagePull to Running
+
+Docs: Images, Debug Pods, Pod Lifecycle.
+
+---
+
+Fix: Config / Secret / volume reference
+
+What it usually means: The pod spec references a ConfigMap, Secret, or volume that doesn't exist, or references a key that doesn't exist in an object that does.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # Events section names the broken ref
+	kubectl get configmap -n <ns>
+	kubectl get secret -n <ns>
+
+Likely fixes:
+	•	Referenced ConfigMap or Secret doesn't exist → create it, or fix the name in the pod spec
+	•	envFrom or valueFrom points at a key that doesn't exist → fix the key name or add the key to the object
+	•	Volume references a non-existent ConfigMap/Secret → fix the volume definition
+	•	Optional: false (default) on a missing ref → either create the object or mark the ref optional: true if appropriate
+
+Verification:
+
+	kubectl get pods -n <ns>    # should clear CreateContainerConfigError
+	kubectl describe pod <pod> -n <ns>    # no config-related errors in Events
+
+Docs: ConfigMaps, Secrets, Debug Pods.
+
+---
+
+Fix: Config / Secret values
+
+What it usually means: The ConfigMap or Secret exists and the reference is valid, but the actual data value is wrong — a typo, wrong hostname, wrong port, wrong password, or wrong key mapping.
+
+First commands:
+
+	kubectl exec -it <pod> -n <ns> -- env | grep <VAR>
+	kubectl get configmap <cm> -n <ns> -o yaml
+	kubectl get secret <secret> -n <ns> -o jsonpath='{.data.<key>}' | base64 -d
+
+Likely fixes:
+	•	Wrong value in ConfigMap → kubectl edit configmap <cm> -n <ns> or patch it
+	•	Wrong value in Secret → fix and re-apply (remember base64 encoding)
+	•	Env var mapped to wrong key → fix the valueFrom.key reference in the Deployment
+	•	After fixing ConfigMap/Secret data, the pod must be restarted to pick up changes (unless using mounted volumes with auto-refresh)
+
+Verification:
+
+	kubectl rollout restart deploy/<deploy> -n <ns>
+	kubectl exec -it <new-pod> -n <ns> -- env | grep <VAR>    # confirm correct value
+	kubectl logs <new-pod> -n <ns>    # confirm app starts without config errors
+
+Docs: ConfigMaps, Secrets, Debug Running Pods.
+
+---
+
+Fix: Probe configuration
+
+What it usually means: A readiness, liveness, or startup probe is misconfigured — wrong path, wrong port, or timing too aggressive for the app's boot time.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # probe spec + Conditions section
+	kubectl logs <pod> -n <ns>
+
+Likely fixes:
+	•	Wrong probe path → fix httpGet.path to match what the app actually serves (e.g. /health not /healthz)
+	•	Wrong probe port → fix httpGet.port or tcpSocket.port to match the container port
+	•	App too slow to boot → add a startupProbe with generous failureThreshold, or increase initialDelaySeconds
+	•	Liveness killing before ready → increase liveness initialDelaySeconds or periodSeconds, or add a startupProbe to cover boot time
+	•	Readiness probe correct but app genuinely not ready → route to dependency or config fix
+
+Verification:
+
+	kubectl get pods -n <ns>    # should show 1/1 Ready, RESTARTS stable
+	kubectl describe pod <pod> -n <ns>    # Conditions: Ready True
+
+Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle.
+
+---
+
+Fix: App startup / entrypoint failure
+
+What it usually means: The container starts but the process exits immediately — bad command/args override, wrong entrypoint, missing startup dependency, failed migration, or unhandled exception during boot. Logs exist but the container never reaches steady state.
+
+First commands:
+
+	kubectl logs <pod> -n <ns>
+	kubectl logs <pod> -n <ns> --previous
+	kubectl describe pod <pod> -n <ns>          # Last State: exit code, command/args spec
+	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].command}'
+	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].args}'
+
+Likely fixes:
+	•	Wrong command or args in Deployment spec → fix or remove the override so the Dockerfile entrypoint runs
+	•	Entrypoint overridden accidentally → command in the pod spec replaces ENTRYPOINT; args replaces CMD. Remove the override if the Dockerfile is correct
+	•	Startup migration or seed script fails → fix the script, or fix the dependency it needs (DB not ready, wrong credentials). Check logs for the specific error
+	•	Unhandled exception at boot → logs show the stack trace. Fix the app code or the config it depends on
+	•	Missing startup dependency with no retry → app crashes because a dependency isn't ready yet. Add an init container that waits, or add retry logic
+	•	Wrong working directory or missing file → command references a path that doesn't exist in the image. Check the Dockerfile and the command
+
+Verification:
+
+	kubectl rollout restart deploy/<deploy> -n <ns>    # or re-apply after fix
+	kubectl get pods -n <ns>    # Running, RESTARTS not climbing
+	kubectl logs <pod> -n <ns>    # clean startup, no stack trace
+
+Docs: Debug Running Pods, Pod Lifecycle, Define a Command and Arguments for a Container.
+
+---
+
+Fix: Init container failure
+
+What it usually means: An init container is blocking the main container from starting — it's crashing, waiting on an unmet condition, or misconfigured.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # Init Containers section: state, exit code, image, command
+	kubectl logs <pod> -n <ns> -c <init-container-name>
+
+Likely fixes:
+	•	Init container image wrong → fix the image reference (same as image pull fix, but check the initContainers array specifically)
+	•	Bad command or script → fix the command/args in the init container spec. Check logs for the exact error
+	•	Waiting for a dependency that isn't ready → the init container is doing a wait loop (e.g. waiting for a database). Fix the dependency first, or fix the hostname/port the init container is checking
+	•	Missing ConfigMap/Secret/volume mount → same as config reference fix, but check the init container's env and volumeMounts separately from the main container
+	•	Wrong permissions or working directory → init container runs as a different user or in a different context than expected
+
+Verification:
+
+	kubectl describe pod <pod> -n <ns>    # Init Containers: all show State: Terminated, Reason: Completed
+	kubectl get pods -n <ns>    # pod progresses past Init to Running
+
+Docs: Init Containers, Debug Running Pods, Pod Lifecycle.
+
+---
+
+Fix: Memory limits (OOMKilled)
+
+What it usually means: The container's memory limit is lower than what the app needs, especially at startup.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # Last State: OOMKilled
+	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].resources}'
+
+Likely fixes:
+	•	Memory limit too low → increase resources.limits.memory in the Deployment spec
+	•	No memory limit but node under pressure → set an explicit limit above the app's peak usage
+	•	App has a startup spike → set limit to cover the spike, or fix the app's boot memory profile
+	•	Also check requests — if requests > node capacity, pods won't schedule
+
+Verification:
+
+	kubectl rollout status deploy/<deploy> -n <ns>
+	kubectl get pods -n <ns>    # Running, no OOMKilled in describe Last State
+	kubectl describe pod <pod> -n <ns>    # Last State: Running (not Terminated/OOMKilled)
+
+Docs: Assign Memory Resources to Containers and Pods, Resource Management for Pods and Containers.
+
+---
+
+Fix: Service selector and port mapping
+
+What it usually means: The Service selector doesn't match the pod labels, or the port/targetPort mapping is wrong, so the Service has no usable endpoints.
+
+First commands:
+
+	kubectl describe svc <service> -n <ns>      # Selector and Ports
+	kubectl get pods -n <ns> --show-labels
+	kubectl get endpoints <service> -n <ns>
+
+Likely fixes:
+	•	Selector mismatch → fix the Service selector to match the pod labels (or vice versa, fix the Deployment labels)
+	•	targetPort wrong → set targetPort to the port the container actually listens on
+	•	Port wrong → set the Service port to what clients expect
+	•	Named port mismatch → ensure the port name in the Service matches the container port name
+	•	Pods not Ready → fix readiness (route to probe fix) so they appear in endpoints
+
+Verification:
+
+	kubectl get endpoints <service> -n <ns>    # should list pod IPs
+	kubectl port-forward svc/<service> 8080:<port> -n <ns>
+	curl localhost:8080/health    # confirm Service routes to the app
+
+Docs: Service, EndpointSlices, Debug Services.
+
+---
+
+Fix: Ingress routing
+
+What it usually means: The Ingress object exists but its rules don't route traffic to the backend correctly — wrong host, wrong path, wrong service reference, or the controller isn't running.
+
+First commands:
+
+	kubectl describe ingress <ingress> -n <ns>
+	kubectl get pods -n ingress-nginx
+	kubectl get svc -n <ns>
+
+Likely fixes:
+	•	Wrong host → fix the host field, or remove it to match any host
+	•	Wrong path → fix the path or pathType (Prefix vs Exact)
+	•	Wrong backend service name or port → fix service.name and service.port.number to match the actual Service
+	•	ingressClassName missing or wrong → add or fix ingressClassName (e.g. nginx)
+	•	Ingress controller not running → check controller pod, restart if crashed, verify it's installed
+
+Verification:
+
+	# 1. Confirm the ingress controller is running
+	kubectl get pods -n ingress-nginx
+	# 2. Confirm the ingress object has an ADDRESS assigned
+	kubectl get ingress -n <ns>
+	# 3. Test through the ingress using the correct host header and ingress address
+	#    Local cluster with host port mapping:
+	curl localhost/
+	#    Remote or LoadBalancer setup:
+	curl -H "Host: <host>" http://<ingress-address>/
+	# 4. Verify app endpoints through the external path
+	curl <same-base>/health
+	curl <same-base>/items
+
+Docs: Ingress, Ingress Controllers.
+
+---
+
+Fix: DNS / service discovery
+
+What it usually means: The app is using a hostname that doesn't resolve — typo in service name, wrong namespace, or DNS infrastructure is broken.
+
+First commands:
+
+	kubectl exec -it <pod> -n <ns> -- nslookup <hostname>
+	kubectl exec -it <pod> -n <ns> -- cat /etc/resolv.conf
+	kubectl get svc --all-namespaces | grep <expected-name>
+
+Likely fixes:
+	•	Typo in service name → fix the hostname in the app config or env var
+	•	Wrong namespace → use the fully qualified name: <service>.<namespace>.svc.cluster.local
+	•	Service doesn't exist → create it
+	•	CoreDNS broken → check coredns pods in kube-system: kubectl get pods -n kube-system -l k8s-app=kube-dns
+
+Verification:
+
+	kubectl exec -it <pod> -n <ns> -- nslookup <corrected-hostname>
+	kubectl logs <pod> -n <ns>    # no more "name or service not known"
+
+Docs: DNS for Services and Pods, Debugging DNS Resolution.
+
+---
+
+Fix: Dependency connectivity
+
+What it usually means: DNS resolves correctly but the connection fails — the dependency is down, the port is wrong, or a NetworkPolicy is blocking traffic.
+
+First commands:
+
+	kubectl exec -it <pod> -n <ns> -- nc -zv <host> <port>
+	kubectl logs <pod> -n <ns>
+	kubectl get pods -n <ns>    # is the dependency pod running?
+
+Likely fixes:
+	•	Dependency pod not running → fix the dependency first (same triage flow)
+	•	Wrong port in app config → fix the port env var or ConfigMap value
+	•	NetworkPolicy blocking → route to NetworkPolicy fix below
+	•	Dependency running but not accepting connections → check dependency logs and readiness
+
+Verification:
+
+	kubectl exec -it <pod> -n <ns> -- nc -zv <host> <port>    # should succeed
+	kubectl logs <pod> -n <ns>    # no connection errors
+	curl localhost/health    # app-level health check passes
+
+Docs: Network Policies, Debug Services, Debug Running Pods.
+
+---
+
+Fix: NetworkPolicy rules
+
+What it usually means: A default-deny policy exists and the allow rules don't match the traffic path — wrong selectors, missing rules, or egress blocked.
+
+First commands:
+
+	kubectl get networkpolicy -n <ns>
+	kubectl describe networkpolicy <policy> -n <ns>
+	kubectl get pods -n <ns> --show-labels
+
+Likely fixes:
+	•	Default-deny with no allow rule for the traffic path → add an ingress or egress allow rule
+	•	Allow rule exists but podSelector is wrong → fix the label selector to match the source/target pods
+	•	Allow rule exists but namespaceSelector is wrong → fix to match the source namespace
+	•	Egress policy blocking outbound → add egress allow for the destination
+	•	DNS blocked by egress policy → ensure egress allows UDP 53 to kube-system (CoreDNS)
+
+Verification:
+
+	kubectl exec -it <pod> -n <ns> -- nc -zv <target-host> <target-port>    # should succeed
+	kubectl exec -it <pod> -n <ns> -- nslookup <hostname>    # DNS still works
+
+Docs: Network Policies, Cluster Networking.
+
+---
+
+Fix: RBAC / service account
+
+What it usually means: The pod's service account doesn't have the permissions the app needs — missing Role, missing RoleBinding, or wrong service account assigned.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # serviceAccountName
+	kubectl auth can-i <verb> <resource> --as=system:serviceaccount:<ns>:<sa> -n <ns>
+	kubectl get rolebinding -n <ns>
+
+Likely fixes:
+	•	Missing Role → create a Role with the required permissions
+	•	Missing RoleBinding → create a RoleBinding linking the Role to the ServiceAccount
+	•	Wrong service account in pod spec → fix serviceAccountName in the Deployment
+	•	RoleBinding in wrong namespace → move it to the namespace where the SA operates
+	•	ClusterRole needed → if the resource is cluster-scoped, use ClusterRole + ClusterRoleBinding
+
+Verification:
+
+	kubectl auth can-i <verb> <resource> --as=system:serviceaccount:<ns>:<sa> -n <ns>    # should return yes
+	kubectl logs <pod> -n <ns>    # no Forbidden errors
+
+Docs: Using RBAC Authorization, Service Accounts.
+
+---
+
+Fix: Scheduling / node placement
+
+What it usually means: The pod can't be placed on any node — insufficient resources, unmet node affinity, or unmatched tolerations.
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # Events: scheduling reason
+	kubectl describe node                        # Allocatable, Conditions, Taints
+
+Likely fixes:
+	•	Insufficient CPU or memory → reduce resource requests, or free capacity on nodes
+	•	Taint with no matching toleration → add the toleration to the pod spec, or remove the taint
+	•	Node affinity/selector doesn't match any node → fix the affinity rules or label the node
+	•	Multiple constraints compounding → check all of nodeSelector, affinity, tolerations, and resource requests together
+
+Verification:
+
+	kubectl get pods -n <ns>    # should transition from Pending to Running
+	kubectl describe pod <pod> -n <ns>    # Events show successful scheduling
+
+Docs: Assigning Pods to Nodes, Taints and Tolerations, Resource Management for Pods and Containers.
+
+---
+
+Fix: PVC / storage binding
+
+What it usually means: A PersistentVolumeClaim can't bind to a volume — missing StorageClass, provisioner not running, access mode mismatch, or topology constraint.
+
+First commands:
+
+	kubectl get pvc -n <ns>
+	kubectl describe pvc <pvc> -n <ns>          # Events: why it can't bind
+	kubectl get storageclass
+	kubectl get pv                               # is there a matching PV?
+
+Likely fixes:
+	•	StorageClass doesn't exist → create it, or fix the storageClassName in the PVC
+	•	Provisioner not running → check the provisioner pods (e.g. in kube-system or a storage namespace)
+	•	Access mode mismatch → PVC requests ReadWriteMany but the provisioner only supports ReadWriteOnce
+	•	Capacity mismatch → PVC requests more than any available PV offers
+	•	Topology constraint → volumeBindingMode is WaitForFirstConsumer and no node matches both the pod's scheduling constraints and the volume's topology. Check node labels and zone/region affinity
+	•	Static PV not matching → check that the PV's capacity, access modes, and storageClassName match the PVC's requirements
+
+Verification:
+
+	kubectl get pvc -n <ns>    # should show Bound
+	kubectl get pods -n <ns>    # pod should transition from Pending to Running
+
+Docs: Persistent Volumes, Storage Classes, Debug Pods.
+
+---
+
+Fix sections added:
+	1.	Image pull failure
+	2.	Config / Secret / volume reference
+	3.	Config / Secret values
+	4.	Probe configuration
+	5.	App startup / entrypoint failure
+	6.	Init container failure
+	7.	Memory limits (OOMKilled)
+	8.	Service selector and port mapping
+	9.	Ingress routing
+	10.	DNS / service discovery
+	11.	Dependency connectivity
+	12.	NetworkPolicy rules
+	13.	RBAC / service account
+	14.	Scheduling / node placement
+	15.	PVC / storage binding
