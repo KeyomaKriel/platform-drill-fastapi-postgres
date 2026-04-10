@@ -68,7 +68,7 @@ First commands:
 	kubectl describe svc <service> -n <ns>
 	kubectl get endpoints <service> -n <ns>
 	kubectl port-forward svc/<service> 8080:<service-port> -n <ns>
-	# then: curl localhost:8080/
+	# then: curl localhost:8080/<path>
 
 Then:
 	•	No endpoints → selector mismatch or pods not Ready
@@ -651,6 +651,18 @@ Likely fixes:
 	•	Private registry without credentials → add imagePullSecrets to the pod spec
 	•	For kind/local clusters → verify image is loaded: kind load docker-image <image> --name <cluster>
 
+Fix commands:
+
+	# Fix image name or tag
+	kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>
+
+	# Fix imagePullPolicy
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
+
+	# Load image into kind (local clusters only)
+	kind load docker-image <image>:<tag> --name <cluster>
+
 Verification:
 
 	kubectl rollout status deploy/<deploy> -n <ns>
@@ -675,6 +687,22 @@ Likely fixes:
 	•	envFrom or valueFrom points at a key that doesn't exist → fix the key name or add the key to the object
 	•	Volume references a non-existent ConfigMap/Secret → fix the volume definition
 	•	Optional: false (default) on a missing ref → either create the object or mark the ref optional: true if appropriate
+
+Fix commands:
+
+	# Create a missing ConfigMap
+	kubectl create configmap <cm> --from-literal=<key>=<value> -n <ns>
+
+	# Create a missing Secret
+	kubectl create secret generic <secret> --from-literal=<key>=<value> -n <ns>
+
+	# Fix a wrong ConfigMap/Secret name in the Deployment (edit the manifest and re-apply)
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or patch inline — e.g. fix an envFrom configMapRef name
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/envFrom/0/configMapRef/name","value":"<correct-cm>"}]'
 
 Verification:
 
@@ -701,6 +729,23 @@ Likely fixes:
 	•	Env var mapped to wrong key → fix the valueFrom.key reference in the Deployment
 	•	After fixing ConfigMap/Secret data, the pod must be restarted to pick up changes (unless using mounted volumes with auto-refresh)
 
+Fix commands:
+
+	# Patch a ConfigMap value
+	kubectl patch configmap <cm> -n <ns> --type=merge \
+	  -p '{"data":{"<key>":"<correct-value>"}}'
+
+	# Patch a Secret value (value must be base64-encoded)
+	kubectl patch secret <secret> -n <ns> --type=merge \
+	  -p '{"data":{"<key>":"<base64-encoded-value>"}}'
+
+	# Or edit the manifest file and re-apply
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
+	# Restart pods to pick up the new values
+	kubectl rollout restart deploy/<deploy> -n <ns>
+
 Verification:
 
 	kubectl rollout restart deploy/<deploy> -n <ns>
@@ -726,6 +771,24 @@ Likely fixes:
 	•	App too slow to boot → add a startupProbe with generous failureThreshold, or increase initialDelaySeconds
 	•	Liveness killing before ready → increase liveness initialDelaySeconds or periodSeconds, or add a startupProbe to cover boot time
 	•	Readiness probe correct but app genuinely not ready → route to dependency or config fix
+
+Fix commands:
+
+	# Fix readiness probe path (edit manifest and re-apply)
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or patch inline — fix readiness probe path
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/path","value":"/<correct-path>"}]'
+
+	# Fix probe port
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/port","value":<correct-port>}]'
+
+	# Increase initialDelaySeconds
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":<seconds>}]'
 
 Verification:
 
@@ -756,6 +819,20 @@ Likely fixes:
 	•	Missing startup dependency with no retry → app crashes because a dependency isn't ready yet. Add an init container that waits, or add retry logic
 	•	Wrong working directory or missing file → command references a path that doesn't exist in the image. Check the Dockerfile and the command
 
+Fix commands:
+
+	# Remove a bad command override (restore Dockerfile ENTRYPOINT)
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/command"}]'
+
+	# Remove bad args override (restore Dockerfile CMD)
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/args"}]'
+
+	# Fix command/args to correct values (edit manifest and re-apply)
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
 Verification:
 
 	kubectl rollout restart deploy/<deploy> -n <ns>    # or re-apply after fix
@@ -782,6 +859,20 @@ Likely fixes:
 	•	Missing ConfigMap/Secret/volume mount → same as config reference fix, but check the init container's env and volumeMounts separately from the main container
 	•	Wrong permissions or working directory → init container runs as a different user or in a different context than expected
 
+Fix commands:
+
+	# Fix init container image
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/initContainers/0/image","value":"<correct-image>:<tag>"}]'
+
+	# Fix init container command (e.g. wrong hostname in a wait script)
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/initContainers/0/command","value":["sh","-c","<corrected-command>"]}]'
+
+	# Or edit the manifest and re-apply
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
 Verification:
 
 	kubectl describe pod <pod> -n <ns>    # Init Containers: all show State: Terminated, Reason: Completed
@@ -805,6 +896,20 @@ Likely fixes:
 	•	No memory limit but node under pressure → set an explicit limit above the app's peak usage
 	•	App has a startup spike → set limit to cover the spike, or fix the app's boot memory profile
 	•	Also check requests — if requests > node capacity, pods won't schedule
+
+Fix commands:
+
+	# Patch memory limits
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/memory","value":"<value>"}]'
+
+	# Patch memory requests
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/memory","value":"<value>"}]'
+
+	# Or edit the manifest and re-apply
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
 
 Verification:
 
@@ -833,11 +938,29 @@ Likely fixes:
 	•	Named port mismatch → ensure the port name in the Service matches the container port name
 	•	Pods not Ready → fix readiness (route to probe fix) so they appear in endpoints
 
+Fix commands:
+
+	# Fix Service selector to match pod labels
+	kubectl patch svc <service> -n <ns> --type=merge \
+	  -p '{"spec":{"selector":{"<label-key>":"<label-value>"}}}'
+
+	# Fix targetPort
+	kubectl patch svc <service> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":<correct-port>}]'
+
+	# Fix Deployment pod labels to match Service selector
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/metadata/labels/<label-key>","value":"<label-value>"}]'
+
+	# Or edit the manifest and re-apply
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
 Verification:
 
 	kubectl get endpoints <service> -n <ns>    # should list pod IPs
 	kubectl port-forward svc/<service> 8080:<port> -n <ns>
-	curl localhost:8080/health    # confirm Service routes to the app
+	curl localhost:8080/<path>    # confirm Service routes to the app
 
 Docs: Service, EndpointSlices, Debug Services.
 
@@ -860,6 +983,24 @@ Likely fixes:
 	•	ingressClassName missing or wrong → add or fix ingressClassName (e.g. nginx)
 	•	Ingress controller not running → check controller pod, restart if crashed, verify it's installed
 
+Fix commands:
+
+	# Fix backend service name or port in Ingress (edit manifest and re-apply)
+	vi <ingress-manifest>
+	kubectl apply -f <ingress-manifest> -n <ns>
+
+	# Or patch inline — fix backend service port
+	kubectl patch ingress <ingress> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/port/number","value":<correct-port>}]'
+
+	# Fix backend service name
+	kubectl patch ingress <ingress> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/name","value":"<correct-service>"}]'
+
+	# Fix ingressClassName
+	kubectl patch ingress <ingress> -n <ns> --type=merge \
+	  -p '{"spec":{"ingressClassName":"<class>"}}'
+
 Verification:
 
 	# 1. Confirm the ingress controller is running
@@ -872,8 +1013,8 @@ Verification:
 	#    Remote or LoadBalancer setup:
 	curl -H "Host: <host>" http://<ingress-address>/
 	# 4. Verify app endpoints through the external path
-	curl <same-base>/health
-	curl <same-base>/items
+	curl <same-base>/<path>
+	curl <same-base>/<path>
 
 Docs: Ingress, Ingress Controllers.
 
@@ -894,6 +1035,22 @@ Likely fixes:
 	•	Wrong namespace → use the fully qualified name: <service>.<namespace>.svc.cluster.local
 	•	Service doesn't exist → create it
 	•	CoreDNS broken → check coredns pods in kube-system: kubectl get pods -n kube-system -l k8s-app=kube-dns
+
+Fix commands:
+
+	# Fix hostname in a ConfigMap
+	kubectl patch configmap <cm> -n <ns> --type=merge \
+	  -p '{"data":{"<host-key>":"<correct-service>.<ns>.svc.cluster.local"}}'
+
+	# Fix hostname in a Secret
+	kubectl patch secret <secret> -n <ns> --type=merge \
+	  -p '{"data":{"<host-key>":"<base64-encoded-correct-hostname>"}}'
+
+	# Restart pods to pick up the corrected value
+	kubectl rollout restart deploy/<deploy> -n <ns>
+
+	# Restart CoreDNS if it's unhealthy
+	kubectl rollout restart deploy/coredns -n kube-system
 
 Verification:
 
@@ -920,11 +1077,23 @@ Likely fixes:
 	•	NetworkPolicy blocking → route to NetworkPolicy fix below
 	•	Dependency running but not accepting connections → check dependency logs and readiness
 
+Fix commands:
+
+	# Fix a wrong port value in ConfigMap
+	kubectl patch configmap <cm> -n <ns> --type=merge \
+	  -p '{"data":{"<port-key>":"<correct-port>"}}'
+
+	# Restart the app to pick up the corrected config
+	kubectl rollout restart deploy/<deploy> -n <ns>
+
+	# If the dependency itself is down, triage it the same way
+	kubectl describe pod <dep-pod> -n <ns>
+	kubectl logs <dep-pod> -n <ns>
+
 Verification:
 
 	kubectl exec -it <pod> -n <ns> -- nc -zv <host> <port>    # should succeed
 	kubectl logs <pod> -n <ns>    # no connection errors
-	curl localhost/health    # app-level health check passes
 
 Docs: Network Policies, Debug Services, Debug Running Pods.
 
@@ -946,6 +1115,19 @@ Likely fixes:
 	•	Allow rule exists but namespaceSelector is wrong → fix to match the source namespace
 	•	Egress policy blocking outbound → add egress allow for the destination
 	•	DNS blocked by egress policy → ensure egress allows UDP 53 to kube-system (CoreDNS)
+
+Fix commands:
+
+	# Fix a podSelector in an existing NetworkPolicy (edit manifest and re-apply)
+	vi <networkpolicy-manifest>
+	kubectl apply -f <networkpolicy-manifest> -n <ns>
+
+	# Or patch inline — fix a podSelector on an ingress rule
+	kubectl patch networkpolicy <policy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/ingress/0/from/0/podSelector/matchLabels/<key>","value":"<value>"}]'
+
+	# Delete a policy that's blocking traffic entirely (if the fix is to remove it)
+	kubectl delete networkpolicy <policy> -n <ns>
 
 Verification:
 
@@ -973,6 +1155,22 @@ Likely fixes:
 	•	RoleBinding in wrong namespace → move it to the namespace where the SA operates
 	•	ClusterRole needed → if the resource is cluster-scoped, use ClusterRole + ClusterRoleBinding
 
+Fix commands:
+
+	# Create a Role
+	kubectl create role <role> -n <ns> --verb=<verb> --resource=<resource>
+
+	# Create a RoleBinding
+	kubectl create rolebinding <binding> -n <ns> --role=<role> --serviceaccount=<ns>:<sa>
+
+	# Fix serviceAccountName in the Deployment
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/serviceAccountName","value":"<correct-sa>"}]'
+
+	# Or edit the manifest and re-apply
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
+
 Verification:
 
 	kubectl auth can-i <verb> <resource> --as=system:serviceaccount:<ns>:<sa> -n <ns>    # should return yes
@@ -996,6 +1194,26 @@ Likely fixes:
 	•	Taint with no matching toleration → add the toleration to the pod spec, or remove the taint
 	•	Node affinity/selector doesn't match any node → fix the affinity rules or label the node
 	•	Multiple constraints compounding → check all of nodeSelector, affinity, tolerations, and resource requests together
+
+Fix commands:
+
+	# Reduce resource requests
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"<value>"}]'
+
+	# Remove a nodeSelector that doesn't match any node
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"remove","path":"/spec/template/spec/nodeSelector"}]'
+
+	# Label a node to match affinity/nodeSelector
+	kubectl label node <node> <key>=<value>
+
+	# Remove a taint from a node
+	kubectl taint node <node> <key>:<effect>-
+
+	# Or edit the manifest and re-apply
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
 
 Verification:
 
@@ -1024,6 +1242,21 @@ Likely fixes:
 	•	Capacity mismatch → PVC requests more than any available PV offers
 	•	Topology constraint → volumeBindingMode is WaitForFirstConsumer and no node matches both the pod's scheduling constraints and the volume's topology. Check node labels and zone/region affinity
 	•	Static PV not matching → check that the PV's capacity, access modes, and storageClassName match the PVC's requirements
+
+Fix commands:
+
+	# Fix storageClassName in PVC (delete and recreate — PVC spec is mostly immutable)
+	kubectl delete pvc <pvc> -n <ns>
+	vi <pvc-manifest>
+	kubectl apply -f <pvc-manifest> -n <ns>
+
+	# Fix access mode or capacity (also requires delete and recreate)
+	kubectl delete pvc <pvc> -n <ns>
+	vi <pvc-manifest>
+	kubectl apply -f <pvc-manifest> -n <ns>
+
+	# Check available StorageClasses
+	kubectl get storageclass
 
 Verification:
 

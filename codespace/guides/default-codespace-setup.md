@@ -135,7 +135,38 @@ For **debugging drills**: deploy first, verify it's healthy, then run `bash BREA
 
 For **implementation drills**: deploy first, verify it's healthy, then read `TASK.md` and do the task.
 
-### 7. Clean up between drills
+### 7. Generate more debugging drills for the same app
+
+If you want to keep drilling on the same deployed app (no new repo), use this prompt locally:
+
+> Generate the next drill scenario in codespace/drills/codespace-drills/ (increment the number from the last drill-NN-scenario.md). Use the app in codespace/drill-app/ — read its manifests to build a realistic kubectl break. Pick a failure domain from the Tier 1/2/3 list in CLAUDE.md that hasn't been used in previous drills. Base64-encode the kubectl command. Include a vague symptom prompt. **Do not reveal, hint at, or discuss the fault type, failure domain, or what the break does in your response. Just create the file silently.**
+
+Between drills, restore the app in the Codespace before injecting the next break:
+
+```bash
+kubectl apply -f manifests/  # re-apply clean manifests
+kubectl rollout status deployment/fleet-tracker -n fleet-ops
+curl localhost:8080/api/v1/status  # verify healthy before next break
+```
+
+### 8. Evaluate your fix
+
+When you're done debugging, push your session log from the Codespace so Claude can read it:
+
+In the Codespace:
+
+```bash
+exit  # stop the script session
+cp session.log ~/drill-app/session-log.txt  # if not already there
+```
+
+Then push via git (from the Codespace or locally — however the file gets to the repo).
+
+Then locally in Claude Code:
+
+> Evaluate my fix for the latest drill. Read my session log at codespace/drill-app/session-log.txt and the scenario file in codespace/drills/codespace-drills/. Write feedback to codespace/drills/codespace-drills/.
+
+### 9. Clean up between drills
 
 In the Codespace:
 
