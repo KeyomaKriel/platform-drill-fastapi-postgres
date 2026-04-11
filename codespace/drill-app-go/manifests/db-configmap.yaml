@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-db-config
+  namespace: warehouse-sys
+data:
+  POSTGRES_DB: warehouse

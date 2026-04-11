@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-db
+  namespace: incident-mgmt
+  labels:
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: database
+  template:
+    metadata:
+      labels:
+        component: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: incident-db-config
+            - secretRef:
+                name: incident-db-credentials
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "incident_admin", "-d", "incident_store"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "incident_admin", "-d", "incident_store"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: incident-db-storage

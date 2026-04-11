@@ -1,0 +1,35 @@
+[
+  {
+    "model": "incidents.incident",
+    "pk": 1,
+    "fields": {
+      "title": "Connection pool exhausted on payment gateway",
+      "severity": "critical",
+      "status": "investigating",
+      "reporter": "oncall-bot",
+      "created_at": "2026-04-10T08:15:00Z"
+    }
+  },
+  {
+    "model": "incidents.incident",
+    "pk": 2,
+    "fields": {
+      "title": "Elevated 5xx rate on /api/checkout",
+      "severity": "high",
+      "status": "open",
+      "reporter": "grafana-alert",
+      "created_at": "2026-04-10T09:42:00Z"
+    }
+  },
+  {
+    "model": "incidents.incident",
+    "pk": 3,
+    "fields": {
+      "title": "Cert renewal failed for staging.internal",
+      "severity": "medium",
+      "status": "resolved",
+      "reporter": "j.martinez",
+      "created_at": "2026-04-09T14:30:00Z"
+    }
+  }
+]

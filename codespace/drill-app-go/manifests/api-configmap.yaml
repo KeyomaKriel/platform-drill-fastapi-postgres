@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-api-config
+  namespace: warehouse-sys
+data:
+  DB_HOST: inventory-db-svc
+  DB_PORT: "5432"
+  DB_NAME: warehouse
+  LISTEN_PORT: "9090"

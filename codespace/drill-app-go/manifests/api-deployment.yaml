@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-api
+  namespace: warehouse-sys
+  labels:
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: api
+  template:
+    metadata:
+      labels:
+        component: api
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z inventory-db-svc 5432; do
+                echo "waiting for inventory-db-svc:5432..."
+                sleep 2
+              done
+      containers:
+        - name: inventory-api
+          image: inventory-api:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9090
+          envFrom:
+            - configMapRef:
+                name: inventory-api-config
+            - secretRef:
+                name: inventory-api-credentials
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9090
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi

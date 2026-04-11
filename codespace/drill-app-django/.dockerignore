@@ -1,0 +1,6 @@
+manifests/
+*.md
+*.log
+__pycache__/
+*.pyc
+.git/
