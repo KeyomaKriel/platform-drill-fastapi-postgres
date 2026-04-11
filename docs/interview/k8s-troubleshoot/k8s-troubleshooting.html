@@ -548,6 +548,61 @@
   }
   .fix-body .back-link:hover { border-bottom-style: solid; }
 
+  /* --- Dark mode --- */
+  body.dark { background: #1a1a2e; color: #e0e0e0; }
+
+  body.dark .symptom-card, body.dark .fix-card, body.dark .view-card,
+  body.dark .cmd-group, body.dark .verify-step, body.dark .truth-item {
+    background: #20203a;
+    border-color: #333;
+  }
+  body.dark .symptom-card:hover, body.dark .fix-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  body.dark .triage-step { background: #20203a; border-color: #333; }
+  body.dark .controls button { background: #20203a; border-color: #444; color: #e0e0e0; }
+  body.dark .controls button:hover { background: #2a2a48; }
+
+  body.dark section > h2 { border-bottom-color: #444; }
+  body.dark .symptom-header .chevron, body.dark .fix-header .chevron { color: #999; }
+
+  body.dark .bucket-card { background: rgba(255,255,255,.05); }
+  body.dark .bucket-card .say { background: rgba(255,255,255,.06); }
+  body.dark .bucket-card .docs { color: rgba(255,255,255,.4); }
+
+  body.dark .caution-item { background: #3a3000; border-color: #665500; color: #ffd38a; }
+  body.dark .verify-warning { background: #3a3000; border-color: #665500; color: #ffd38a; }
+
+  body.dark .symptom-body .say-block { background: #1a2e1a; border-left-color: #4caf50; }
+  body.dark .symptom-body .say-block::before { color: #66bb6a; }
+  body.dark .symptom-body .prove { color: #aaa; }
+  body.dark .symptom-body .prove::before { color: #ccc; }
+  body.dark .symptom-body .docs { color: #888; }
+  body.dark .symptom-body a.fix-link { color: #7aa2ff; border-bottom-color: #7aa2ff; }
+  body.dark .symptom-body a.fix-link:hover { color: #a0c0ff; }
+
+  body.dark .fix-body .fix-means { color: #aaa; }
+  body.dark .fix-body .fix-means::before { color: #ccc; }
+  body.dark .fix-body .docs { color: #888; }
+  body.dark .fix-body .back-link { color: #7aa2ff; border-bottom-color: #7aa2ff; }
+
+  body.dark .cmd-group h4 { background: #282848; border-bottom-color: #444; color: #e0e0e0; }
+
+  body.dark .phrase { background: #1a2e1a; border-left-color: #4caf50; }
+
+  body.dark .view-card .docs { color: #888; }
+
+  .theme-toggle {
+    margin-left: auto;
+    background: none;
+    border: 1px solid rgba(255,255,255,.3);
+    color: #fff;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,.15); }
+
   /* --- Print tweaks --- */
   @media print {
     .topbar { position: static; }
@@ -575,6 +630,7 @@
     <a href="#say">Say</a>
     <a href="#commands">Commands</a>
   </nav>
+  <button class="theme-toggle" onclick="toggleTheme()">Dark</button>
 </div>
 
 <div class="container">
@@ -1965,6 +2021,26 @@ document.querySelectorAll('a.fix-link').forEach(function(link) {
 
 window.addEventListener('hashchange', openFixFromHash);
 openFixFromHash();
+
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  document.querySelector('.theme-toggle').textContent = dark ? 'Light' : 'Dark';
+}
+
+function toggleTheme() {
+  var dark = !document.body.classList.contains('dark');
+  applyTheme(dark);
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+}
+
+(function() {
+  var saved = localStorage.getItem('theme');
+  if (saved) {
+    applyTheme(saved === 'dark');
+  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    applyTheme(true);
+  }
+})();
 </script>
 </body>
 </html>
