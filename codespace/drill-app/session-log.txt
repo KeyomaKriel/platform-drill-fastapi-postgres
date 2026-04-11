@@ -1,354 +1,140 @@
 @KeyomaKriel ➜ ~/drill-app $ kubectl get pods
-NAME                             READY   STATUS    RESTARTS   AGE
-fleet-db-59b5485db9-pgxdw        1/1     Running   4          25h
-fleet-tracker-77f4bcffc8-dsxsp   1/1     Running   4          23h
-fleet-tracker-77f4bcffc8-4b876   1/1     Running   4          23h
-@KeyomaKriel ➜ ~/drill-app $ kubectl get endpoints
-NAME           ENDPOINTS                         AGE
-fleet-db-svc   10.42.0.85:5432                   25h
-tracker-svc    10.42.0.82:7600,10.42.0.83:7600   25h
-@KeyomaKriel ➜ ~/drill-app $ kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80 &
-[1] 25960
-@KeyomaKriel ➜ ~/drill-app $ Forwarding from 127.0.0.1:8080 -> 80
-Forwarding from [::1]:8080 -> 80
-@KeyomaKriel ➜ ~/drill-app $ Handling connection for 8080
-Handling connection for 8080
-Handling connection for 8080
+NAME                             READY   STATUS              RESTARTS   AGE
+fleet-db-59b5485db9-wgzvn        1/1     Running             1          114m
+fleet-tracker-77f4bcffc8-dsxsp   1/1     Running             6          2d
+fleet-tracker-77f4bcffc8-4b876   1/1     Running             6          2d
+fleet-tracker-5775f69b7b-pvpxb   0/1     ErrImageNeverPull   0          114s
+@KeyomaKriel ➜ ~/drill-app $ kubectl config current-context
+k3d-k3s-default
+@KeyomaKriel ➜ ~/drill-app $ kubectl config get-contexts
+CURRENT   NAME              CLUSTER           AUTHINFO                NAMESPACE
+*         k3d-k3s-default   k3d-k3s-default   admin@k3d-k3s-default   fleet-ops
+@KeyomaKriel ➜ ~/drill-app $ kubectl get ns
+NAME              STATUS   AGE
+kube-system       Active   2d4h
+default           Active   2d4h
+kube-public       Active   2d4h
+kube-node-lease   Active   2d4h
+logging           Active   2d4h
+monitoring        Active   2d4h
+heartbeat         Active   2d4h
+imdb              Active   2d4h
+fleet-ops         Active   2d2h
+ingress-nginx     Active   2d2h
+@KeyomaKriel ➜ ~/drill-app $ kubectl config set-context --current --namespace=fleet-ops
+Context "k3d-k3s-default" modified.
+@KeyomaKriel ➜ ~/drill-app $ kubectl describe pod fleet-tracker-5775f69b7b-pvpxb
+Name:             fleet-tracker-5775f69b7b-pvpxb
+Namespace:        fleet-ops
+Priority:         0
+Service Account:  default
+Node:             k3d-k3s-default-server-0/172.18.0.2
+Start Time:       Sat, 11 Apr 2026 15:07:11 +0000
+Labels:           component=api
+                  pod-template-hash=5775f69b7b
+Annotations:      kubectl.kubernetes.io/restartedAt: 2026-04-09T13:23:03Z
+Status:           Pending
+IP:               10.42.0.127
+IPs:
+  IP:           10.42.0.127
+Controlled By:  ReplicaSet/fleet-tracker-5775f69b7b
+Init Containers:
+  wait-for-db:
+    Container ID:  containerd://66a6647c93c2fc133d3088a0188780ccdfb6c6ad5f02a15a6a744e6464d73008
+    Image:         busybox:1.36
+    Image ID:      docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      sh
+      -c
+      until nc -z fleet-db-svc 5432; do
+        echo "waiting for fleet-db-svc:5432..."
+        sleep 2
+      done
 
-@KeyomaKriel ➜ ~/drill-app $ kubectl get pods
-NAME                             READY   STATUS    RESTARTS   AGE
-fleet-db-59b5485db9-pgxdw        1/1     Running   4          25h
-fleet-tracker-77f4bcffc8-dsxsp   1/1     Running   4          23h
-fleet-tracker-77f4bcffc8-4b876   1/1     Running   4          23h
-@KeyomaKriel ➜ ~/drill-app $ kubectl get endpoints
-NAME           ENDPOINTS         AGE
-fleet-db-svc   10.42.0.85:5432   25h
-tracker-svc    <none>            25h
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Sat, 11 Apr 2026 15:07:12 +0000
+      Finished:     Sat, 11 Apr 2026 15:07:12 +0000
+    Ready:          True
+    Restart Count:  0
+    Environment:
+      PGHOST:  fleet-db-svc
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-qj42q (ro)
+Containers:
+  tracker:
+    Container ID:
+    Image:          fleet-tracker:v2.1.0
+    Image ID:
+    Port:           7600/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       ErrImageNeverPull
+    Ready:          False
+    Restart Count:  0
+    Limits:
+      cpu:     250m
+      memory:  256Mi
+    Requests:
+      cpu:      100m
+      memory:   128Mi
+    Liveness:   http-get http://:7600/api/v1/status delay=10s timeout=1s period=30s #success=1 #failure=3
+    Readiness:  http-get http://:7600/api/v1/status delay=5s timeout=1s period=10s #success=1 #failure=3
+    Environment Variables from:
+      tracker-settings  ConfigMap  Optional: false
+      tracker-db-auth   Secret     Optional: false
+    Environment:
+      PGHOST:  fleet-db-svc
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-qj42q (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             False
+  ContainersReady   False
+  PodScheduled      True
+Volumes:
+  kube-api-access-qj42q:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason             Age                     From               Message
+  ----     ------             ----                    ----               -------
+  Normal   Scheduled          7m28s                   default-scheduler  Successfully assigned fleet-ops/fleet-tracker-5775f69b7b-pvpxb to k3d-k3s-default-server-0
+  Normal   Pulled             7m28s                   kubelet            Container image "busybox:1.36" already present on machine
+  Normal   Created            7m28s                   kubelet            Created container wait-for-db
+  Normal   Started            7m28s                   kubelet            Started container wait-for-db
+  Warning  Failed             5m32s (x11 over 7m28s)  kubelet            Error: ErrImageNeverPull
+  Warning  ErrImageNeverPull  2m20s (x26 over 7m28s)  kubelet            Container image "fleet-tracker:v2.1.0" is not present with pull policy of Never
 @KeyomaKriel ➜ ~/drill-app $ kubectl get deploy
 NAME            READY   UP-TO-DATE   AVAILABLE   AGE
-fleet-db        1/1     1            1           25h
-fleet-tracker   2/2     2            2           25h
-@KeyomaKriel ➜ ~/drill-app $ curl localhost:8080/api/v1/status
-<html>
-<head><title>503 Service Temporarily Unavailable</title></head>
-<body>
-<center><h1>503 Service Temporarily Unavailable</h1></center>
-<hr><center>nginx</center>
-</body>
-</html>
-@KeyomaKriel ➜ ~/drill-app $ curl localhost:8080/api/v1/vehicles
-<html>
-<head><title>503 Service Temporarily Unavailable</title></head>
-<body>
-<center><h1>503 Service Temporarily Unavailable</h1></center>
-<hr><center>nginx</center>
-</body>
-</html>
-@KeyomaKriel ➜ ~/drill-app $ curl localhost:8080/api/v1/vehicles
-<html>
-<head><title>503 Service Temporarily Unavailable</title></head>
-<body>
-<center><h1>503 Service Temporarily Unavailable</h1></center>
-<hr><center>nginx</center>
-</body>
-</html>
-@KeyomaKriel ➜ ~/drill-app $ curl localhost:8080/api/v1/status
-<html>
-<head><title>503 Service Temporarily Unavailable</title></head>
-<body>
-<center><h1>503 Service Temporarily Unavailable</h1></center>
-<hr><center>nginx</center>
-</body>
-</html>
-@KeyomaKriel ➜ ~/drill-app $ kubectl get pods
-NAME                             READY   STATUS    RESTARTS   AGE
-fleet-db-59b5485db9-pgxdw        1/1     Running   4          25h
-fleet-tracker-77f4bcffc8-dsxsp   1/1     Running   4          23h
-fleet-tracker-77f4bcffc8-4b876   1/1     Running   4          23h
-@KeyomaKriel ➜ ~/drill-app $ POD=fleet-tracker-77f4bcffc8-dsxsp
-@KeyomaKriel ➜ ~/drill-app $ echo "$POD"
-fleet-tracker-77f4bcffc8-dsxsp
-@KeyomaKriel ➜ ~/drill-app $ kubectl get svc
-NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-fleet-db-svc   ClusterIP   10.43.28.79     <none>        5432/TCP   25h
-tracker-svc    ClusterIP   10.43.226.100   <none>        80/TCP     25h
-@KeyomaKriel ➜ ~/drill-app $ kubectl get endpoints
-NAME           ENDPOINTS         AGE
-fleet-db-svc   10.42.0.85:5432   25h
-tracker-svc    <none>            25h
-@KeyomaKriel ➜ ~/drill-app $ kubectl describe svc tracker-svc
-Name:              tracker-svc
-Namespace:         fleet-ops
-Labels:            <none>
-Annotations:       <none>
-Selector:          component=web
-Type:              ClusterIP
-IP Family Policy:  SingleStack
-IP Families:       IPv4
-IP:                10.43.226.100
-IPs:               10.43.226.100
-Port:              <unset>  80/TCP
-TargetPort:        7600/TCP
-Endpoints:         <none>
-Session Affinity:  None
-Events:            <none>
-@KeyomaKriel ➜ ~/drill-app $ kubectl get pods --show-labels
-NAME                             READY   STATUS    RESTARTS   AGE   LABELS
-fleet-db-59b5485db9-pgxdw        1/1     Running   4          25h   component=database,pod-template-hash=59b5485db9
-fleet-tracker-77f4bcffc8-dsxsp   1/1     Running   4          23h   component=api,pod-template-hash=77f4bcffc8
-fleet-tracker-77f4bcffc8-4b876   1/1     Running   4          23h   component=api,pod-template-hash=77f4bcffc8
-@KeyomaKriel ➜ ~/drill-app $ kubectl get deploy -o yaml
-apiVersion: v1
-items:
-- apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    annotations:
-      deployment.kubernetes.io/revision: "1"
-      kubectl.kubernetes.io/last-applied-configuration: |
-        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"component":"database"},"name":"fleet-db","namespace":"fleet-ops"},"spec":{"replicas":1,"selector":{"matchLabels":{"component":"database"}},"template":{"metadata":{"labels":{"component":"database"}},"spec":{"containers":[{"envFrom":[{"configMapRef":{"name":"fleet-db-config"}},{"secretRef":{"name":"fleet-db-credentials"}}],"image":"postgres:16-alpine","livenessProbe":{"exec":{"command":["pg_isready","-U","fleet_admin","-d","fleet_registry"]},"initialDelaySeconds":15,"periodSeconds":20},"name":"postgres","ports":[{"containerPort":5432}],"readinessProbe":{"exec":{"command":["pg_isready","-U","fleet_admin","-d","fleet_registry"]},"initialDelaySeconds":5,"periodSeconds":10},"volumeMounts":[{"mountPath":"/var/lib/postgresql/data","name":"pgdata","subPath":"pgdata"}]}],"volumes":[{"name":"pgdata","persistentVolumeClaim":{"claimName":"fleet-db-storage"}}]}}}}
-    creationTimestamp: "2026-04-09T12:55:34Z"
-    generation: 1
-    labels:
-      component: database
-    name: fleet-db
-    namespace: fleet-ops
-    resourceVersion: "26348"
-    uid: 8014a815-216a-47b1-9ba5-09adab8bf261
-  spec:
-    progressDeadlineSeconds: 600
-    replicas: 1
-    revisionHistoryLimit: 10
-    selector:
-      matchLabels:
-        component: database
-    strategy:
-      rollingUpdate:
-        maxSurge: 25%
-        maxUnavailable: 25%
-      type: RollingUpdate
-    template:
-      metadata:
-        creationTimestamp: null
-        labels:
-          component: database
-      spec:
-        containers:
-        - envFrom:
-          - configMapRef:
-              name: fleet-db-config
-          - secretRef:
-              name: fleet-db-credentials
-          image: postgres:16-alpine
-          imagePullPolicy: IfNotPresent
-          livenessProbe:
-            exec:
-              command:
-              - pg_isready
-              - -U
-              - fleet_admin
-              - -d
-              - fleet_registry
-            failureThreshold: 3
-            initialDelaySeconds: 15
-            periodSeconds: 20
-            successThreshold: 1
-            timeoutSeconds: 1
-          name: postgres
-          ports:
-          - containerPort: 5432
-            protocol: TCP
-          readinessProbe:
-            exec:
-              command:
-              - pg_isready
-              - -U
-              - fleet_admin
-              - -d
-              - fleet_registry
-            failureThreshold: 3
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-          resources: {}
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-          volumeMounts:
-          - mountPath: /var/lib/postgresql/data
-            name: pgdata
-            subPath: pgdata
-        dnsPolicy: ClusterFirst
-        restartPolicy: Always
-        schedulerName: default-scheduler
-        securityContext: {}
-        terminationGracePeriodSeconds: 30
-        volumes:
-        - name: pgdata
-          persistentVolumeClaim:
-            claimName: fleet-db-storage
-  status:
-    availableReplicas: 1
-    conditions:
-    - lastTransitionTime: "2026-04-09T12:55:34Z"
-      lastUpdateTime: "2026-04-09T12:56:01Z"
-      message: ReplicaSet "fleet-db-59b5485db9" has successfully progressed.
-      reason: NewReplicaSetAvailable
-      status: "True"
-      type: Progressing
-    - lastTransitionTime: "2026-04-10T14:12:05Z"
-      lastUpdateTime: "2026-04-10T14:12:05Z"
-      message: Deployment has minimum availability.
-      reason: MinimumReplicasAvailable
-      status: "True"
-      type: Available
-    observedGeneration: 1
-    readyReplicas: 1
-    replicas: 1
-    updatedReplicas: 1
-- apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    annotations:
-      deployment.kubernetes.io/revision: "8"
-      kubectl.kubernetes.io/last-applied-configuration: |
-        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"component":"api"},"name":"fleet-tracker","namespace":"fleet-ops"},"spec":{"replicas":2,"selector":{"matchLabels":{"component":"api"}},"template":{"metadata":{"labels":{"component":"api"}},"spec":{"containers":[{"envFrom":[{"configMapRef":{"name":"tracker-settings"}},{"secretRef":{"name":"tracker-db-auth"}}],"image":"fleet-tracker:local","imagePullPolicy":"Never","livenessProbe":{"httpGet":{"path":"/api/v1/status","port":7600},"initialDelaySeconds":10,"periodSeconds":30},"name":"tracker","ports":[{"containerPort":7600}],"readinessProbe":{"httpGet":{"path":"/api/v1/status","port":7600},"initialDelaySeconds":5,"periodSeconds":10},"resources":{"limits":{"cpu":"250m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}}],"initContainers":[{"command":["sh","-c","until nc -z fleet-db-svc 5432; do\n  echo \"waiting for fleet-db-svc:5432...\"\n  sleep 2\ndone\n"],"image":"busybox:1.36","name":"wait-for-db"}]}}}}
-    creationTimestamp: "2026-04-09T12:55:34Z"
-    generation: 8
-    labels:
-      component: api
-    name: fleet-tracker
-    namespace: fleet-ops
-    resourceVersion: "26407"
-    uid: 23214d1f-c41d-42cf-a512-83842271ecdb
-  spec:
-    progressDeadlineSeconds: 600
-    replicas: 2
-    revisionHistoryLimit: 10
-    selector:
-      matchLabels:
-        component: api
-    strategy:
-      rollingUpdate:
-        maxSurge: 25%
-        maxUnavailable: 25%
-      type: RollingUpdate
-    template:
-      metadata:
-        annotations:
-          kubectl.kubernetes.io/restartedAt: "2026-04-09T13:23:03Z"
-        creationTimestamp: null
-        labels:
-          component: api
-      spec:
-        containers:
-        - env:
-          - name: PGHOST
-            value: fleet-db-svc
-          envFrom:
-          - configMapRef:
-              name: tracker-settings
-          - secretRef:
-              name: tracker-db-auth
-          image: fleet-tracker:local
-          imagePullPolicy: Never
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /api/v1/status
-              port: 7600
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            successThreshold: 1
-            timeoutSeconds: 1
-          name: tracker
-          ports:
-          - containerPort: 7600
-            protocol: TCP
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /api/v1/status
-              port: 7600
-              scheme: HTTP
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-          resources:
-            limits:
-              cpu: 250m
-              memory: 256Mi
-            requests:
-              cpu: 100m
-              memory: 128Mi
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-        dnsPolicy: ClusterFirst
-        initContainers:
-        - command:
-          - sh
-          - -c
-          - |
-            until nc -z fleet-db-svc 5432; do
-              echo "waiting for fleet-db-svc:5432..."
-              sleep 2
-            done
-          env:
-          - name: PGHOST
-            value: fleet-db-svc
-          image: busybox:1.36
-          imagePullPolicy: IfNotPresent
-          name: wait-for-db
-          resources: {}
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-        restartPolicy: Always
-        schedulerName: default-scheduler
-        securityContext: {}
-        terminationGracePeriodSeconds: 30
-  status:
-    availableReplicas: 2
-    conditions:
-    - lastTransitionTime: "2026-04-10T11:25:38Z"
-      lastUpdateTime: "2026-04-10T11:47:00Z"
-      message: ReplicaSet "fleet-tracker-77f4bcffc8" has successfully progressed.
-      reason: NewReplicaSetAvailable
-      status: "True"
-      type: Progressing
-    - lastTransitionTime: "2026-04-10T14:12:21Z"
-      lastUpdateTime: "2026-04-10T14:12:21Z"
-      message: Deployment has minimum availability.
-      reason: MinimumReplicasAvailable
-      status: "True"
-      type: Available
-    observedGeneration: 8
-    readyReplicas: 2
-    replicas: 2
-    updatedReplicas: 2
-kind: List
-metadata:
-  resourceVersion: ""
-@KeyomaKriel ➜ ~/drill-app $ kubectl get deploy
-NAME            READY   UP-TO-DATE   AVAILABLE   AGE
-fleet-db        1/1     1            1           25h
-fleet-tracker   2/2     2            2           25h
+fleet-db        1/1     1            1           2d2h
+fleet-tracker   2/2     1            2           2d2h
 @KeyomaKriel ➜ ~/drill-app $ kubectl get deploy fleet-tracker -o yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    deployment.kubernetes.io/revision: "8"
+    deployment.kubernetes.io/revision: "9"
     kubectl.kubernetes.io/last-applied-configuration: |
       {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"component":"api"},"name":"fleet-tracker","namespace":"fleet-ops"},"spec":{"replicas":2,"selector":{"matchLabels":{"component":"api"}},"template":{"metadata":{"labels":{"component":"api"}},"spec":{"containers":[{"envFrom":[{"configMapRef":{"name":"tracker-settings"}},{"secretRef":{"name":"tracker-db-auth"}}],"image":"fleet-tracker:local","imagePullPolicy":"Never","livenessProbe":{"httpGet":{"path":"/api/v1/status","port":7600},"initialDelaySeconds":10,"periodSeconds":30},"name":"tracker","ports":[{"containerPort":7600}],"readinessProbe":{"httpGet":{"path":"/api/v1/status","port":7600},"initialDelaySeconds":5,"periodSeconds":10},"resources":{"limits":{"cpu":"250m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}}],"initContainers":[{"command":["sh","-c","until nc -z fleet-db-svc 5432; do\n  echo \"waiting for fleet-db-svc:5432...\"\n  sleep 2\ndone\n"],"image":"busybox:1.36","name":"wait-for-db"}]}}}}
   creationTimestamp: "2026-04-09T12:55:34Z"
-  generation: 8
+  generation: 9
   labels:
     component: api
   name: fleet-tracker
   namespace: fleet-ops
-  resourceVersion: "26407"
+  resourceVersion: "38110"
   uid: 23214d1f-c41d-42cf-a512-83842271ecdb
 spec:
   progressDeadlineSeconds: 600
@@ -379,7 +165,7 @@ spec:
             name: tracker-settings
         - secretRef:
             name: tracker-db-auth
-        image: fleet-tracker:local
+        image: fleet-tracker:v2.1.0
         imagePullPolicy: Never
         livenessProbe:
           failureThreshold: 3
@@ -440,59 +226,50 @@ spec:
 status:
   availableReplicas: 2
   conditions:
-  - lastTransitionTime: "2026-04-10T11:25:38Z"
-    lastUpdateTime: "2026-04-10T11:47:00Z"
-    message: ReplicaSet "fleet-tracker-77f4bcffc8" has successfully progressed.
-    reason: NewReplicaSetAvailable
-    status: "True"
-    type: Progressing
-  - lastTransitionTime: "2026-04-10T14:12:21Z"
-    lastUpdateTime: "2026-04-10T14:12:21Z"
+  - lastTransitionTime: "2026-04-11T14:44:17Z"
+    lastUpdateTime: "2026-04-11T14:44:17Z"
     message: Deployment has minimum availability.
     reason: MinimumReplicasAvailable
     status: "True"
     type: Available
-  observedGeneration: 8
+  - lastTransitionTime: "2026-04-11T15:17:13Z"
+    lastUpdateTime: "2026-04-11T15:17:13Z"
+    message: ReplicaSet "fleet-tracker-5775f69b7b" has timed out progressing.
+    reason: ProgressDeadlineExceeded
+    status: "False"
+    type: Progressing
+  observedGeneration: 9
   readyReplicas: 2
-  replicas: 2
-  updatedReplicas: 2
+  replicas: 3
+  unavailableReplicas: 1
+  updatedReplicas: 1
+@KeyomaKriel ➜ ~/drill-app $
+@KeyomaKriel ➜ ~/drill-app $ kubectl apply -f manifests/tracker-deployment.yaml
+deployment.apps/fleet-tracker configured
+@KeyomaKriel ➜ ~/drill-app $
+@KeyomaKriel ➜ ~/drill-app $ kubectl get pods
+NAME                             READY   STATUS    RESTARTS   AGE
+fleet-db-59b5485db9-wgzvn        1/1     Running   1          131m
+fleet-tracker-77f4bcffc8-dsxsp   1/1     Running   6          2d
+fleet-tracker-77f4bcffc8-4b876   1/1     Running   6          2d
+@KeyomaKriel ➜ ~/drill-app $ kubectl get endpoints
+NAME           ENDPOINTS                           AGE
+fleet-db-svc   10.42.0.114:5432                    2d2h
+tracker-svc    10.42.0.113:7600,10.42.0.116:7600   2d2h
 @KeyomaKriel ➜ ~/drill-app $ kubectl get svc
 NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-fleet-db-svc   ClusterIP   10.43.28.79     <none>        5432/TCP   25h
-tracker-svc    ClusterIP   10.43.226.100   <none>        80/TCP     25h
-@KeyomaKriel ➜ ~/drill-app $ kubectl apply -f manifests/tracker-service.yaml
-service/tracker-svc configured
-@KeyomaKriel ➜ ~/drill-app $ kubectl get svc tracker-svc -o yaml
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"tracker-svc","namespace":"fleet-ops"},"spec":{"ports":[{"port":80,"targetPort":7600}],"selector":{"component":"api"}}}
-  creationTimestamp: "2026-04-09T12:55:34Z"
-  name: tracker-svc
-  namespace: fleet-ops
-  resourceVersion: "27630"
-  uid: 8a723945-f614-46f0-9f6c-cfa374aaa322
-spec:
-  clusterIP: 10.43.226.100
-  clusterIPs:
-  - 10.43.226.100
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 7600
-  selector:
-    component: api
-  sessionAffinity: None
-  type: ClusterIP
-status:
-  loadBalancer: {}
+fleet-db-svc   ClusterIP   10.43.28.79     <none>        5432/TCP   2d2h
+tracker-svc    ClusterIP   10.43.226.100   <none>        80/TCP     2d2h
+@KeyomaKriel ➜ ~/drill-app $ kubectl port-forward svc/tracker-svc 8080:80
+Forwarding from 127.0.0.1:8080 -> 7600
+Forwarding from [::1]:8080 -> 7600
+Handling connection for 8080
+Handling connection for 8080
+
+
 @KeyomaKriel ➜ ~/drill-app $ curl localhost:8080/api/v1/status
 {"service":"fleet-tracker","status":"healthy"}
 @KeyomaKriel ➜ ~/drill-app $ curl localhost:8080/api/v1/vehicles
 [{"depot":"Depot North","make":"Honda","model":"Accord","status":"available","vid":1,"vin":"1HGCG5655WA042367"},{"depot":"Depot East","make":"Tesla","model":"Model S","status":"in-transit","vid":2,"vin":"5YJSA1E26MF123456"},{"depot":"Depot North","make":"BMW","model":"530i","status":"maintenance","vid":3,"vin":"WBAJB0C51JB084210"}]
-@KeyomaKriel ➜ ~/drill-app $ 
+@KeyomaKriel ➜ ~/drill-app $
+
