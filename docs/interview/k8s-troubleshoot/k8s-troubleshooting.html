@@ -110,34 +110,42 @@
   }
   .bucket-card {
     border-radius: var(--card-radius);
-    padding: 16px;
+    padding: 10px 8px;
     border-top: 4px solid;
     min-width: 0;
   }
   .bucket-card h3 { font-size: 15px; margin-bottom: 6px; }
-  .bucket-card .question { font-style: italic; font-size: 13px; margin-bottom: 8px; opacity: .85; }
+  .bucket-card .question { font-style: italic; font-size: 13px; margin-bottom: 4px; opacity: .85; }
   .bucket-card .say {
     background: rgba(0,0,0,.05);
     border-radius: 4px;
-    padding: 8px 10px;
+    padding: 6px 8px;
     font-size: 12px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     line-height: 1.45;
   }
-  .bucket-card .say::before { content: 'Say: '; font-weight: 700; }
+  .bucket-card .say::before { content: none; }
   .bucket-card pre {
     background: var(--code-bg);
     color: var(--code-fg);
     font-size: 12px;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-radius: 4px;
     overflow-x: auto;
     white-space: pre;
-    line-height: 1.5;
-    margin-bottom: 8px;
+    line-height: 1.4;
+    margin-bottom: 0;
   }
-  .bucket-card ul { font-size: 13px; padding-left: 18px; }
+  .bucket-card ul {
+    font-size: 13px;
+    padding: 4px 6px 4px 20px;
+    margin-top: 4px;
+    background: rgba(0,0,0,.04);
+    border-radius: 4px;
+    border-left: 3px solid rgba(0,0,0,.15);
+  }
   .bucket-card li { margin-bottom: 2px; }
+  .bucket-card li strong { color: #e8e8e8; }
   .bucket-card .docs { font-size: 11px; color: rgba(0,0,0,.45); margin-top: 8px; font-style: italic; }
 
   .b-start  { background: var(--start-bg);  border-color: var(--start); }
@@ -299,7 +307,7 @@
     font-size: 13px;
     line-height: 1.45;
   }
-  .symptom-body .say-block::before { content: 'Say: '; font-weight: 700; color: #388e3c; }
+  .symptom-body .say-block::before { content: none; }
 
   .symptom-body pre {
     background: var(--code-bg);
@@ -566,6 +574,7 @@
 
   body.dark .bucket-card { background: rgba(255,255,255,.05); }
   body.dark .bucket-card .say { background: rgba(255,255,255,.06); }
+  body.dark .bucket-card ul { background: rgba(255,255,255,.05); border-left-color: rgba(255,255,255,.15); }
   body.dark .bucket-card .docs { color: rgba(255,255,255,.4); }
 
   body.dark .caution-item { background: #3a3000; border-color: #665500; color: #ffd38a; }
@@ -638,20 +647,14 @@
 <!-- Hero -- execution model + compressed summary -->
 <div class="hero">
   <h2>Execution Model</h2>
-  <div class="rule">Symptom first, root cause second.</div>
-  <div class="loop">Loop: classify the symptom &rarr; inspect the nearest layer/object &rarr; route by evidence &rarr; make the smallest justified fix &rarr; verify end to end.</div>
-  <div class="guard">
+  <div class="rule"><strong>Rule:</strong> Symptom first, root cause second.</div>
+  <div class="loop"><strong>Loop:</strong> classify the symptom &rarr; inspect the nearest layer/object &rarr; route by evidence &rarr; make the smallest justified fix &rarr; verify end to end.</div>
+  <div class="guard"><strong>Guard:</strong>
     <span>CrashLoopBackOff &ne; cause</span>
     <span>Running &ne; healthy</span>
     <span>Ready &ne; ingress works</span>
     <span>Service exists &ne; endpoints exist</span>
     <span>Ingress exists &ne; external routing works</span>
-  </div>
-  <div class="compressed">
-    <strong>Frame:</strong> Start &rarr; Stay up &rarr; Receive Traffic &rarr; Reach Dep<br>
-    <strong>Rule:</strong> Symptom first, root cause second<br>
-    <strong>Loop:</strong> classify &rarr; inspect nearest layer &rarr; route by evidence &rarr; smallest fix &rarr; verify end to end<br>
-    <strong>Guard:</strong> CrashLoopBackOff &ne; cause, Running &ne; healthy, Ready &ne; ingress works, Service exists &ne; endpoints exist
   </div>
 </div>
 
@@ -669,14 +672,14 @@
 kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
 kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
       <ul>
-        <li>ErrImagePull / ImagePullBackOff &rarr; inspect image name, tag, pull secret, imagePullPolicy</li>
-        <li>Pending &rarr; inspect scheduling reason, PVC, node constraints, taints/affinity</li>
-        <li>CreateContainerConfigError &rarr; inspect config/secret/env refs, volume mounts</li>
-        <li>Init container failure &rarr; inspect init container image, command, mounts</li>
-        <li>Command / entrypoint / args problem</li>
-        <li>Missing ConfigMap / Secret / volume mount</li>
-        <li>PVC not binding</li>
-        <li>Node capacity / taints / affinity / scheduling blockers</li>
+        <li><strong>ErrImagePull / ImagePullBackOff</strong> &rarr; inspect image name, tag, pull secret, imagePullPolicy</li>
+        <li><strong>Pending</strong> &rarr; inspect scheduling reason, PVC, node constraints, taints/affinity</li>
+        <li><strong>CreateContainerConfigError</strong> &rarr; inspect config/secret/env refs, volume mounts</li>
+        <li><strong>Init container failure</strong> &rarr; inspect init container image, command, mounts</li>
+        <li><strong>Command / entrypoint / args problem</strong> &rarr; check command/args in describe pod, compare with Dockerfile ENTRYPOINT/CMD</li>
+        <li><strong>Missing ConfigMap / Secret / volume mount</strong> &rarr; check events for referenced object name, verify it exists in the namespace</li>
+        <li><strong>PVC not binding</strong> &rarr; kubectl get pvc -n &lt;ns&gt;, check storageClass and access mode match available PVs</li>
+        <li><strong>Node capacity / taints / affinity / scheduling blockers</strong> &rarr; kubectl describe node, check Conditions, taints, allocatable vs requested</li>
       </ul>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
     </div>
@@ -691,12 +694,12 @@ kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
 kubectl logs &lt;pod&gt; -n &lt;ns&gt;
 kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
       <ul>
-        <li>CrashLoopBackOff &rarr; logs route you to actual cause (config, dep, DNS, OOM)</li>
-        <li>0/1 Ready &rarr; probe path/port/startup timing</li>
-        <li>Restarts climbing &rarr; liveness probe, intermittent crash, OOM</li>
-        <li>OOMKilled / exit 137 &rarr; memory limit vs actual usage</li>
-        <li>Error / app boot failure</li>
-        <li>Startup dependency failure</li>
+        <li><strong>CrashLoopBackOff</strong> &rarr; logs route you to actual cause (config, dep, DNS, OOM)</li>
+        <li><strong>0/1 Ready</strong> &rarr; probe path/port/startup timing</li>
+        <li><strong>Restarts climbing</strong> &rarr; liveness probe, intermittent crash, OOM</li>
+        <li><strong>OOMKilled / exit 137</strong> &rarr; memory limit vs actual usage</li>
+        <li><strong>Error / app boot failure</strong> &rarr; check logs for stack trace or error message, compare entrypoint/command with expected startup</li>
+        <li><strong>Startup dependency failure</strong> &rarr; check logs for connection errors, verify dependency pod is Running and Service has endpoints</li>
       </ul>
       <div class="docs">Docs: Debug Running Pods, Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Assign Memory Resources to Containers and Pods.</div>
     </div>
@@ -712,12 +715,12 @@ kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
 kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
 # then: curl localhost:8080/&lt;path&gt;</pre>
       <ul>
-        <li>No endpoints &rarr; selector mismatch or pods not Ready</li>
-        <li>Service works internally but not externally &rarr; ingress branch</li>
-        <li>Wrong port &rarr; compare svc port/targetPort with container port</li>
-        <li>Wrong named port</li>
-        <li>Ingress host / path / backend mismatch</li>
-        <li>External path broken while internal Service path works</li>
+        <li><strong>No endpoints</strong> &rarr; selector mismatch or pods not Ready</li>
+        <li><strong>Service works internally but not externally</strong> &rarr; ingress branch</li>
+        <li><strong>Wrong port</strong> &rarr; compare svc port/targetPort with container port</li>
+        <li><strong>Wrong named port</strong> &rarr; compare port name in Service spec with containerPort name in Deployment</li>
+        <li><strong>Ingress host / path / backend mismatch</strong> &rarr; kubectl describe ingress, compare rules with Service name and port</li>
+        <li><strong>External path broken while internal Service path works</strong> &rarr; check ingress controller logs, describe ingress for host/path rules and backend config</li>
       </ul>
       <div class="docs">Docs: Debug Services, Service, EndpointSlices, Ingress, Ingress Controllers.</div>
     </div>
@@ -731,12 +734,12 @@ kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
 kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
 kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh</pre>
       <ul>
-        <li>DNS &rarr; nslookup &lt;service&gt;.&lt;ns&gt;.svc.cluster.local</li>
-        <li>TCP &rarr; nc -zv &lt;host&gt; &lt;port&gt; or wget -qO- http://...</li>
-        <li>Env &rarr; env | grep POSTGRES (or relevant vars)</li>
-        <li>Auth/RBAC &rarr; kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; ...</li>
-        <li>NetworkPolicy / egress restriction</li>
-        <li>Storage dependency problem</li>
+        <li><strong>DNS</strong> &rarr; nslookup &lt;service&gt;.&lt;ns&gt;.svc.cluster.local</li>
+        <li><strong>TCP</strong> &rarr; nc -zv &lt;host&gt; &lt;port&gt; or wget -qO- http://...</li>
+        <li><strong>Env</strong> &rarr; env | grep POSTGRES (or relevant vars)</li>
+        <li><strong>Auth/RBAC</strong> &rarr; kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; ...</li>
+        <li><strong>NetworkPolicy / egress restriction</strong> &rarr; kubectl get networkpolicy -n &lt;ns&gt;, check if egress rules block the destination port/namespace</li>
+        <li><strong>Storage dependency problem</strong> &rarr; kubectl get pvc -n &lt;ns&gt;, check PVC status and events, verify the volume is mounted and writable</li>
       </ul>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Network Policies, Using RBAC Authorization, Service Accounts.</div>
     </div>
