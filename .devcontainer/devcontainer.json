@@ -5,7 +5,8 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "minikube": "none"
-    }
+    },
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
   "runArgs": ["--init", "--privileged"],
   "postCreateCommand": "bash .devcontainer/setup-cluster.sh",
