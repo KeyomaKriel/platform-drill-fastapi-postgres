@@ -628,6 +628,7 @@
   <h1>K8s Troubleshooting</h1>
   <nav>
     <a href="#frame" class="bucket-start">Frame</a>
+    <a href="#orientation">Orient</a>
     <a href="#triage">Triage</a>
     <a href="#truth">Truth Source</a>
     <a href="#caution">Cautions</a>
@@ -635,6 +636,8 @@
     <a href="#symptoms-high" class="bucket-start">Symptoms</a>
     <a href="#fixes">Fixes</a>
     <a href="#views">Views</a>
+    <a href="#config-source">Config Source</a>
+    <a href="#entry-path-view">Entry Path</a>
     <a href="#verify">Verify</a>
     <a href="#say">Say</a>
     <a href="#commands">Commands</a>
@@ -708,14 +711,24 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
     <div class="bucket-card b-traffic">
       <h3>3. Receive Traffic</h3>
       <div class="question">Can traffic reach the app through the Kubernetes routing path?</div>
-      <div class="say">If the pod is Running and Ready, I want to check routing layer by layer rather than guessing whether this is ingress or service.</div>
-      <pre>kubectl get svc -n &lt;ns&gt;
+      <div class="say">If the pod is Running and Ready, I first decide how traffic is meant to enter: Ingress, LoadBalancer/NodePort Service, or internal ClusterIP Service. Then I test that path layer by layer instead of guessing.</div>
+      <pre>kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
+
+kubectl get svc -n &lt;ns&gt;
 kubectl describe svc &lt;service&gt; -n &lt;ns&gt;
 kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+
+kubectl port-forward pod/&lt;pod&gt; 8080:&lt;container-port&gt; -n &lt;ns&gt;
+# then: curl localhost:8080/&lt;path&gt;
+
 kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
 # then: curl localhost:8080/&lt;path&gt;</pre>
       <ul>
         <li><strong>No endpoints</strong> &rarr; selector mismatch or pods not Ready</li>
+        <li><strong>Pod port-forward works but Service port-forward fails</strong> &rarr; Service selector / targetPort / endpoints problem</li>
+        <li><strong>Neither pod nor Service port-forward works</strong> &rarr; app itself is not serving, wrong port, wrong path, or wrong bind address</li>
+        <li><strong>Need actual endpoint path</strong> &rarr; get it from readiness/liveness probe path, repo docs, or app routes &mdash; Kubernetes does not invent the app URL path</li>
         <li><strong>Service works internally but not externally</strong> &rarr; ingress branch</li>
         <li><strong>Wrong port</strong> &rarr; compare svc port/targetPort with container port</li>
         <li><strong>Wrong named port</strong> &rarr; compare port name in Service spec with containerPort name in Deployment</li>
@@ -744,6 +757,25 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh</pre>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Network Policies, Using RBAC Authorization, Service Accounts.</div>
     </div>
 
+  </div>
+</section>
+
+<!-- 30-Second Orientation -->
+<section id="orientation">
+  <h2>30-Second Orientation</h2>
+  <div class="view-card">
+    <h4>Before deep debugging</h4>
+    <div class="flow">Find the cluster/context, namespace, entry path, and config source before guessing.</div>
+    <pre>kubectl config current-context
+kubectl config get-contexts
+kubectl config use-context &lt;context-name&gt;
+kubectl config view --minify
+kubectl get ns
+kubectl config set-context --current --namespace=&lt;ns&gt;
+
+kubectl get ingress -A
+kubectl get svc -A
+kubectl get deploy -A</pre>
   </div>
 </section>
 
@@ -785,6 +817,7 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh</pre>
     <div class="caution-item">Ready does not prove ingress works</div>
     <div class="caution-item">Existing Service does not mean it has usable endpoints</div>
     <div class="caution-item">Ingress object existing does not mean external routing works</div>
+    <div class="caution-item">Wrong context or namespace can make a healthy app look missing</div>
   </div>
 </section>
 
@@ -799,6 +832,29 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh</pre>
 
   <!-- HIGH LIKELIHOOD -->
   <div class="likelihood-label likelihood-high">High Likelihood</div>
+
+  <!-- Nothing looks right / wrong namespace or context -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Nothing looks right / expected objects seem missing</h4>
+      <span class="bucket-tag" style="background:#f5f5f5;color:#666;border:1px solid #ccc;">Sanity check first</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl config current-context
+kubectl get ns
+kubectl get all -A | head -n 80
+kubectl get deploy,svc,ingress -A | grep -i &lt;app-name&gt;</pre>
+      <div class="prove">whether you're looking at the wrong cluster or wrong namespace rather than a broken workload.</div>
+      <div class="say-block">Before I assume the app is broken, I want to prove I'm in the right context and namespace and that I'm looking at the right objects.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong namespace &rarr; switch commands to the namespace that actually contains the app</li>
+        <li>wrong cluster/context &rarr; fix kube context before continuing</li>
+        <li>object name assumption wrong &rarr; search actual deploy/service/ingress names first</li>
+      </ul>
+    </div>
+  </div>
 
   <!-- No pod / expected pod missing -->
   <div class="symptom-card">
@@ -1145,6 +1201,71 @@ kubectl get svc -n &lt;ns&gt;                     # verify actual service names<
         <li>hostname correct but DNS broken &rarr; <a class="fix-link" href="#fix-dns">check coredns pods in kube-system</a></li>
       </ul>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution.</div>
+    </div>
+  </div>
+
+  <!-- App runs but wrong version -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>App runs, but behaviour does not match the expected version</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; | head</pre>
+      <div class="prove">whether the workload is running the wrong image or stale tag even though the pod starts successfully.</div>
+      <div class="say-block">The pod is healthy, but I want to confirm we're actually running the intended image and not an older or wrong tag.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong tag pinned in Deployment &rarr; fix image tag</li>
+        <li>mutable tag ambiguity like <code>latest</code> &rarr; use explicit version tag</li>
+        <li>expected code path missing &rarr; image built from wrong commit or wrong Dockerfile context</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Pod Running but app only works from inside the container -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod is Running, but app only works from inside the container</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl port-forward pod/&lt;pod&gt; 8080:&lt;container-port&gt; -n &lt;ns&gt;
+curl localhost:8080/&lt;path&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">whether the app itself serves locally but is bound incorrectly for Kubernetes traffic.</div>
+      <div class="say-block">If the app works only from inside the container or only via local loopback, it may be listening on 127.0.0.1 instead of 0.0.0.0.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>app bound to 127.0.0.1 / localhost &rarr; change bind address to <code>0.0.0.0</code></li>
+        <li>containerPort documented wrong &rarr; align manifest with actual listening port</li>
+        <li>probe hits a port/path the app is not really serving &rarr; fix probe and/or app config</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Multi-container pod / wrong logs -->
+  <div class="symptom-card">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Logs are confusing or empty in a multi-container pod</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;container-name&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;container-name&gt; --previous</pre>
+      <div class="prove">whether you're reading logs from the actual failing container.</div>
+      <div class="say-block">This pod has multiple containers, so I want to make sure I'm reading logs from the right one before drawing conclusions.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>sidecar logs fine but app container failing &rarr; use <code>-c</code> for the app container</li>
+        <li>init container was the failing one &rarr; inspect init container logs separately</li>
+      </ul>
     </div>
   </div>
 
@@ -1872,6 +1993,58 @@ kubectl get pods -n &lt;ns&gt;    # pod should transition from Pending to Runnin
     </div>
   </div>
 
+  <!-- Fix: Wrong bind address -->
+  <div class="fix-card" id="fix-bind-address">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>Fix: App bound to localhost / wrong listen interface</h3>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">The process is listening only on 127.0.0.1 inside the container, so Kubernetes traffic from the pod network cannot reach it properly.</div>
+      <h4>First commands</h4>
+      <pre>kubectl port-forward pod/&lt;pod&gt; 8080:&lt;container-port&gt; -n &lt;ns&gt;
+curl localhost:8080/&lt;path&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
+      <h4>Likely fixes</h4>
+      <ul>
+        <li>App configured with localhost / 127.0.0.1 bind &rarr; change to <code>0.0.0.0</code></li>
+        <li>Framework default bind assumption wrong &rarr; set host explicitly in app config or startup command</li>
+        <li>Manifest containerPort correct but app not listening there &rarr; fix app startup config</li>
+      </ul>
+      <h4>Verification</h4>
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
+curl localhost:8080/&lt;path&gt;</pre>
+    </div>
+  </div>
+
+  <!-- Fix: Config changed but pods did not pick it up -->
+  <div class="fix-card" id="fix-rollout-restart">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>Fix: Config changed but running pods did not pick it up</h3>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">The ConfigMap or Secret has been corrected, but the running pods are still using old environment values because they were not restarted.</div>
+      <h4>First commands</h4>
+      <pre>kubectl get configmap &lt;cm&gt; -n &lt;ns&gt; -o yaml
+kubectl get secret &lt;secret&gt; -n &lt;ns&gt; -o yaml
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;VAR&gt;</pre>
+      <h4>Likely fixes</h4>
+      <ul>
+        <li>ConfigMap/Secret data is fixed but env vars in pod are still old &rarr; rollout restart the Deployment</li>
+        <li>Mounted file updates not reflected by the app &rarr; restart app/pod if the app does not hot-reload</li>
+      </ul>
+      <h4>Fix commands</h4>
+      <pre>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;
+kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;</pre>
+      <h4>Verification</h4>
+      <pre>kubectl exec -it &lt;new-pod&gt; -n &lt;ns&gt; -- env | grep &lt;VAR&gt;
+kubectl logs &lt;new-pod&gt; -n &lt;ns&gt;</pre>
+    </div>
+  </div>
+
 </section>
 
 <!-- Support Views -->
@@ -1921,6 +2094,51 @@ kubectl get pods -n &lt;ns&gt;    # pod should transition from Pending to Runnin
   </div>
 </section>
 
+<!-- Entry Path View -->
+<section id="entry-path-view">
+  <h2>Entry Path View</h2>
+  <div class="views-grid">
+    <div class="view-card">
+      <h4>How to determine the app entry path</h4>
+      <div class="flow">Ingress? If yes, use host + path. If no, inspect Service type.</div>
+      <pre># 1. Is there an Ingress?
+kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
+
+# 2. If not, inspect the Service
+kubectl get svc -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;</pre>
+      <ul>
+        <li><strong>Ingress</strong>: use host from Ingress rule and path from Ingress path</li>
+        <li><strong>LoadBalancer Service</strong>: use external IP/DNS + service port + app endpoint path</li>
+        <li><strong>NodePort Service</strong>: use node IP + nodePort + app endpoint path</li>
+        <li><strong>ClusterIP Service</strong>: internal only; use service DNS name or port-forward</li>
+        <li><strong>App endpoint path</strong>: get it from probe path, repo docs, curl scripts, or app routes</li>
+      </ul>
+    </div>
+
+    <div class="view-card">
+      <h4>Example curl patterns</h4>
+      <div class="flow">Use the object spec to build the exact curl command.</div>
+      <pre># Ingress with host rule
+curl -H "Host: &lt;host&gt;" http://&lt;ingress-ip&gt;&lt;path&gt;
+
+# Local ingress
+curl -H "Host: &lt;host&gt;" http://localhost&lt;path&gt;
+
+# LoadBalancer Service
+curl http://&lt;external-ip-or-dns&gt;:&lt;port&gt;&lt;path&gt;
+
+# NodePort Service
+curl http://&lt;node-ip&gt;:&lt;nodePort&gt;&lt;path&gt;
+
+# Internal-only ClusterIP Service
+kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
+curl http://localhost:8080/&lt;path&gt;</pre>
+    </div>
+  </div>
+</section>
+
 <!-- Verification -->
 <section id="verify">
   <h2>Verification Commands</h2>
@@ -1945,6 +2163,8 @@ kubectl get pods -n &lt;ns&gt;    # pod should transition from Pending to Runnin
     <div class="phrase">"If the Pod is broken, I'll inspect Pod state, describe output, and logs."</div>
     <div class="phrase">"If the Pod is Running and Ready, I'll move outward from Pod to Service to Ingress."</div>
     <div class="phrase">"I want to make one justified change, then verify end to end."</div>
+    <div class="phrase">"I want to separate app-level failure from Kubernetes routing failure, so I'll test the pod directly first, then the Service, then ingress if needed."</div>
+    <div class="phrase">"I want to identify the entry object first. If there is an Ingress, I'll use its host and path rules. If there is no Ingress, I'll inspect the Service type to see whether this is external LoadBalancer/NodePort access or internal ClusterIP routing."</div>
   </div>
   <p style="font-size:12px;color:#888;margin-top:8px;">That matches the official debugging flow and shows controlled reasoning rather than guesswork.</p>
 </section>
