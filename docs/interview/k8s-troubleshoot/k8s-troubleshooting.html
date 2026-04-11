@@ -817,8 +817,8 @@ kubectl describe deploy &lt;deploy&gt; -n &lt;ns&gt;</pre>
       <ul>
         <li>Deployment missing or not found &rarr; wrong namespace, not applied, deleted</li>
         <li>Deployment exists but 0 replicas &rarr; check spec.replicas, or check if scaled to zero</li>
-        <li>Deployment exists but ReplicaSet not creating pods &rarr; <code>kubectl get rs -n &lt;ns&gt;</code>, check events</li>
-        <li>Wrong labels or selectors &rarr; pod template labels don't match</li>
+        <li>Deployment exists but ReplicaSet not creating pods &rarr; <a class="fix-link" href="#fix-scheduling">check events for scheduling or resource issues</a>, or <a class="fix-link" href="#fix-config-ref">config/secret/volume ref errors</a></li>
+        <li>Wrong labels or selectors &rarr; <a class="fix-link" href="#fix-service-selector">pod template labels don't match</a></li>
       </ul>
       <div class="docs">Docs: Deployments, ReplicaSets, Debug Pods.</div>
     </div>
