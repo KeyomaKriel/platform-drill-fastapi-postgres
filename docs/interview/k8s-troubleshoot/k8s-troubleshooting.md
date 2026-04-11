@@ -7,6 +7,32 @@ Execution loop: classify the symptom → inspect the nearest layer/object → ro
 
 ---
 
+Default triage loop
+
+Use this when the symptom is unclear or you just sat down.
+
+	1.	kubectl get pods -n <ns>
+	2.	kubectl get deploy -n <ns>
+	3.	If pod unhealthy → kubectl describe pod <pod>, kubectl logs <pod>, kubectl logs <pod> --previous
+	4.	If deployment not progressing → kubectl describe deploy <deploy> -n <ns>, kubectl rollout status deploy/<deploy> -n <ns>
+	5.	If pod Running/Ready → kubectl get svc + kubectl get endpoints <service>
+	6.	If service works internally → check ingress / external route
+	7.	If app still fails → inspect dependency path from inside pod
+	8.	Make one fix
+	9.	Verify end to end
+
+---
+
+Nearest truth source
+
+	•	Pod not running → describe pod + logs
+	•	Deployment not progressing → describe deploy + rollout status
+	•	Pod Running/Ready but app unreachable → Service / endpoints
+	•	Service works but external path fails → Ingress
+	•	App responds but feature fails → dependency path from inside pod
+
+---
+
 Core frame — what to run first
 
 1. Start
@@ -60,7 +86,7 @@ Docs: Debug Running Pods, Configure Liveness Readiness and Startup Probes, Pod L
 
 Can traffic reach the app through the Kubernetes routing path?
 
-Say: "If the pod is healthy, I want to check routing layer by layer rather than guessing whether this is ingress or service."
+Say: "If the pod is Running and Ready, I want to check routing layer by layer rather than guessing whether this is ingress or service."
 
 First commands:
 
@@ -104,29 +130,6 @@ Docs: DNS for Services and Pods, Debugging DNS Resolution, Network Policies, Usi
 
 ---
 
-Default triage loop
-
-Use this when the symptom is unclear or you just sat down.
-
-	1.	kubectl get pods -n <ns>
-	2.	If pod unhealthy → kubectl describe pod <pod>, kubectl logs <pod>, kubectl logs <pod> --previous
-	3.	If pod healthy → kubectl get svc + kubectl get endpoints <service>
-	4.	If service works internally → check ingress / external route
-	5.	If app still fails → inspect dependency path from inside pod
-	6.	Make one fix
-	7.	Verify end to end
-
----
-
-Nearest truth source
-
-	•	Pod not healthy → describe pod + logs
-	•	Pod healthy but app unreachable → Service / endpoints
-	•	Service works but external path fails → Ingress
-	•	App responds but feature fails → dependency path from inside pod
-
----
-
 Do not over-infer
 
 	•	CrashLoopBackOff does not tell you the cause
@@ -137,42 +140,70 @@ Do not over-infer
 
 ---
 
-Interview scope
-
-Most likely: pod startup/crash, probes, config/secret/env, service selector/port/endpoints, ingress path/backend, dependency connectivity, DNS/namespace mistakes, maybe RBAC/NetworkPolicy.
-
-Less likely: deep scheduler theory, obscure storage edge cases, advanced controller internals, node-level issues.
-
-The symptom map below is ordered by likelihood.
-
----
-
 Fast symptom map
 
 HIGH LIKELIHOOD
 
-Pod missing, Pending, or never becomes Running
+No pod / expected pod missing
 
 Primary mapping: Start
 
 First commands:
 
 	kubectl get pods -n <ns>
+	kubectl get deploy -n <ns>
+	kubectl describe deploy <deploy> -n <ns>
+
+What these usually reveal: whether the Deployment exists and is creating pods, or whether the workload is missing entirely.
+
+Say: "I don't see the expected pod, so I want to check whether the Deployment exists and what its status is — wrong namespace, scaling issue, or not created."
+
+Then check:
+	•	Deployment missing or not found → wrong namespace, not applied, deleted
+	•	Deployment exists but 0 replicas → check spec.replicas, or check if scaled to zero
+	•	Deployment exists but ReplicaSet not creating pods → kubectl get rs -n <ns>, check events
+	•	Wrong labels or selectors → pod template labels don't match
+
+Docs: Deployments, ReplicaSets, Debug Pods.
+
+Pod Pending
+
+Primary mapping: Start
+
+First commands:
+
 	kubectl describe pod <pod> -n <ns>          # Events section: scheduling reason
 	kubectl get events -n <ns> --sort-by=.lastTimestamp
 
-What these prove: why the scheduler can't place it, or why the container can't be created.
+What these usually reveal: why the scheduler can't place the pod.
 
-Say: "The pod isn't even running yet, so I want the describe events to tell me whether this is scheduling, image pull, or container creation."
+Say: "The pod exists but is Pending, so the scheduler can't place it. Describe events will tell me whether this is resources, taints, affinity, or storage."
 
 Then branch by what describe shows:
 	•	scheduling / resource pressure → check node capacity, taints, affinity
 	•	PVC / storage binding → kubectl get pvc -n <ns>
-	•	image pull failure → check image spec in deployment
-	•	container creation failure → check config/secret/volume refs
 	•	taints / affinity / node placement → kubectl describe node
 
 Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.
+
+Pod stuck ContainerCreating / image pull / create config error
+
+Primary mapping: Start
+
+First commands:
+
+	kubectl describe pod <pod> -n <ns>          # Events section names the specific failure
+	kubectl get events -n <ns> --sort-by=.lastTimestamp
+
+What these usually reveal: which container creation step is failing and why.
+
+Say: "The pod is scheduled but the container can't start. Describe events will tell me whether this is an image pull, config reference, or volume problem."
+
+Then branch by what describe shows:
+	•	image pull failure → check image spec in deployment (see ErrImagePull section below)
+	•	container creation failure → check config/secret/volume refs (see CreateContainerConfigError section below)
+
+Docs: Debug Pods, Pod Lifecycle, Images, ConfigMaps, Secrets.
 
 ErrImagePull / ImagePullBackOff
 
@@ -183,7 +214,7 @@ First commands:
 	kubectl describe pod <pod> -n <ns>          # Events section shows the pull error
 	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].image}'
 
-What these prove: the exact image reference the cluster is trying to pull, and why it can't.
+What these usually reveal: the exact image reference the cluster is trying to pull, and why it can't.
 
 Say: "The image can't be pulled, so I want to compare the image spec in the deployment against what's actually available."
 
@@ -204,7 +235,7 @@ First commands:
 	kubectl get configmap -n <ns>
 	kubectl get secret -n <ns>
 
-What these prove: which specific ConfigMap, Secret, or volume reference is missing or invalid.
+What these usually reveal: which specific ConfigMap, Secret, or volume reference is missing or invalid.
 
 Say: "The container can't be created due to a config reference, so I need describe to tell me which Secret, ConfigMap, or volume mount is missing or wrong."
 
@@ -227,7 +258,7 @@ First commands:
 	kubectl logs <pod> -n <ns> --previous
 	kubectl describe pod <pod> -n <ns>          # Last State section: exit code, reason
 
-What these prove: what the app printed before it died. The logs route you to the actual root cause.
+What these usually reveal: what the app printed before it died. The logs route you to the actual root cause.
 
 Say: "CrashLoopBackOff is a symptom, not the cause. The logs will tell me what actually failed — config, dependency, DNS, OOM, or code."
 
@@ -249,7 +280,7 @@ First commands:
 	kubectl describe pod <pod> -n <ns>          # Conditions section + readiness probe spec
 	kubectl logs <pod> -n <ns>
 
-What these prove: the readiness probe configuration and whether the app is failing it or just not serving yet.
+What these usually reveal: the readiness probe configuration and whether the app is failing it or just not serving yet.
 
 Say: "The container is alive but not passing readiness, so I want the probe spec from describe and any app errors from logs."
 
@@ -260,7 +291,7 @@ Then check:
 
 Docs: Configure Liveness Readiness and Startup Probes, Debug Running Pods.
 
-Pod healthy, but Service path fails
+Pod Running/Ready, but Service path fails
 
 Primary mapping: Receive Traffic
 
@@ -270,7 +301,7 @@ First commands:
 	kubectl describe svc <service> -n <ns>      # check selector
 	kubectl get pods -n <ns> --show-labels
 
-What these prove: whether the Service actually has backends, and whether the selector matches pod labels.
+What these usually reveal: whether the Service actually has backends, and whether the selector matches pod labels.
 
 Say: "The pod looks fine, so the break is between the Service and the Pod. I want endpoints first to see if the Service selector matches."
 
@@ -291,7 +322,7 @@ First commands:
 	kubectl describe svc <service> -n <ns>      # Selector field
 	kubectl get pods -n <ns> --show-labels       # compare against selector
 
-What these prove: whether the selector matches and whether matching pods are Ready.
+What these usually reveal: whether the selector matches and whether matching pods are Ready.
 
 Say: "Empty endpoints means the Service selector doesn't match any Ready pods. I want to compare the selector against actual pod labels."
 
@@ -312,7 +343,7 @@ First commands:
 	kubectl exec -it <pod> -n <ns> -- env | grep <VAR>  # check config values
 	kubectl exec -it <pod> -n <ns> -- nslookup <dep-service>.<ns>.svc.cluster.local
 
-What these prove: whether the app has the right config and can actually reach the dependency at network level.
+What these usually reveal: whether the app has the right config and can actually reach the dependency at network level.
 
 Say: "The app is up but something it depends on is broken. Logs will show the error, then I'll check env vars and connectivity from inside the pod."
 
@@ -336,7 +367,7 @@ First commands:
 	kubectl describe pod <pod> -n <ns>                  # Init Containers section
 	kubectl logs <pod> -n <ns> -c <init-container-name>
 
-What these prove: which init container failed and why.
+What these usually reveal: which init container failed and why.
 
 Say: "The init container is blocking the main container from starting. I need its specific logs."
 
@@ -355,7 +386,7 @@ First commands:
 	kubectl describe pod <pod> -n <ns>          # Last State, liveness probe config, restart count
 	kubectl logs <pod> -n <ns> --previous
 
-What these prove: whether restarts are probe-driven or crash-driven, and what happened in the last run.
+What these usually reveal: whether restarts are probe-driven or crash-driven, and what happened in the last run.
 
 Say: "Restarts are climbing, so something is killing the container after it starts. I want the liveness probe config and the previous logs."
 
@@ -376,7 +407,7 @@ First commands:
 	kubectl describe pod <pod> -n <ns>          # Last State shows OOMKilled
 	kubectl get deploy <deploy> -n <ns> -o jsonpath='{.spec.template.spec.containers[0].resources}'
 
-What these prove: the memory limit vs what the app needs.
+What these usually reveal: the memory limit vs what the app needs.
 
 Say: "Exit 137 is OOMKilled. I want to compare the memory limit in the spec against what the app uses at startup."
 
@@ -397,7 +428,7 @@ First commands:
 	kubectl describe ingress <ingress> -n <ns>
 	kubectl get pods -n ingress-nginx            # is the controller healthy?
 
-What these prove: whether the ingress rule is correct and the controller is running.
+What these usually reveal: whether the ingress rule is correct and the controller is running.
 
 Say: "Internal service path works, so the break is at the ingress layer. I want the ingress spec and controller status."
 
@@ -419,7 +450,7 @@ First commands:
 	kubectl exec -it <pod> -n <ns> -- cat /etc/resolv.conf
 	kubectl get svc -n <ns>                     # verify actual service names
 
-What these prove: whether the DNS name is correct and resolvable from the pod.
+What these usually reveal: whether the DNS name is correct and resolvable from the pod.
 
 Say: "This is a DNS failure. I want to test resolution from inside the pod and compare the hostname against the actual service name and namespace."
 
@@ -441,7 +472,7 @@ First commands:
 	kubectl describe pod <pod> -n <ns>          # check serviceAccountName
 	kubectl auth can-i <verb> <resource> --as=system:serviceaccount:<ns>:<sa> -n <ns>
 
-What these prove: which service account the pod uses and what permissions it has.
+What these usually reveal: which service account the pod uses and what permissions it has.
 
 Say: "This is an auth failure. I want to check which service account the pod uses and what permissions it has."
 
@@ -463,7 +494,7 @@ First commands:
 	kubectl describe networkpolicy <policy> -n <ns>
 	kubectl exec -it <pod> -n <ns> -- nc -zv <target-host> <target-port>
 
-What these prove: whether a NetworkPolicy is blocking the traffic path.
+What these usually reveal: whether a NetworkPolicy is blocking the traffic path.
 
 Say: "Everything looks correct but traffic is being dropped. I want to check NetworkPolicies and test connectivity from inside the pod."
 
@@ -484,7 +515,7 @@ First commands:
 	kubectl get replicaset -n <ns>              # is the new RS scaling up?
 	kubectl get pods -n <ns>                    # are new pods stuck?
 
-What these prove: where in the rollout the deployment is stuck.
+What these usually reveal: where in the rollout the deployment is stuck.
 
 Say: "A stuck rollout isn't the root cause — the new pods are failing. I want to find those pods and route into the right bucket."
 
@@ -507,7 +538,7 @@ First commands:
 	kubectl get pods -n <ns> --selector=job-name=<job>
 	kubectl logs <job-pod> -n <ns>
 
-What these prove: whether the job pod started, ran, and completed or failed.
+What these usually reveal: whether the job pod started, ran, and completed or failed.
 
 Say: "I'll treat the job pod like any other pod — same triage flow applies."
 
@@ -587,7 +618,7 @@ What to say in the interview
 	•	"I'm going to start with the symptom, not jump to a root cause."
 	•	"First I want the nearest truth source."
 	•	"If the Pod is broken, I'll inspect Pod state, describe output, and logs."
-	•	"If the Pod is healthy, I'll move outward from Pod to Service to Ingress."
+	•	"If the Pod is Running and Ready, I'll move outward from Pod to Service to Ingress."
 	•	"I want to make one justified change, then verify end to end."
 
 That matches the official debugging flow and shows controlled reasoning rather than guesswork.
@@ -601,6 +632,11 @@ Pods:
 	kubectl describe pod <pod> -n <ns>
 	kubectl logs <pod> -n <ns>
 	kubectl logs <pod> -n <ns> --previous
+
+Deployments:
+	kubectl get deploy -n <ns>
+	kubectl describe deploy <deploy> -n <ns>
+	kubectl rollout status deploy/<deploy> -n <ns>
 
 Services & Endpoints:
 	kubectl get svc -n <ns>
@@ -617,6 +653,28 @@ Events:
 Connectivity:
 	kubectl exec -it <pod> -n <ns> -- sh
 	kubectl port-forward svc/<service> 8080:<port> -n <ns>
+
+Receive Traffic:
+    Test the app directly
+
+kubectl port-forward pod/<pod> 8080:<app-port> -n <ns>
+curl http://localhost:8080/
+
+If this fails, the problem is not Ingress or Service. Go back to pod/app/probes/config.
+
+If pod test works, test the Service
+
+kubectl port-forward svc/<service> 8080:<service-port> -n <ns>
+curl http://localhost:8080/
+
+If this fails, check selector, endpoints, targetPort, readiness.
+
+If Service test works, test Ingress
+
+kubectl port-forward svc/<ingress-controller-service> 8080:80 -n ingress-nginx
+curl -H "Host: <host-from-ingress>" http://localhost:8080/
+
+If this fails, check host, path, backend service, backend port, ingressClassName, controller.
 
 ---
 
@@ -653,15 +711,17 @@ Likely fixes:
 
 Fix commands:
 
-	# Fix image name or tag
-	kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>
-
-	# Fix imagePullPolicy
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
+	# Fix in the manifest and re-apply (preferred in a repo-based interview)
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
 
 	# Load image into kind (local clusters only)
 	kind load docker-image <image>:<tag> --name <cluster>
+
+	# Or fix imperatively
+	kubectl set image deploy/<deploy> <container>=<correct-image>:<tag> -n <ns>
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
 
 Verification:
 
@@ -690,17 +750,16 @@ Likely fixes:
 
 Fix commands:
 
-	# Create a missing ConfigMap
-	kubectl create configmap <cm> --from-literal=<key>=<value> -n <ns>
-
-	# Create a missing Secret
-	kubectl create secret generic <secret> --from-literal=<key>=<value> -n <ns>
-
-	# Fix a wrong ConfigMap/Secret name in the Deployment (edit the manifest and re-apply)
+	# Fix the reference in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
 
-	# Or patch inline — e.g. fix an envFrom configMapRef name
+	# If the ConfigMap or Secret itself is missing, create it from its manifest
+	# (or create imperatively if no manifest exists)
+	kubectl create configmap <cm> --from-literal=<key>=<value> -n <ns>
+	kubectl create secret generic <secret> --from-literal=<key>=<value> -n <ns>
+
+	# Or patch inline
 	kubectl patch deploy <deploy> -n <ns> --type=json \
 	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/envFrom/0/configMapRef/name","value":"<correct-cm>"}]'
 
@@ -731,20 +790,18 @@ Likely fixes:
 
 Fix commands:
 
-	# Patch a ConfigMap value
-	kubectl patch configmap <cm> -n <ns> --type=merge \
-	  -p '{"data":{"<key>":"<correct-value>"}}'
-
-	# Patch a Secret value (value must be base64-encoded)
-	kubectl patch secret <secret> -n <ns> --type=merge \
-	  -p '{"data":{"<key>":"<base64-encoded-value>"}}'
-
-	# Or edit the manifest file and re-apply
+	# Fix the value in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
 
 	# Restart pods to pick up the new values
 	kubectl rollout restart deploy/<deploy> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch configmap <cm> -n <ns> --type=merge \
+	  -p '{"data":{"<key>":"<correct-value>"}}'
+	kubectl patch secret <secret> -n <ns> --type=merge \
+	  -p '{"data":{"<key>":"<base64-encoded-value>"}}'
 
 Verification:
 
@@ -774,19 +831,15 @@ Likely fixes:
 
 Fix commands:
 
-	# Fix readiness probe path (edit manifest and re-apply)
+	# Fix probe config in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
 
-	# Or patch inline — fix readiness probe path
+	# Or patch imperatively
 	kubectl patch deploy <deploy> -n <ns> --type=json \
 	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/path","value":"/<correct-path>"}]'
-
-	# Fix probe port
 	kubectl patch deploy <deploy> -n <ns> --type=json \
 	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/port","value":<correct-port>}]'
-
-	# Increase initialDelaySeconds
 	kubectl patch deploy <deploy> -n <ns> --type=json \
 	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":<seconds>}]'
 
@@ -821,17 +874,15 @@ Likely fixes:
 
 Fix commands:
 
-	# Remove a bad command override (restore Dockerfile ENTRYPOINT)
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/command"}]'
-
-	# Remove bad args override (restore Dockerfile CMD)
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/args"}]'
-
-	# Fix command/args to correct values (edit manifest and re-apply)
+	# Fix or remove command/args in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/command"}]'
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/args"}]'
 
 Verification:
 
@@ -861,17 +912,15 @@ Likely fixes:
 
 Fix commands:
 
-	# Fix init container image
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/initContainers/0/image","value":"<correct-image>:<tag>"}]'
-
-	# Fix init container command (e.g. wrong hostname in a wait script)
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/initContainers/0/command","value":["sh","-c","<corrected-command>"]}]'
-
-	# Or edit the manifest and re-apply
+	# Fix in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/initContainers/0/image","value":"<correct-image>:<tag>"}]'
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/initContainers/0/command","value":["sh","-c","<corrected-command>"]}]'
 
 Verification:
 
@@ -899,17 +948,15 @@ Likely fixes:
 
 Fix commands:
 
-	# Patch memory limits
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/memory","value":"<value>"}]'
-
-	# Patch memory requests
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/memory","value":"<value>"}]'
-
-	# Or edit the manifest and re-apply
+	# Fix resource limits in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/memory","value":"<value>"}]'
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/memory","value":"<value>"}]'
 
 Verification:
 
@@ -940,21 +987,17 @@ Likely fixes:
 
 Fix commands:
 
-	# Fix Service selector to match pod labels
-	kubectl patch svc <service> -n <ns> --type=merge \
-	  -p '{"spec":{"selector":{"<label-key>":"<label-value>"}}}'
-
-	# Fix targetPort
-	kubectl patch svc <service> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":<correct-port>}]'
-
-	# Fix Deployment pod labels to match Service selector
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/metadata/labels/<label-key>","value":"<label-value>"}]'
-
-	# Or edit the manifest and re-apply
+	# Fix in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch svc <service> -n <ns> --type=merge \
+	  -p '{"spec":{"selector":{"<label-key>":"<label-value>"}}}'
+	kubectl patch svc <service> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":<correct-port>}]'
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/metadata/labels/<label-key>","value":"<label-value>"}]'
 
 Verification:
 
@@ -1038,16 +1081,18 @@ Likely fixes:
 
 Fix commands:
 
-	# Fix hostname in a ConfigMap
-	kubectl patch configmap <cm> -n <ns> --type=merge \
-	  -p '{"data":{"<host-key>":"<correct-service>.<ns>.svc.cluster.local"}}'
-
-	# Fix hostname in a Secret
-	kubectl patch secret <secret> -n <ns> --type=merge \
-	  -p '{"data":{"<host-key>":"<base64-encoded-correct-hostname>"}}'
+	# Fix the hostname in the manifest and re-apply (preferred in a repo-based interview)
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
 
 	# Restart pods to pick up the corrected value
 	kubectl rollout restart deploy/<deploy> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch configmap <cm> -n <ns> --type=merge \
+	  -p '{"data":{"<host-key>":"<correct-service>.<ns>.svc.cluster.local"}}'
+	kubectl patch secret <secret> -n <ns> --type=merge \
+	  -p '{"data":{"<host-key>":"<base64-encoded-correct-hostname>"}}'
 
 	# Restart CoreDNS if it's unhealthy
 	kubectl rollout restart deploy/coredns -n kube-system
@@ -1079,12 +1124,16 @@ Likely fixes:
 
 Fix commands:
 
-	# Fix a wrong port value in ConfigMap
-	kubectl patch configmap <cm> -n <ns> --type=merge \
-	  -p '{"data":{"<port-key>":"<correct-port>"}}'
+	# Fix the config value in the manifest and re-apply (preferred in a repo-based interview)
+	vi <manifest-file>
+	kubectl apply -f <manifest-file> -n <ns>
 
 	# Restart the app to pick up the corrected config
 	kubectl rollout restart deploy/<deploy> -n <ns>
+
+	# Or patch imperatively
+	kubectl patch configmap <cm> -n <ns> --type=merge \
+	  -p '{"data":{"<port-key>":"<correct-port>"}}'
 
 	# If the dependency itself is down, triage it the same way
 	kubectl describe pod <dep-pod> -n <ns>
@@ -1157,19 +1206,15 @@ Likely fixes:
 
 Fix commands:
 
-	# Create a Role
-	kubectl create role <role> -n <ns> --verb=<verb> --resource=<resource>
-
-	# Create a RoleBinding
-	kubectl create rolebinding <binding> -n <ns> --role=<role> --serviceaccount=<ns>:<sa>
-
-	# Fix serviceAccountName in the Deployment
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/serviceAccountName","value":"<correct-sa>"}]'
-
-	# Or edit the manifest and re-apply
+	# Fix in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
+
+	# Or create/fix imperatively
+	kubectl create role <role> -n <ns> --verb=<verb> --resource=<resource>
+	kubectl create rolebinding <binding> -n <ns> --role=<role> --serviceaccount=<ns>:<sa>
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/serviceAccountName","value":"<correct-sa>"}]'
 
 Verification:
 
@@ -1197,23 +1242,19 @@ Likely fixes:
 
 Fix commands:
 
-	# Reduce resource requests
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"<value>"}]'
-
-	# Remove a nodeSelector that doesn't match any node
-	kubectl patch deploy <deploy> -n <ns> --type=json \
-	  -p '[{"op":"remove","path":"/spec/template/spec/nodeSelector"}]'
-
-	# Label a node to match affinity/nodeSelector
-	kubectl label node <node> <key>=<value>
-
-	# Remove a taint from a node
-	kubectl taint node <node> <key>:<effect>-
-
-	# Or edit the manifest and re-apply
+	# Fix resource requests, nodeSelector, or affinity in the manifest and re-apply (preferred in a repo-based interview)
 	vi <manifest-file>
 	kubectl apply -f <manifest-file> -n <ns>
+
+	# Node-level fixes (these can't be done via app manifests)
+	kubectl label node <node> <key>=<value>
+	kubectl taint node <node> <key>:<effect>-
+
+	# Or patch deployment imperatively
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"<value>"}]'
+	kubectl patch deploy <deploy> -n <ns> --type=json \
+	  -p '[{"op":"remove","path":"/spec/template/spec/nodeSelector"}]'
 
 Verification:
 

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Orientation Crammer</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182243;
+      --text: #eef2ff;
+      --muted: #b8c2e0;
+      --line: #2b396d;
+      --accent: #7aa2ff;
+      --accent-2: #90f0c8;
+      --warn: #ffd38a;
+      --danger: #ff9b9b;
+      --shadow: 0 16px 40px rgba(0,0,0,.28);
+      --radius: 18px;
+      --shape: #7aa2ff;
+      --start: #90f0c8;
+      --supply: #ffd38a;
+      --ship: #c4a0ff;
+      --signals: #ff9b9b;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(122,162,255,.16), transparent 30%),
+        radial-gradient(circle at top right, rgba(144,240,200,.12), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.05;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .mental-model {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pill {
+      border: 2px solid;
+      border-radius: 999px;
+      padding: 10px 14px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .pill.shape   { border-color: var(--shape);   color: var(--shape); }
+    .pill.start   { border-color: var(--start);   color: var(--start); }
+    .pill.supply  { border-color: var(--supply);  color: var(--supply); }
+    .pill.ship    { border-color: var(--ship);     color: var(--ship); }
+    .pill.signals { border-color: var(--signals);  color: var(--signals); }
+
+    .model-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: 22px;
+      margin: 30px 0 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .full { grid-column: span 12; }
+    .half { grid-column: span 6; }
+    .third { grid-column: span 4; }
+
+    h2 { margin: 0 0 14px; font-size: 22px; }
+    h3 { margin: 0 0 10px; font-size: 18px; }
+
+    .phase-label {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .phase-scan  { background: rgba(122,162,255,.15); color: var(--accent); }
+    .phase-read  { background: rgba(144,240,200,.15); color: var(--accent-2); }
+    .phase-sum   { background: rgba(196,160,255,.15); color: var(--ship); }
+
+    .file-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .file-card:last-child { margin-bottom: 0; }
+
+    .file-name {
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 8px;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    .file-narration {
+      margin: 10px 0 0;
+      padding: 10px 14px;
+      border-left: 3px solid var(--accent);
+      background: rgba(122,162,255,.06);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      font-style: italic;
+    }
+
+    .extract-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .extract-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .extract-list li:last-child { margin-bottom: 0; }
+
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .tag.shape   { background: rgba(122,162,255,.2); color: var(--shape); }
+    .tag.start   { background: rgba(144,240,200,.2); color: var(--start); }
+    .tag.supply  { background: rgba(255,211,138,.2); color: var(--supply); }
+    .tag.ship    { background: rgba(196,160,255,.2); color: var(--ship); }
+    .tag.signals { background: rgba(255,155,155,.2); color: var(--signals); }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      border-radius: 14px;
+      background: #0a0f1d;
+      border: 1px solid var(--line);
+      overflow: auto;
+      color: #d9e3ff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    blockquote {
+      margin: 0;
+      padding: 14px 16px;
+      border-left: 4px solid var(--accent);
+      background: rgba(122,162,255,.08);
+      border-radius: 12px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .summary-bucket {
+      background: var(--panel);
+      border-left: 4px solid;
+      border-radius: 0 12px 12px 0;
+      padding: 16px 20px;
+    }
+    .summary-bucket.shape   { border-left-color: var(--shape); }
+    .summary-bucket.start   { border-left-color: var(--start); }
+    .summary-bucket.supply  { border-left-color: var(--supply); }
+    .summary-bucket.ship    { border-left-color: var(--ship); }
+    .summary-bucket.signals { border-left-color: var(--signals); }
+
+    .summary-bucket h4 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .summary-bucket.shape h4   { color: var(--shape); }
+    .summary-bucket.start h4   { color: var(--start); }
+    .summary-bucket.supply h4  { color: var(--supply); }
+    .summary-bucket.ship h4    { color: var(--ship); }
+    .summary-bucket.signals h4 { color: var(--signals); }
+
+    .summary-bucket p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
+    .summary-bucket .kw {
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .summary-bucket .slot {
+      background: rgba(255,255,255,.08);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 13px;
+      color: var(--warn);
+    }
+
+    ul { margin: 0; padding-left: 18px; }
+    li + li { margin-top: 6px; }
+
+    .dont ul li::marker { color: var(--danger); }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .mental-model,
+      .summary-grid { grid-template-columns: 1fr; }
+      .half, .third { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Interview Repo Orientation</div>
+      <h1>Repo Orientation Crammer</h1>
+      <p class="sub">Read files in order. Extract tagged facts. Summarize by bucket at the end.</p>
+
+      <div class="section-title">Mental model (for summarizing, not reading order)</div>
+      <div class="mental-model">
+        <div class="pill shape">Shape</div>
+        <div class="pill start">Start</div>
+        <div class="pill supply">Supply</div>
+        <div class="pill ship">Ship</div>
+        <div class="pill signals">Signals</div>
+      </div>
+      <div class="model-note">You don't walk through these one at a time. You read files in order and tag what you find. The buckets organize your summary at the end.</div>
+    </section>
+
+    <!-- PHASE 1: SCAN -->
+    <div class="grid">
+      <section class="card full">
+        <div class="phase-label phase-scan">Phase 1 &mdash; Scan (30 seconds)</div>
+        <h2>Get the repo map</h2>
+        <p style="color: var(--muted); margin: 0 0 14px;">Run these commands. Don't open any files yet.</p>
+        <pre>ls
+tree -L 2          # or: find . -maxdepth 2 -type f | sort
+cat README.md      # skim only &mdash; what is this app, how to run it</pre>
+        <div class="file-narration">"I'm mapping the repo first &mdash; where the app code is, where the build config is, and where the Kubernetes manifests live."</div>
+      </section>
+
+      <!-- PHASE 2: READ KEY FILES -->
+      <section class="card full">
+        <div class="phase-label phase-read">Phase 2 &mdash; Read key files (3-4 minutes)</div>
+        <h2>Open files in this order. Extract tagged facts from each.</h2>
+        <p style="color: var(--muted); margin: 0 0 14px;">Each file feeds multiple buckets. Don't jump between files &mdash; read one, extract everything, move on.</p>
+
+        <!-- Dockerfile -->
+        <div class="file-card">
+          <div class="file-name">Dockerfile</div>
+          <ul class="extract-list">
+            <li><span class="tag shape">Shape</span> Base image, language, build steps</li>
+            <li><span class="tag start">Start</span> CMD / ENTRYPOINT &mdash; what process runs</li>
+            <li><span class="tag start">Start</span> EXPOSE &mdash; what port the container expects</li>
+          </ul>
+          <div class="file-narration">"The Dockerfile tells me this is a [language] app running [process] on port [N]."</div>
+        </div>
+
+        <!-- Main app file -->
+        <div class="file-card">
+          <div class="file-name">Main app file (app.py / main.go / index.js / ...)</div>
+          <ul class="extract-list">
+            <li><span class="tag start">Start</span> Listening port, startup logic, DB init</li>
+            <li><span class="tag supply">Supply</span> Env vars it reads (DB host, creds, config)</li>
+            <li><span class="tag signals">Signals</span> Health/readiness endpoints, what they check</li>
+            <li><span class="tag shape">Shape</span> Routes/endpoints &mdash; what the app does</li>
+          </ul>
+          <div class="file-narration">"The app listens on [port], connects to [DB] using env vars [X, Y, Z], and has endpoints [list]. Health check hits [path] and returns [condition]."</div>
+        </div>
+
+        <!-- Deployment -->
+        <div class="file-card">
+          <div class="file-name">Deployment manifest</div>
+          <ul class="extract-list">
+            <li><span class="tag ship">Ship</span> Image name/tag, replicas</li>
+            <li><span class="tag ship">Ship</span> Labels on pod template (used by Service selector)</li>
+            <li><span class="tag start">Start</span> command / args (if overriding Dockerfile CMD)</li>
+            <li><span class="tag supply">Supply</span> env / envFrom &mdash; where config comes from</li>
+            <li><span class="tag supply">Supply</span> volumeMounts &mdash; any mounted files or PVCs</li>
+            <li><span class="tag signals">Signals</span> Probes &mdash; path, port, timing</li>
+            <li><span class="tag ship">Ship</span> initContainers &mdash; what must succeed before start</li>
+          </ul>
+          <div class="file-narration">"The Deployment runs image [X], pulls config from [ConfigMap/Secret], has [readiness/liveness] probes on [path:port], and an init container that [does what]."</div>
+        </div>
+
+        <!-- ConfigMap + Secret -->
+        <div class="file-card">
+          <div class="file-name">ConfigMap + Secret manifests</div>
+          <ul class="extract-list">
+            <li><span class="tag supply">Supply</span> Actual values: DB host, port, database name, creds</li>
+            <li><span class="tag supply">Supply</span> Cross-reference: do these match what the app code expects?</li>
+          </ul>
+          <div class="file-narration">"Config points to [DB host] on port [N], database [name]. Credentials are in [Secret name]. These match / don't match what the app reads."</div>
+        </div>
+
+        <!-- Service -->
+        <div class="file-card">
+          <div class="file-name">Service manifest</div>
+          <ul class="extract-list">
+            <li><span class="tag ship">Ship</span> Selector &mdash; must match Deployment pod labels</li>
+            <li><span class="tag ship">Ship</span> Port (what other things connect to) and targetPort (must match container port)</li>
+            <li><span class="tag ship">Ship</span> Type (ClusterIP / NodePort / LoadBalancer)</li>
+          </ul>
+          <div class="file-narration">"Service selects pods with [labels], maps port [X] to targetPort [Y]. That targetPort should match the container's listening port."</div>
+        </div>
+
+        <!-- Ingress -->
+        <div class="file-card">
+          <div class="file-name">Ingress manifest</div>
+          <ul class="extract-list">
+            <li><span class="tag ship">Ship</span> IngressClassName, host, path rules</li>
+            <li><span class="tag ship">Ship</span> Backend service name and port &mdash; must match Service</li>
+            <li><span class="tag signals">Signals</span> If this is wrong, curl from outside fails but pod-level curl works</li>
+          </ul>
+          <div class="file-narration">"Ingress routes [path] to service [name] on port [N]. That should match the Service I just read."</div>
+        </div>
+
+        <!-- DB Deployment (if separate) -->
+        <div class="file-card">
+          <div class="file-name">Database Deployment + Service + PVC (if present)</div>
+          <ul class="extract-list">
+            <li><span class="tag supply">Supply</span> DB image, version, credentials (must match app's config)</li>
+            <li><span class="tag ship">Ship</span> DB Service name (this is what the app uses as PGHOST / DB_HOST)</li>
+            <li><span class="tag ship">Ship</span> PVC &mdash; storage for data persistence</li>
+            <li><span class="tag signals">Signals</span> DB probes &mdash; pg_isready or similar</li>
+          </ul>
+          <div class="file-narration">"Postgres runs as [image:version], the Service name is [X] &mdash; that's what the app config should point to."</div>
+        </div>
+
+        <!-- Signal commands -->
+        <div class="file-card">
+          <div class="file-name">Signal commands to run</div>
+          <p style="color: var(--muted); margin: 0 0 10px; font-size: 14px;">After reading the files, check the live cluster to see if reality matches what you read.</p>
+          <pre>kubectl get pods -n [namespace]                # Are all pods Running + Ready?
+kubectl get endpoints -n [namespace]           # Are endpoints populated for each Service?
+kubectl describe pod [app-pod] -n [namespace]  # Events, probe status, env source errors
+kubectl logs [app-pod] -n [namespace]          # Startup errors, DB connection failures
+curl [host][path]                              # Hit each route from the Ingress &mdash; host/port/path come from what you just read</pre>
+          <div class="file-narration">"Files told me what should happen. These commands tell me what is actually happening. Any gap between the two is where the problem lives."</div>
+        </div>
+      </section>
+
+      <!-- PHASE 3: SUMMARIZE -->
+      <section class="card full">
+        <div class="phase-label phase-sum">Phase 3 &mdash; Summarize (30 seconds)</div>
+        <h2>Now narrate what you know, organized by bucket</h2>
+        <p style="color: var(--muted); margin: 0 0 14px;">This is when the mental model matters. Speak through each bucket in order.</p>
+
+        <div class="summary-grid">
+          <div class="summary-bucket shape">
+            <h4>Shape</h4>
+            <p>
+              "This is a <span class="slot">[framework]</span> API
+              with <span class="slot">[N]</span> endpoints
+              for <span class="slot">[purpose]</span>,<br>
+              backed by <span class="slot">[database]</span>,
+              deployed via <span class="slot">[raw manifests / Helm / Kustomize]</span>
+              into the <span class="slot">[namespace]</span> namespace."
+            </p>
+          </div>
+          <div class="summary-bucket start">
+            <h4>Start</h4>
+            <p>
+              "<span class="kw">Containerized</span> with Docker &mdash;
+              runs <span class="slot">[process]</span>
+              on port <span class="slot">[N]</span>.<br>
+              On <span class="kw">startup</span> it
+              <span class="slot">[connects to DB / runs migrations / seeds data]</span>.<br>
+              If the DB isn't reachable,
+              <span class="slot">[it crashes / retries / degrades]</span>.<br>
+              <span class="slot">[Init container waits for X / no init container]</span>."
+            </p>
+          </div>
+          <div class="summary-bucket supply">
+            <h4>Supply</h4>
+            <p>
+              "The app needs <span class="slot">[N]</span> env vars for
+              <span class="slot">[database]</span> &mdash;
+              <span class="slot">[list them]</span>.<br>
+              These come from <span class="kw">ConfigMap</span>
+              <span class="slot">[name]</span> and
+              <span class="kw">Secret</span>
+              <span class="slot">[name]</span>.<br>
+              DB host points to service <span class="slot">[name]</span>.<br>
+              Creds and DB name
+              <span class="slot">[match / don't match]</span>
+              between the app config and the database config."
+            </p>
+          </div>
+          <div class="summary-bucket ship">
+            <h4>Ship</h4>
+            <p>
+              "<span class="kw">Deployment</span> runs
+              <span class="slot">[N]</span> replicas with
+              <span class="slot">[readiness / liveness]</span> probes
+              on <span class="slot">[path:port]</span>.<br>
+              <span class="kw">Service</span> maps
+              port <span class="slot">[X]</span> to
+              targetPort <span class="slot">[Y]</span>.<br>
+              <span class="kw">Ingress</span> routes
+              <span class="slot">[path]</span> to the service
+              on port <span class="slot">[X]</span>
+              via <span class="slot">[nginx / traefik]</span>.<br>
+              Labels and selectors
+              <span class="slot">[match / don't match]</span> throughout."
+            </p>
+          </div>
+          <div class="summary-bucket signals">
+            <h4>Signals</h4>
+            <p>
+              "If the <span class="kw">DB is down</span>, the app
+              <span class="slot">[crashes / degrades]</span> &mdash;
+              I'd see <span class="slot">[CrashLoopBackOff / 503s]</span>
+              and connection errors in logs.<br>
+              If <span class="kw">probes fail</span>,
+              endpoints would be empty.<br>
+              If the <span class="kw">Service selector is wrong</span>,
+              endpoints empty but pods Running.<br>
+              If <span class="kw">Ingress is wrong</span>,
+              direct pod curl works but external curl doesn't."
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANTI-PATTERNS AND TIPS -->
+      <section class="card half">
+        <h3>What not to do</h3>
+        <ul class="dont">
+          <li>Don't try to fill buckets one at a time &mdash; you'll re-read files</li>
+          <li>Don't read the whole codebase &mdash; just the main file</li>
+          <li>Don't explain business logic in depth</li>
+          <li>Don't start fixing before you've read the key files</li>
+          <li>Don't narrate while reading &mdash; extract first, narrate at the end</li>
+        </ul>
+      </section>
+
+      <section class="card half">
+        <h3>The connection chain to verify</h3>
+        <pre>App code reads env var PGHOST
+  &rarr; Deployment envFrom references ConfigMap
+    &rarr; ConfigMap value = DB Service name
+      &rarr; DB Service selector = DB pod labels
+        &rarr; DB pod is Running + Ready
+
+App listens on port 7600
+  &rarr; Deployment containerPort = 7600
+    &rarr; Service targetPort = 7600
+      &rarr; Ingress backend port = Service port
+        &rarr; curl localhost/ works</pre>
+      </section>
+
+      <section class="card full">
+        <div class="footer-note">The mental model organizes your summary. The file order organizes your reading. Don't mix them up.</div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

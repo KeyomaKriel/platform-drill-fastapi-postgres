@@ -43,7 +43,11 @@ A Service provides a stable internal address for a set of pods. It works through
 
 The Service maps its own `port` to the pod's `targetPort`. These can be different numbers (e.g. Service port 80 → targetPort 8000).
 
-You test this layer with: `kubectl get endpoints <svc>` (are there IPs?), then `kubectl port-forward svc/<svc> 8080:<svc-port>` then `curl localhost:8080/`
+You test this layer with:
+```bash
+kubectl get endpoints <svc>` (are there IPs?), then `kubectl port-forward svc/<svc> 8080:<svc-port>
+curl localhost:8080/
+```
 
 ### Ingress
 
@@ -55,7 +59,19 @@ Key fields:
 - `path` + `pathType`: which URL paths to match
 - `backend.service.name` + `backend.service.port.number`: which Service to forward to — this must match the Service's `port`, not its `targetPort`
 
-You test this layer with: `curl -i localhost/` or `curl -i -H "Host: <host>" localhost/` if a host rule is set.
+You test this layer with:
+
+```bash
+kubectl port-forward svc/ingress-nginx-controller 8080:80 -n ingress-nginx
+curl -i -H "Host: <host>" http://localhost:8080/
+```
+
+What this means:
+
+your laptop → ingress controller → Service → pod → app
+
+That answers:
+“Does ingress routing work?”
 
 ## Port alignment
 
@@ -74,3 +90,30 @@ Ingress backend port    →  80    (must match Service port, not targetPort)
 ## Why testing layer by layer works
 
 If the pod responds but the service doesn't, the problem is in the Service layer (selector, ports, endpoints). If the service responds but the external URL doesn't, the problem is in the Ingress layer. You don't need to guess — each layer is independently testable.
+
+## Debug method
+
+So the debug method is:
+
+If pod forward works
+
+The app is probably listening and responding.
+
+If pod forward works but service forward fails
+
+The problem is probably in:
+	•	selector
+	•	endpoints
+	•	targetPort/service port mismatch
+	•	readiness preventing endpoints
+
+If service forward works but ingress test fails
+
+The problem is probably in:
+	•	ingress host rule
+	•	path rule
+	•	backend service name
+	•	backend service port
+	•	ingressClass/controller
+
+That is the whole point of the different commands.
