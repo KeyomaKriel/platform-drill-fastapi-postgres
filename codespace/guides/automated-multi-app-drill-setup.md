@@ -304,6 +304,8 @@ gh codespace create -R KeyomaKriel/platform-drill-fastapi-postgres -b mac-eks-dr
 # Open in browser (recommended)
 gh codespace code -c <codespace-name> --web
 
+gh codespace code -c symmetrical-space-lamp-x5x4pg9wqjx626wxx --web
+
 # Or SSH in
 gh codespace ssh -c <codespace-name>
 

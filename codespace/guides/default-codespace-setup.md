@@ -141,6 +141,8 @@ If you want to keep drilling on the same deployed app (no new repo), use this pr
 
 > Generate the next drill scenario in codespace/drills/codespace-drills/ (increment the number from the last drill-NN-scenario.md). Use the app in codespace/drill-app/ — read its manifests to build a realistic kubectl break. Pick a failure domain from the Tier 1/2 list in CLAUDE.md that hasn't been used in previous drills. Base64-encode the kubectl command. Include a vague symptom prompt. **Do not reveal, hint at, or discuss the fault type, failure domain, or what the break does in your response. Just create the file silently.**
 
+> Generate the next drill scenario in codespace/drills/codespace-drills/ (increment the number from the last drill-NN-scenario.md). Use the app in codespace/drill-app-go/ — read its manifests to build a realistic kubectl break. Pick a failure domain from the Tier 1/2 list in CLAUDE.md that hasn't been used in previous drills. Base64-encode the kubectl command. Include a symptom prompt that is realistically given in a technical round interview. Also generate drill-NN-scenario-answer.md **Do not reveal, hint at, or discuss the fault type, failure domain, or what the break does in your response. Just create the file silently.**
+
 Between drills, restore the app in the Codespace before injecting the next break:
 
 ```bash
