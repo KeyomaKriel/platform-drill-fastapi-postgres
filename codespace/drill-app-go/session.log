@@ -1,0 +1,482 @@
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ script -q -a ./session.log
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl config get context
+error: unknown command "get context"
+See 'kubectl config -h' for help and examples
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl c
+certificate   (Modify certificate resources)
+cluster-info  (Display cluster information)
+completion    (Output shell completion code for the specified shell (bash, zsh, fish, or powershell))
+config        (Modify kubeconfig files)
+cordon        (Mark node as unschedulable)
+cp            (Copy files and directories to and from containers)
+create        (Create a resource from a file or from stdin)
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl config get-contexts
+CURRENT   NAME                CLUSTER             AUTHINFO                  NAMESPACE
+*         k3d-drill-cluster   k3d-drill-cluster   admin@k3d-drill-cluster   warehouse-sys
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get ingress
+NAME                    CLASS   HOSTS   ADDRESS      PORTS   AGE
+inventory-api-ingress   nginx   *       172.18.0.2   80      16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get svc
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+inventory-api-svc   ClusterIP   10.43.171.164   <none>        80/TCP     16h
+inventory-db-svc    ClusterIP   10.43.11.27     <none>        5432/TCP   16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get deploy
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+inventory-api   2/2     1            2           16h
+inventory-db    1/1     1            1           16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubetcl describe svc inventory-api-svc
+bash: kubetcl: command not found
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl describe svc inventory-api-svc
+Name:                     inventory-api-svc
+Namespace:                warehouse-sys
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 component=api
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.171.164
+IPs:                      10.43.171.164
+Port:                     <unset>  80/TCP
+TargetPort:               9090/TCP
+Endpoints:                10.42.0.27:9090,10.42.0.26:9090
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get endpoints
+NAME                ENDPOINTS                         AGE
+inventory-api-svc   10.42.0.26:9090,10.42.0.27:9090   16h
+inventory-db-svc    10.42.0.25:5432                   16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl port-forward svc/inventory-api-svc 8080:80
+Forwarding from 127.0.0.1:8080 -> 9090
+Forwarding from [::1]:8080 -> 9090
+Handling connection for 8080
+Handling connection for 8080
+^C@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get pods
+NAME                             READY   STATUS             RESTARTS         AGE
+inventory-api-6bdc4764ff-qmm9x   0/1     CrashLoopBackOff   12 (3m13s ago)   39m
+inventory-api-7d88dc455f-gcfvp   1/1     Running            1 (45m ago)      16h
+inventory-api-7d88dc455f-sqdbj   1/1     Running            2 (45m ago)      16h
+inventory-db-5b4888dc6d-gkqcr    1/1     Running            1 (45m ago)      16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ POD=inventory-api-6bdc4764ff-qmm9x
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ echo "$POD"
+inventory-api-6bdc4764ff-qmm9x
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl describe pod "$POD"
+Name:             inventory-api-6bdc4764ff-qmm9x
+Namespace:        warehouse-sys
+Priority:         0
+Service Account:  default
+Node:             k3d-drill-cluster-server-0/172.18.0.2
+Start Time:       Sun, 12 Apr 2026 09:37:55 +0000
+Labels:           component=api
+                  pod-template-hash=6bdc4764ff
+Annotations:      <none>
+Status:           Running
+IP:               10.42.0.30
+IPs:
+  IP:           10.42.0.30
+Controlled By:  ReplicaSet/inventory-api-6bdc4764ff
+Init Containers:
+  wait-for-db:
+    Container ID:  containerd://f817e05d5175ea5bf226df6f2c2691c1cc788f0c02fdfe1413e20d6dc693994d
+    Image:         busybox:1.36
+    Image ID:      docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      sh
+      -c
+      until nc -z inventory-db-svc 5432; do
+        echo "waiting for inventory-db-svc:5432..."
+        sleep 2
+      done
+      
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Sun, 12 Apr 2026 09:37:55 +0000
+      Finished:     Sun, 12 Apr 2026 09:37:55 +0000
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-cv2t4 (ro)
+Containers:
+  inventory-api:
+    Container ID:  containerd://c1e44fd1b7e8cadbbe3158ce0ee1c0c97d787986288863a2918f56c117bb98ee
+    Image:         inventory-api:local
+    Image ID:      sha256:1d54426541fa7766eb0595b328d6c5cde51fba18105ad654ae42185cc4e5efc5
+    Port:          9090/TCP
+    Host Port:     0/TCP
+    Command:
+      ./inventory-service
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       StartError
+      Message:      failed to create containerd task: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "./inventory-service": stat ./inventory-service: no such file or directory: unknown
+      Exit Code:    128
+      Started:      Thu, 01 Jan 1970 00:00:00 +0000
+      Finished:     Sun, 12 Apr 2026 10:24:47 +0000
+    Ready:          False
+    Restart Count:  14
+    Limits:
+      cpu:     200m
+      memory:  64Mi
+    Requests:
+      cpu:      50m
+      memory:   32Mi
+    Liveness:   http-get http://:9090/healthz delay=5s timeout=1s period=30s #success=1 #failure=3
+    Readiness:  http-get http://:9090/readyz delay=3s timeout=1s period=10s #success=1 #failure=3
+    Environment Variables from:
+      inventory-api-config       ConfigMap  Optional: false
+      inventory-api-credentials  Secret     Optional: false
+    Environment:                 <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-cv2t4 (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-cv2t4:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                    From               Message
+  ----     ------     ----                   ----               -------
+  Normal   Scheduled  48m                    default-scheduler  Successfully assigned warehouse-sys/inventory-api-6bdc4764ff-qmm9x to k3d-drill-cluster-server-0
+  Normal   Pulled     48m                    kubelet            spec.initContainers{wait-for-db}: Container image "busybox:1.36" already present on machine
+  Normal   Created    48m                    kubelet            spec.initContainers{wait-for-db}: Created container wait-for-db
+  Normal   Started    48m                    kubelet            spec.initContainers{wait-for-db}: Started container wait-for-db
+  Normal   Pulled     47m (x4 over 48m)      kubelet            spec.containers{inventory-api}: Container image "inventory-api:local" already present on machine
+  Normal   Created    47m (x4 over 48m)      kubelet            spec.containers{inventory-api}: Created container inventory-api
+  Warning  Failed     47m (x4 over 48m)      kubelet            spec.containers{inventory-api}: Error: failed to create containerd task: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "./inventory-service": stat ./inventory-service: no such file or directory: unknown
+  Warning  BackOff    3m31s (x219 over 48m)  kubelet            spec.containers{inventory-api}: Back-off restarting failed container inventory-api in pod inventory-api-6bdc4764ff-qmm9x_warehouse-sys(2d4ce4ff-6c11-431a-840d-10e52229562b)
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl logs inventory-api-6bdc4764ff-qmm9x --tail=20
+Defaulted container "inventory-api" out of: inventory-api, wait-for-db (init)
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl describe pod inventory-api-7d88dc455f-gcfvp
+Name:             inventory-api-7d88dc455f-gcfvp
+Namespace:        warehouse-sys
+Priority:         0
+Service Account:  default
+Node:             k3d-drill-cluster-server-0/172.18.0.2
+Start Time:       Sat, 11 Apr 2026 17:47:04 +0000
+Labels:           component=api
+                  pod-template-hash=7d88dc455f
+Annotations:      <none>
+Status:           Running
+IP:               10.42.0.27
+IPs:
+  IP:           10.42.0.27
+Controlled By:  ReplicaSet/inventory-api-7d88dc455f
+Init Containers:
+  wait-for-db:
+    Container ID:  containerd://3e8713eb17f932286f8ba490fe8a9c4f071e9d61fa1a2392a114c427a338d6d8
+    Image:         busybox:1.36
+    Image ID:      docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      sh
+      -c
+      until nc -z inventory-db-svc 5432; do
+        echo "waiting for inventory-db-svc:5432..."
+        sleep 2
+      done
+      
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Sun, 12 Apr 2026 09:32:35 +0000
+      Finished:     Sun, 12 Apr 2026 09:32:53 +0000
+    Ready:          True
+    Restart Count:  1
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-ghj5h (ro)
+Containers:
+  inventory-api:
+    Container ID:   containerd://55ed170dc9934ee111827e0c0d85b1098b692e86a4045ca3ec8a5829a20b0278
+    Image:          inventory-api:local
+    Image ID:       sha256:1d54426541fa7766eb0595b328d6c5cde51fba18105ad654ae42185cc4e5efc5
+    Port:           9090/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sun, 12 Apr 2026 09:32:55 +0000
+    Last State:     Terminated
+      Reason:       Unknown
+      Exit Code:    255
+      Started:      Sat, 11 Apr 2026 17:47:18 +0000
+      Finished:     Sun, 12 Apr 2026 09:32:26 +0000
+    Ready:          True
+    Restart Count:  1
+    Limits:
+      cpu:     200m
+      memory:  64Mi
+    Requests:
+      cpu:      50m
+      memory:   32Mi
+    Liveness:   http-get http://:9090/healthz delay=5s timeout=1s period=30s #success=1 #failure=3
+    Readiness:  http-get http://:9090/readyz delay=3s timeout=1s period=10s #success=1 #failure=3
+    Environment Variables from:
+      inventory-api-config       ConfigMap  Optional: false
+      inventory-api-credentials  Secret     Optional: false
+    Environment:                 <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-ghj5h (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-ghj5h:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason          Age   From     Message
+  ----    ------          ----  ----     -------
+  Normal  SandboxChanged  60m   kubelet  Pod sandbox changed, it will be killed and re-created.
+  Normal  Pulled          60m   kubelet  spec.initContainers{wait-for-db}: Container image "busybox:1.36" already present on machine
+  Normal  Created         60m   kubelet  spec.initContainers{wait-for-db}: Created container wait-for-db
+  Normal  Started         60m   kubelet  spec.initContainers{wait-for-db}: Started container wait-for-db
+  Normal  Pulled          59m   kubelet  spec.containers{inventory-api}: Container image "inventory-api:local" already present on machine
+  Normal  Created         59m   kubelet  spec.containers{inventory-api}: Created container inventory-api
+  Normal  Started         59m   kubelet  spec.containers{inventory-api}: Started container inventory-api
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get deploy
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+inventory-api   2/2     1            2           16h
+inventory-db    1/1     1            1           16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get deploy inventory-api -o yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"component":"api"},"name":"inventory-api","namespace":"warehouse-sys"},"spec":{"replicas":2,"selector":{"matchLabels":{"component":"api"}},"template":{"metadata":{"labels":{"component":"api"}},"spec":{"containers":[{"envFrom":[{"configMapRef":{"name":"inventory-api-config"}},{"secretRef":{"name":"inventory-api-credentials"}}],"image":"inventory-api:local","imagePullPolicy":"Never","livenessProbe":{"httpGet":{"path":"/healthz","port":9090},"initialDelaySeconds":5,"periodSeconds":30},"name":"inventory-api","ports":[{"containerPort":9090}],"readinessProbe":{"httpGet":{"path":"/readyz","port":9090},"initialDelaySeconds":3,"periodSeconds":10},"resources":{"limits":{"cpu":"200m","memory":"64Mi"},"requests":{"cpu":"50m","memory":"32Mi"}}}],"initContainers":[{"command":["sh","-c","until nc -z inventory-db-svc 5432; do\n  echo \"waiting for inventory-db-svc:5432...\"\n  sleep 2\ndone\n"],"image":"busybox:1.36","name":"wait-for-db"}]}}}}
+  creationTimestamp: "2026-04-11T17:47:04Z"
+  generation: 2
+  labels:
+    component: api
+  name: inventory-api
+  namespace: warehouse-sys
+  resourceVersion: "5677"
+  uid: 182c1155-968e-42f6-96d0-197fb275f7ea
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      component: api
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        component: api
+    spec:
+      containers:
+      - command:
+        - ./inventory-service
+        envFrom:
+        - configMapRef:
+            name: inventory-api-config
+        - secretRef:
+            name: inventory-api-credentials
+        image: inventory-api:local
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: inventory-api
+        ports:
+        - containerPort: 9090
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 200m
+            memory: 64Mi
+          requests:
+            cpu: 50m
+            memory: 32Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - |
+          until nc -z inventory-db-svc 5432; do
+            echo "waiting for inventory-db-svc:5432..."
+            sleep 2
+          done
+        image: busybox:1.36
+        imagePullPolicy: IfNotPresent
+        name: wait-for-db
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 2
+  conditions:
+  - lastTransitionTime: "2026-04-12T09:33:05Z"
+    lastUpdateTime: "2026-04-12T09:33:05Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2026-04-12T09:47:56Z"
+    lastUpdateTime: "2026-04-12T09:47:56Z"
+    message: ReplicaSet "inventory-api-6bdc4764ff" has timed out progressing.
+    reason: ProgressDeadlineExceeded
+    status: "False"
+    type: Progressing
+  observedGeneration: 2
+  readyReplicas: 2
+  replicas: 3
+  unavailableReplicas: 1
+  updatedReplicas: 1
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl logs "$POD" -c wait-for-db
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl apply -f manifests/api-deployment.yaml
+deployment.apps/inventory-api unchanged
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubetcl get pods
+bash: kubetcl: command not found
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get pods
+NAME                             READY   STATUS             RESTARTS         AGE
+inventory-api-6bdc4764ff-qmm9x   0/1     CrashLoopBackOff   17 (2m33s ago)   64m
+inventory-api-7d88dc455f-gcfvp   1/1     Running            1 (70m ago)      16h
+inventory-api-7d88dc455f-sqdbj   1/1     Running            2 (70m ago)      16h
+inventory-db-5b4888dc6d-gkqcr    1/1     Running            1 (70m ago)      16h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get configmaps
+NAME                   DATA   AGE
+inventory-api-config   4      17h
+inventory-db-config    1      17h
+kube-root-ca.crt       1      17h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get configmap inventory-api-config -o yaml
+apiVersion: v1
+data:
+  DB_HOST: inventory-db-svc
+  DB_NAME: warehouse
+  DB_PORT: "5432"
+  LISTEN_PORT: "9090"
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"DB_HOST":"inventory-db-svc","DB_NAME":"warehouse","DB_PORT":"5432","LISTEN_PORT":"9090"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"inventory-api-config","namespace":"warehouse-sys"}}
+  creationTimestamp: "2026-04-11T17:47:04Z"
+  name: inventory-api-config
+  namespace: warehouse-sys
+  resourceVersion: "1137"
+  uid: 20066d0e-aacb-4863-b20a-31d633adef22
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl port-forward kubectl rollout undo deploy/inventory-api
+Error from server (NotFound): pods "kubectl" not found
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl port-forward pod/inventory-api-6bdc4764ff-qmm9x 8080:9090
+Forwarding from 127.0.0.1:8080 -> 9090
+Forwarding from [::1]:8080 -> 9090
+Handling connection for 8080
+E0412 11:20:06.592480   74478 portforward.go:424] "Unhandled Error" err="an error occurred forwarding 8080 -> 9090: error forwarding port 9090 to pod 644754aa6f23d63e1a5f689a0c6350bc5ce1b330c816717ee2341ac6e2d3d3a9, uid : failed to execute portforward in network namespace \"/var/run/netns/cni-48f25986-81fa-470b-2c92-c7693aa49fd5\": failed to connect to localhost:9090 inside namespace \"644754aa6f23d63e1a5f689a0c6350bc5ce1b330c816717ee2341ac6e2d3d3a9\", IPv4: dial tcp4 127.0.0.1:9090: connect: connection refused IPv6 dial tcp6 [::1]:9090: connect: connection refused "
+error: lost connection to pod
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl rollout undo deploy/inventory-api
+deployment.apps/inventory-api rolled back
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get pods
+NAME                             READY   STATUS    RESTARTS       AGE
+inventory-api-7d88dc455f-gcfvp   1/1     Running   1 (109m ago)   17h
+inventory-api-7d88dc455f-sqdbj   1/1     Running   2 (109m ago)   17h
+inventory-db-5b4888dc6d-gkqcr    1/1     Running   1 (109m ago)   17h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl get endpoints
+NAME                ENDPOINTS                         AGE
+inventory-api-svc   10.42.0.26:9090,10.42.0.27:9090   17h
+inventory-db-svc    10.42.0.25:5432                   17h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ kubectl port-forward svc/inventory-api-svc 8080:80
+Forwarding from 127.0.0.1:8080 -> 9090
+Forwarding from [::1]:8080 -> 9090
+^C@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ curl -i localhost/
+HTTP/1.1 200 OK
+Date: Sun, 12 Apr 2026 11:23:23 GMT
+Content-Type: application/json
+Content-Length: 86
+Connection: keep-alive
+
+{"app":"inventory-api","hostname":"inventory-api-7d88dc455f-sqdbj","version":"0.1.0"}
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go (mac-eks-drill) $ 
+
+
+Second terminal:
+
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ curl -i localhost:8080/healthz
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Sun, 12 Apr 2026 10:15:16 GMT
+Content-Length: 19
+
+{"status":"alive"}
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ curl -i localhost:8080/readyz
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Sun, 12 Apr 2026 10:15:31 GMT
+Content-Length: 19
+
+{"status":"ready"}
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ curl localhost:8080/readyz
+curl: (52) Empty reply from server
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ curl localhost:8080/healthz
+curl: (7) Failed to connect to localhost port 8080 after 0 ms: Connection refused
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ curl -1 localhost/readyz
+{"status":"ready"}
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ curl -i localhost/healthz
+HTTP/1.1 200 OK
+Date: Sun, 12 Apr 2026 11:23:04 GMT
+Content-Type: text/html
+Content-Length: 0
+Connection: keep-alive
+
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ 
