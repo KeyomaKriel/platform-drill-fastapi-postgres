@@ -197,7 +197,7 @@ This is the default behaviour when the user asks for the next drill scenario.
    - A vague, realistic symptom prompt suitable for a technical interview
    - 15-minute timer
 
-   **CRITICAL: The user reads this file. It must contain ZERO clues about the fault type, failure domain, what the break does, or what to look for. The base64-encoded command exists specifically so the user cannot read it. Do not include any text, comments, headings, or context in this file that hints at what is broken. The symptom prompt must be vague. The file title must be generic (e.g. "Debugging (Django App)"). No domain names, no fault descriptions, no signal hints.**
+   **CRITICAL: The user reads this file. It must contain ZERO clues about the fault type, failure domain, what the break does, or what to look for. The base64-encoded command exists specifically so the user cannot read it. Do not include any text, comments, headings, or context in this file that hints at what is broken. The symptom prompt must be vague. The file title must be generic (e.g. "Debugging (Django App)"). No domain names, no fault descriptions, no signal hints. No operational notes that describe the fault's behaviour — no "wait for pods to...", no "wait for the rollout to...", no "the new pods will...". The ONLY acceptable line is: "Wait 30 seconds after injecting before starting." — with no description of what happens during the wait.**
 
 2. Create `codespace/drills/codespace-drills/round-NN/drill-<NN>-scenario-answer.md` containing:
    - App name, failure domain, tier
@@ -235,18 +235,18 @@ This is the default behaviour when the user asks for the next drill scenario.
 
 ### Failure domain likelihood tiers
 
-**Tier 1 — High likelihood (prioritise):**
-- Config / Secret / env failure (wrong value, missing ref, typo)
-- Probe failure (wrong path, wrong port, timing)
-- Service routing / port / endpoint failure (selector mismatch, port mismatch)
-- Image pull / container creation failure (wrong tag, missing image)
+**Tier 1 — High likelihood:**
+- Config / Secret / env failure
+- Probe failure
+- Service routing / endpoint failure
+- Image retrieval / image spec failure
 
 **Tier 2 — Moderate likelihood:**
 - Ingress / external routing failure
-- Application-level dependency / runtime failure
-- Startup / crash failure (bad entrypoint, missing config)
+- Application dependency / runtime failure
+- Process startup / command failure
 
-**Tier 3 — Low likelihood (only if requested or Tiers 1–2 well covered):**
+**Tier 3 — Low likelihood (only if requested):**
 - NetworkPolicy / traffic restriction failure
 - RBAC / service account / permission failure
 - Resource / scheduling / storage failure
@@ -254,17 +254,20 @@ This is the default behaviour when the user asks for the next drill scenario.
 
 ### Preferred subcases for Tier 1/2 domains
 
-These are the most interview-realistic fault patterns:
+These are the most interview-realistic fault patterns because they are single-change, easy to inject, and produce clean signals.
 
-| Domain | Preferred subcases |
-|---|---|
-| Config / Secret / env | Wrong env var value, wrong ConfigMap/Secret reference name, missing Secret key, typo in hostname |
-| Probe failure | Wrong probe HTTP path, wrong probe port, both probes targeting nonexistent path |
-| Service routing | Service selector label mismatch (empty endpoints), wrong targetPort (but see caveat below) |
-| Image pull | Wrong image tag, image not loaded into k3d, imagePullPolicy mismatch |
-| Ingress | Wrong ingressClassName, wrong backend service name, wrong backend port |
-| App dependency | Wrong DB hostname in ConfigMap, wrong credentials, dependency scaled to zero |
-| Startup / crash | Bad command/args override, wrong binary name, missing required env var |
+| Domain | Preferred subcases | Avoid by default |
+|---|---|---|
+| Config / Secret / env | Wrong env var value, wrong ConfigMap/Secret reference name, missing Secret key, typo in hostname | Deep multi-step app config bugs, ambiguous framework-specific settings issues |
+| Probe failure | Wrong probe HTTP path, wrong probe port, readiness pointed at failing endpoint, both probes targeting nonexistent path | Subtle timing-only failures unless deliberately testing probe semantics |
+| Service routing / endpoint | Service selector label mismatch (empty endpoints) | targetPort-only faults unless the answer key explicitly includes service/pod port-forward verification |
+| Image retrieval / image spec | Wrong image tag, image not loaded into k3d, imagePullPolicy mismatch | Faults that depend on external registry behaviour or auth complexity |
+| Ingress / external routing | Wrong ingressClassName, wrong backend service name, wrong backend service port | TLS/cert issues, controller-specific annotation behaviour unless intentionally testing ingress depth |
+| App dependency / runtime | Wrong DB hostname, wrong credentials, dependency scaled to zero, app ready route fails because dependency is unavailable | Deep app-code defects, flaky dependency behaviour |
+| Process startup / command | Bad command/args override, wrong binary/module name, missing required env var that causes immediate startup failure | Faults needing deep framework knowledge to diagnose |
+
+**Classification rule:**  
+If the container never starts because Kubernetes cannot build the container config from refs or env sources, classify it under **Config / Secret / env**, not under image failure.
 
 **Service targetPort caveat:** A targetPort-only change may not manifest when testing through nginx Ingress (the Ingress controller can bypass kube-proxy). Prefer selector mismatches for Service routing faults, or combine targetPort changes with an explicit port-forward verification step in the answer key.
 
@@ -457,129 +460,3 @@ When the user says "back to phase 3", "test me again", or similar — switch to 
 
 ---
 
-## Phase 5 — Live Interview Support
-
-**Trigger:** The user says "interview live".
-
-**Goal:** Detect the interview Codespace, analyse the repo and cluster state, and generate two reference files the user reads on a second screen while performing the interview.
-
-### Step 1 — Detect the interview environment
-
-1. List all Codespaces: `gh codespace list --json name,repository,state`
-2. Identify any Codespace on a repo that is NOT `KeyomaKriel/platform-drill-fastapi-postgres` — that is the interview Codespace.
-3. If multiple unknown Codespaces exist, pick the one that was created most recently.
-4. Store the Codespace name and repo for all subsequent steps.
-
-### Step 2 — Analyse the repo
-
-SSH into the interview Codespace and run:
-
-```bash
-gh codespace ssh -c <name> -- 'pwd && ls && find . -maxdepth 3 -type f | sort'
-```
-
-Then read key files in order:
-- README.md (skim)
-- Dockerfile
-- App entry files (detect framework first: manage.py = Django, go.mod = Go, app.py/main.py = Python)
-- All K8s manifests (Deployment, Service, Ingress, ConfigMap, Secret, etc.)
-- Any deploy scripts
-
-Extract:
-- Framework, language, entry point
-- Listening port (from CMD/startup command, not just EXPOSE)
-- Health/readiness endpoints
-- DB env var names
-- Namespace
-- Image name, pull policy
-- Probe paths and ports
-- Service selector and ports
-- Ingress backend and routing
-- Init containers
-- ConfigMap/Secret names and values
-- DB Service name and credentials
-
-### Step 3 — Analyse the live cluster
-
-```bash
-gh codespace ssh -c <name> -- 'kubectl get ns && kubectl get pods -A && kubectl get svc -A && kubectl get ingress -A && kubectl get endpoints -A'
-```
-
-Then for the app namespace:
-```bash
-gh codespace ssh -c <name> -- 'kubectl describe pod <pod> -n <ns> && kubectl logs <pod> -n <ns> && kubectl get events -n <ns> --sort-by=.lastTimestamp'
-```
-
-Identify any faults:
-- Pods not Running/Ready
-- Empty endpoints
-- Probe failures in Events
-- Image pull errors
-- Missing ConfigMap/Secret references
-- Selector mismatches
-- Wrong probe path/port
-- Wrong Service targetPort
-- Wrong Ingress backend
-- CrashLoopBackOff with log errors
-- Init container failures
-
-### Step 4 — Generate two files
-
-Save both to the drill system root (NOT inside the interview Codespace).
-
-**File 1: `interview-orient.md`**
-
-A step-by-step orientation script:
-- What framework this is and how you recognised it
-- What to say when you first look at the repo ("I'm mapping the repo structure...")
-- For each key file: what it contains, what to extract, what to say
-- The full contract chain (config → Service → pod labels → Ingress)
-- The live check commands to run and what to say when you see the output
-- A final summary narration using Shape/Start/Supply/Ship/Signals
-
-**File 2: `interview-fix.md`**
-
-If faults are found:
-- What is broken and why
-- The exact diagnostic commands to run, in order
-- What each command will show
-- What to say at each step (framed as hypothesis, not conclusion)
-- The fix command (prefer `kubectl apply -f` from repo manifests)
-- Verification commands and what to say
-
-If no faults are found:
-- State that the cluster appears healthy
-- List the verification commands and expected output
-- Note that a fault may be injected during the interview
-
-**Format rules for both files:**
-- Every step must have embedded narration (what to say)
-- Narration must sound natural, not scripted
-- Frame findings as hypotheses during diagnosis ("This suggests..." not "The problem is...")
-- Include the exact kubectl commands — do not paraphrase
-- Keep it scannable — the user is reading this under pressure on a second screen
-
-### Important rules for Phase 5
-
-- Execute as fast as possible. Every second counts.
-- Run independent SSH commands in parallel where possible.
-- Do not modify anything in the interview Codespace. Read-only.
-- Do not create any files inside the interview Codespace.
-- If the Codespace is not accessible (Shutdown, permissions), report immediately so the user can fix it.
-- After generating the files, say "Ready." and nothing else.
-
-### Re-scan trigger
-
-**Trigger:** The user says "next bug", "scan again", "rescan", or "what now".
-
-**Goal:** Re-analyse the live cluster state in the interview Codespace, find any new faults, and update `interview-fix.md` with the next diagnostic and fix path.
-
-**Steps:**
-1. SSH into the same interview Codespace (already identified from Phase 5 initial run).
-2. Re-run the full cluster analysis from Step 3 above.
-3. Compare against the previously identified fault — if it's fixed, look for new symptoms.
-4. Overwrite `interview-fix.md` with the new fault analysis, commands, and narration.
-5. If no new fault is found, state that the cluster appears healthy now.
-6. Say "Ready." and nothing else.
-
-This can be triggered as many times as needed. Each re-scan is a fresh analysis of current cluster state.
