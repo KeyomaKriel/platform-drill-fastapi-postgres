@@ -313,7 +313,8 @@
   }
   .symptom-card.open .symptom-body { display: block; }
 
-  .symptom-body .say-block {
+  .symptom-body .say-block,
+  .fix-body .say-block {
     background: #f1f8e9;
     border-left: 3px solid #66bb6a;
     padding: 8px 12px;
@@ -322,7 +323,8 @@
     font-size: 13px;
     line-height: 1.45;
   }
-  .symptom-body .say-block::before { content: none; }
+  .symptom-body .say-block::before,
+  .fix-body .say-block::before { content: none; }
 
   .symptom-body pre {
     background: var(--code-bg);
@@ -619,8 +621,10 @@
   body.dark .caution-item { background: #3a3000; border-color: #665500; color: #ffd38a; }
   body.dark .verify-warning { background: #3a3000; border-color: #665500; color: #ffd38a; }
 
-  body.dark .symptom-body .say-block { background: #1a2e1a; border-left-color: #4caf50; }
-  body.dark .symptom-body .say-block::before { color: #66bb6a; }
+  body.dark .symptom-body .say-block,
+  body.dark .fix-body .say-block { background: #1a2e1a; border-left-color: #4caf50; }
+  body.dark .symptom-body .say-block::before,
+  body.dark .fix-body .say-block::before { color: #66bb6a; }
   body.dark .symptom-body .prove { color: #aaa; }
   body.dark .symptom-body .prove::before { color: #ccc; }
   body.dark .symptom-body .docs { color: #888; }
@@ -1781,7 +1785,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Logs show an app-level crash: unhandled exception, missing module, bad syntax, stack trace, or exit code 1. The container process itself is failing. If logs point to a wrong config value or unreachable dependency, route to <a class="fix-link" href="#domain-config-env">Config / Secret / Env</a> or <a class="fix-link" href="#domain-app-level">App-Level</a> instead.</div>
 
-      <div class="say-block">"The logs show the app is crashing on startup with [error]. This is the app itself failing, not a config or dependency issue. I want to fix this in the source &mdash; the manifest or Dockerfile &mdash; so the deploy path stays clean."</div>
+      <div class="say-block">The logs show the app is crashing on startup with [error]. This is the app itself failing, not a config or dependency issue. I want to fix this in the source &mdash; the manifest or Dockerfile &mdash; so the deploy path stays clean.</div>
 
       <h4>Commands</h4>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # State, Last State, exit codes, Events
@@ -1814,7 +1818,7 @@ kubectl get svc -n &lt;ns&gt;                                # what init is wait
       <h4>Verify</h4>
       <pre>kubectl get pods -n &lt;ns&gt;              # Running, restarts stop climbing
 kubectl logs &lt;pod&gt; -n &lt;ns&gt;            # clean startup, no errors</pre>
-      <div class="say-block">"Restarts have stopped, pod is staying Running, logs are clean. I also want to verify the user-visible path works end to end &mdash; curl the health and data endpoints through Ingress."</div>
+      <div class="say-block">Restarts have stopped, pod is staying Running, logs are clean. I also want to verify the user-visible path works end to end &mdash; curl the health and data endpoints through Ingress.</div>
 
             <div class="ai-prompt">
         <div class="ai-prompt-label">AI helper prompt</div>
@@ -1849,7 +1853,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Pod shows <code>ImagePullBackOff</code>, <code>ErrImagePull</code>, <code>ErrImageNeverPull</code>, <code>CreateContainerConfigError</code>, or <code>CreateContainerError</code>.</div>
 
-      <div class="say-block">"The pod is stuck at [status]. Let me check the Events section to see exactly what failed &mdash; this is usually a contract mismatch between the build output and what the Deployment spec references."</div>
+      <div class="say-block">The pod is stuck at [status]. Let me check the Events section to see exactly what failed &mdash; this is usually a contract mismatch between the build output and what the Deployment spec references.</div>
 
       <h4>Commands</h4>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
@@ -1877,7 +1881,7 @@ kubectl create secret generic &lt;secret&gt; --from-literal=KEY=value -n &lt;ns&
 
       <h4>Verify</h4>
       <pre>kubectl get pods -n &lt;ns&gt; -w             # pod moves past error, reaches Running</pre>
-      <div class="say-block">"Pod is past the error state and running. I want to confirm the user-visible endpoints work too, not just that the pod started."</div>
+      <div class="say-block">Pod is past the error state and running. I want to confirm the user-visible endpoints work too, not just that the pod started.</div>
 
             <div class="ai-prompt">
         <div class="ai-prompt-label">AI helper prompt</div>
@@ -1912,7 +1916,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Pod is Running but not Ready (<code>0/1</code>), or Running with RESTARTS climbing. Readiness failure removes the pod from Service endpoints. Liveness failure kills and restarts the container.</div>
 
-      <div class="say-block">"The pod is Running but [not Ready / restarts are climbing]. Let me check which probe is failing and what it's targeting &mdash; this is a contract between the probe spec and what the app actually serves, and getting it wrong silently removes the pod from the traffic path."</div>
+      <div class="say-block">The pod is Running but [not Ready / restarts are climbing]. Let me check which probe is failing and what it's targeting &mdash; this is a contract between the probe spec and what the app actually serves, and getting it wrong silently removes the pod from the traffic path.</div>
 
       <h4>Commands</h4>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # probe spec + Conditions
@@ -1940,7 +1944,7 @@ kubectl apply -f manifests/&lt;deployment-file&gt;.yaml</pre>
       <h4>Verify</h4>
       <pre>kubectl get pods -n &lt;ns&gt;                  # 1/1 Ready, or restarts stop
 kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;       # endpoints populate</pre>
-      <div class="say-block">"Pod is 1/1 Ready, endpoints are populated, and the user-visible path returns expected responses. The probe contract now matches what the app serves."</div>
+      <div class="say-block">Pod is 1/1 Ready, endpoints are populated, and the user-visible path returns expected responses. The probe contract now matches what the app serves.</div>
 
             <div class="ai-prompt">
         <div class="ai-prompt-label">AI helper prompt</div>
@@ -1975,7 +1979,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Events show a missing ConfigMap or Secret, logs reveal a wrong or missing value, or <code>CreateContainerConfigError</code> points to a missing config reference. Covers: missing objects, wrong reference names, wrong keys, wrong values.</div>
 
-      <div class="say-block">"This is a configuration problem. I need to check what the pod references versus what actually exists, and compare the values. Config mismatches are the most common failure domain because they are a contract between several manifests &mdash; the durable fix is always in the repo, not a one-off edit."</div>
+      <div class="say-block">This is a configuration problem. I need to check what the pod references versus what actually exists, and compare the values. Config mismatches are the most common failure domain because they are a contract between several manifests &mdash; the durable fix is always in the repo, not a one-off edit.</div>
 
       <h4>Commands</h4>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
@@ -2005,7 +2009,7 @@ kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | sort</pre>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;               # no Warning events
 kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;KEY&gt;   # correct values injected
 kubectl logs &lt;pod&gt; -n &lt;ns&gt;                        # clean startup</pre>
-      <div class="say-block">"No warning events, correct values injected, clean startup. I also want to verify the full user-visible path &mdash; health and data endpoints through Ingress &mdash; because a config fix that only half-works can pass pod-level checks while still failing for users."</div>
+      <div class="say-block">No warning events, correct values injected, clean startup. I also want to verify the full user-visible path &mdash; health and data endpoints through Ingress &mdash; because a config fix that only half-works can pass pod-level checks while still failing for users.</div>
 
             <div class="ai-prompt">
         <div class="ai-prompt-label">AI helper prompt</div>
@@ -2040,7 +2044,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Pods are Running and Ready but unreachable through the Service. The reachability path found empty endpoints or a port mismatch.</div>
 
-      <div class="say-block">"Pods are healthy but I can't reach them through the Service. Let me check selectors, endpoints, and ports &mdash; this is the label and port contract between the Deployment and the Service, and any drift here silently breaks the developer-visible path while pods look fine."</div>
+      <div class="say-block">Pods are healthy but I can't reach them through the Service. Let me check selectors, endpoints, and ports &mdash; this is the label and port contract between the Deployment and the Service, and any drift here silently breaks the developer-visible path while pods look fine.</div>
 
       <h4>Commands</h4>
       <pre>kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;
@@ -2069,7 +2073,7 @@ kubectl apply -f manifests/&lt;service-file&gt;.yaml
 kubectl port-forward svc/&lt;svc&gt; 8080:&lt;svc-port&gt; -n &lt;ns&gt;
 curl -i localhost:8080/                            # valid response
 curl -s localhost/                                 # end-to-end through Ingress</pre>
-      <div class="say-block">"Endpoints are populated, port-forward works, and the external curl returns a valid response through Ingress. The routing contract between Deployment labels, Service selector, and Ingress backend is consistent again."</div>
+      <div class="say-block">Endpoints are populated, port-forward works, and the external curl returns a valid response through Ingress. The routing contract between Deployment labels, Service selector, and Ingress backend is consistent again.</div>
 
             <div class="ai-prompt">
         <div class="ai-prompt-label">AI helper prompt</div>
@@ -2104,7 +2108,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Resources appear missing, DNS resolution fails, or logs show <code>Name or service not known</code>.</div>
 
-      <div class="say-block">"I need to check whether I'm looking in the right place, and whether DNS resolution is working inside the cluster."</div>
+      <div class="say-block">I need to check whether I'm looking in the right place, and whether DNS resolution is working inside the cluster.</div>
 
       <h4>Namespace confusion</h4>
       <pre>kubectl get all -A
@@ -2161,7 +2165,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Pod is <code>Pending</code>, exit code is 137 (OOMKilled), or PVC is stuck in <code>Pending</code>.</div>
 
-      <div class="say-block">"The pod is [Pending / OOMKilled / has a storage issue]. Let me find the specific constraint that's blocking it."</div>
+      <div class="say-block">The pod is [Pending / OOMKilled / has a storage issue]. Let me find the specific constraint that's blocking it.</div>
 
       <h4>Pending pods</h4>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # Events: scheduling reason
@@ -2227,7 +2231,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Service works via port-forward but the external URL fails. If Service/endpoints are broken, go to <a class="fix-link" href="#domain-service-routing">Service Routing</a> first.</div>
 
-      <div class="say-block">"I can reach the app through port-forward, so the Service and pods are fine. The problem is in the Ingress layer &mdash; the last hop before the user-visible URL. I want to check the Ingress spec against the installed controller and the Service it points to."</div>
+      <div class="say-block">I can reach the app through port-forward, so the Service and pods are fine. The problem is in the Ingress layer &mdash; the last hop before the user-visible URL. I want to check the Ingress spec against the installed controller and the Service it points to.</div>
 
       <h4>Commands</h4>
       <pre>kubectl get ingress -n &lt;ns&gt;
@@ -2285,7 +2289,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Everything looks correct &mdash; pods Running, Ready, endpoints populated &mdash; but traffic silently fails or times out with no error message.</div>
 
-      <div class="say-block">"Everything looks healthy but traffic is failing silently. When all the obvious things check out, NetworkPolicy is the first thing I check &mdash; a default-deny with a missing allow rule produces zero error signals, which makes it the hardest failure domain to debug without knowing to look for it."</div>
+      <div class="say-block">Everything looks healthy but traffic is failing silently. When all the obvious things check out, NetworkPolicy is the first thing I check &mdash; a default-deny with a missing allow rule produces zero error signals, which makes it the hardest failure domain to debug without knowing to look for it.</div>
 
       <h4>Commands</h4>
       <pre>kubectl get networkpolicy -n &lt;ns&gt;
@@ -2351,7 +2355,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Forbidden or Unauthorized errors. A service account can't perform an action. This bypasses the main pod-state flow.</div>
 
-      <div class="say-block">"I see a Forbidden error. I need to walk the RBAC chain &mdash; ServiceAccount, RoleBinding, Role &mdash; and find the broken link. Each piece is defined declaratively in a manifest, so the fix belongs there, not in an ad-hoc kubectl create."</div>
+      <div class="say-block">I see a Forbidden error. I need to walk the RBAC chain &mdash; ServiceAccount, RoleBinding, Role &mdash; and find the broken link. Each piece is defined declaratively in a manifest, so the fix belongs there, not in an ad-hoc kubectl create.</div>
 
       <h4>Commands</h4>
       <pre>kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; &lt;verb&gt; &lt;resource&gt; -n &lt;ns&gt;
@@ -2417,7 +2421,7 @@ Output:
     <div class="fix-body">
       <div class="fix-means">Pods are Running and Ready, endpoints populated, but the app returns errors or doesn't respond. Kubernetes thinks everything is fine &mdash; this is an app-level issue.</div>
 
-      <div class="say-block">"Everything looks healthy from a Kubernetes perspective &mdash; pods Running, endpoints populated, probes passing. But the app is returning errors, which means this is an application-level issue. Logs and runtime env vars should tell me whether the problem is config values, dependency connectivity, or app logic."</div>
+      <div class="say-block">Everything looks healthy from a Kubernetes perspective &mdash; pods Running, endpoints populated, probes passing. But the app is returning errors, which means this is an application-level issue. Logs and runtime env vars should tell me whether the problem is config values, dependency connectivity, or app logic.</div>
 
       <h4>Commands</h4>
       <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
