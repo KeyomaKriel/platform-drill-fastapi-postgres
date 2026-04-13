@@ -8,4 +8,8 @@ Git commands (cheat sheet) including what I will need to do for the interview.
 
 Docker commands
 
+Django.
 
+HTTP status codes
+
+kubernetes status codes (from previous playbook)

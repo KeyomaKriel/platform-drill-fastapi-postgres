@@ -319,7 +319,7 @@
         <pre>ls
 tree -L 2          # or: find . -maxdepth 2 -type f | sort
 cat README.md      # skim only &mdash; what is this app, how to run it</pre>
-        <div class="file-narration">"I'm mapping the repo first &mdash; where the app code is, where the build config is, and where the Kubernetes manifests live."</div>
+        <div class="file-narration">"I'm mapping the repo first &mdash; where the app code is, where the build config is, and where the Kubernetes manifests live. This tells me the deploy model before I read any details."</div>
       </section>
 
       <!-- PHASE 2: READ KEY FILES -->
@@ -336,7 +336,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag shape">Shape</span> Where are routes defined? Where is DB config? (same file, or separate config/settings?)</li>
             <li><span class="tag start">Start</span> Is there a <code>manage.py</code>, <code>go.mod</code>, <code>requirements.txt</code>, <code>package.json</code>? &mdash; confirms language and dependency model</li>
           </ul>
-          <div class="file-narration">"The project structure tells me this is a [framework] app. Routes are in [file], DB config is in [file]. I know which files to read next."</div>
+          <div class="file-narration">"The project structure tells me this is a [framework] app. Routes are in [file], DB config is in [file]. This tells me where the contracts between the app and the platform config live, and which files I need to read next."</div>
         </div>
 
         <!-- Dockerfile -->
@@ -348,7 +348,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag start">Start</span> EXPOSE &mdash; what port the container expects</li>
             <li><span class="tag start">Start</span> If CMD references a WSGI/ASGI module path (e.g. <code>config.wsgi:application</code>), note which project package it points to</li>
           </ul>
-          <div class="file-narration">"The Dockerfile tells me this is a [language] app running [process] on port [N]. The entry point is [CMD]."</div>
+          <div class="file-narration">"The Dockerfile tells me this is a [language] app running [process] on port [N]. The entry point is [CMD]. This port is the contract that the Service targetPort and probe port must match."</div>
         </div>
 
         <!-- App code -->
@@ -365,7 +365,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag supply">Supply</span> Which env var names? (<code>PG*</code>, <code>POSTGRES_*</code>, <code>DB_*</code> &mdash; varies by app)</li>
             <li><span class="tag start">Start</span> Startup behaviour &mdash; does the app seed data on boot? Run migrations? Crash if DB is unreachable?</li>
           </ul>
-          <div class="file-narration">"The app has [N] endpoints at [paths]. Health check is [path] and it [checks DB / always returns 200]. DB config comes from env vars [list] read in [file]. On startup it [seeds/migrates/crashes if DB down]."</div>
+          <div class="file-narration">"The app has [N] endpoints at [paths]. Health check is [path] and it [checks DB / always returns 200] &mdash; this is the path the readiness probe must target. DB config comes from env vars [list] read in [file]. On startup it [seeds/migrates/crashes if DB down], which affects what failure looks like if a dependency is misconfigured."</div>
         </div>
 
         <!-- Deployment -->
@@ -380,7 +380,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag signals">Signals</span> Probes &mdash; path, port, timing. Are readiness and liveness the same path or different?</li>
             <li><span class="tag ship">Ship</span> initContainers &mdash; how many? What does each one do? (wait for dependency? run migrations? load data?) Which ones read from ConfigMap/Secret?</li>
           </ul>
-          <div class="file-narration">"The Deployment runs image [X] with [N] init containers: [list what each does]. Config comes from [ConfigMap/Secret names]. Probes target [path:port]. Migrations/seeding happen [in init container / at app startup / not at all]."</div>
+          <div class="file-narration">"The Deployment runs image [X] with [N] init containers: [list what each does]. Config comes from [ConfigMap/Secret names] &mdash; these are the naming contracts I need to verify exist. Probes target [path:port], which must match what the app actually serves. Migrations/seeding happen [in init container / at app startup / not at all]."</div>
         </div>
 
         <!-- ConfigMap + Secret -->
@@ -390,7 +390,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag supply">Supply</span> Actual values: DB host, port, database name, creds</li>
             <li><span class="tag supply">Supply</span> Cross-reference: do these match what the app code expects?</li>
           </ul>
-          <div class="file-narration">"Config points to [DB host] on port [N], database [name]. Credentials are in [Secret name]. These match / don't match what the app reads."</div>
+          <div class="file-narration">"Config points to [DB host] on port [N], database [name]. Credentials are in [Secret name]. I'm cross-referencing these against the Service name and the app's expected env vars &mdash; any mismatch here is the most common failure domain."</div>
         </div>
 
         <!-- Service -->
@@ -401,7 +401,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag ship">Ship</span> Port (what other things connect to) and targetPort (must match container port)</li>
             <li><span class="tag ship">Ship</span> Type (ClusterIP / NodePort / LoadBalancer)</li>
           </ul>
-          <div class="file-narration">"Service selects pods with [labels], maps port [X] to targetPort [Y]. That targetPort should match the container's listening port."</div>
+          <div class="file-narration">"Service selects pods with [labels], maps port [X] to targetPort [Y]. The selector is the label contract with the Deployment, and the targetPort is the port contract with the container. If either drifts, traffic silently fails while pods look healthy."</div>
         </div>
 
         <!-- Ingress -->
@@ -412,7 +412,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag ship">Ship</span> Backend service name and port &mdash; must match Service</li>
             <li><span class="tag signals">Signals</span> If this is wrong, curl from outside fails but pod-level curl works</li>
           </ul>
-          <div class="file-narration">"Ingress routes [path] to service [name] on port [N]. That should match the Service I just read."</div>
+          <div class="file-narration">"Ingress routes [path] to service [name] on port [N]. This is the last hop before the user-visible URL &mdash; if the backend name or port doesn't match the Service, external access fails while internal routing still works."</div>
         </div>
 
         <!-- DB Deployment (if separate) -->
@@ -424,7 +424,7 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
             <li><span class="tag ship">Ship</span> PVC &mdash; storage for data persistence</li>
             <li><span class="tag signals">Signals</span> DB probes &mdash; pg_isready or similar</li>
           </ul>
-          <div class="file-narration">"Postgres runs as [image:version], the Service name is [X] &mdash; that's what the app config should point to."</div>
+          <div class="file-narration">"Postgres runs as [image:version], the Service name is [X] &mdash; that's the hostname the app config must point to. Creds and DB name must match between the app's ConfigMap/Secret and the database's ConfigMap/Secret. Any mismatch here breaks the app at startup or runtime."</div>
         </div>
 
         <!-- Signal commands -->
@@ -436,7 +436,7 @@ kubectl get endpoints -n [namespace]           # Are endpoints populated for eac
 kubectl describe pod [app-pod] -n [namespace]  # Events, probe status, env source errors
 kubectl logs [app-pod] -n [namespace]          # Startup errors, DB connection failures
 curl [host][path]                              # Hit each route from the Ingress &mdash; host/port/path come from what you just read</pre>
-          <div class="file-narration">"Files told me what should happen. These commands tell me what is actually happening. Any gap between the two is where the problem lives."</div>
+          <div class="file-narration">"Files told me what should happen. These commands tell me what is actually happening. Any gap between the two is where the problem lives &mdash; and I want to verify the full user-visible path, not just that pods are Running."</div>
         </div>
       </section>
 
@@ -482,10 +482,12 @@ curl [host][path]                              # Hit each route from the Ingress
               <span class="slot">[name]</span> and
               <span class="kw">Secret</span>
               <span class="slot">[name]</span>.<br>
-              DB host points to service <span class="slot">[name]</span>.<br>
+              DB host points to service <span class="slot">[name]</span> &mdash;
+              this is the naming contract between the ConfigMap and the DB Service.<br>
               Creds and DB name
               <span class="slot">[match / don't match]</span>
-              between the app config and the database config."
+              between the app config and the database config &mdash;
+              any mismatch here is the most common failure domain."
             </p>
           </div>
           <div class="summary-bucket ship">
@@ -503,7 +505,8 @@ curl [host][path]                              # Hit each route from the Ingress
               on port <span class="slot">[X]</span>
               via <span class="slot">[nginx / traefik]</span>.<br>
               Labels and selectors
-              <span class="slot">[match / don't match]</span> throughout."
+              <span class="slot">[match / don't match]</span> throughout &mdash;
+              this chain of contracts is what I'd check first if traffic isn't reaching the app."
             </p>
           </div>
           <div class="summary-bucket signals">
@@ -518,7 +521,9 @@ curl [host][path]                              # Hit each route from the Ingress
               If the <span class="kw">Service selector is wrong</span>,
               endpoints empty but pods Running.<br>
               If <span class="kw">Ingress is wrong</span>,
-              direct pod curl works but external curl doesn't."
+              direct pod curl works but external curl doesn't.<br>
+              Each of these failure modes looks different to users &mdash;
+              knowing which signals map to which layer is what lets me triage fast."
             </p>
           </div>
         </div>
