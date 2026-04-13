@@ -158,6 +158,21 @@
   .b-traffic h3 { color: var(--traffic); }
   .b-dep h3    { color: var(--dep); }
 
+  .bucket-card .sym-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+  }
+  .bucket-card .sym-list li { margin-bottom: 4px; }
+  .bucket-card .sym-list a {
+    color: #5b7db5;
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 1px dotted #5b7db5;
+  }
+  .bucket-card .sym-list a:hover { border-bottom-style: solid; }
+  body.dark .bucket-card .sym-list a { color: #90caf9; border-bottom-color: #90caf9; }
+
   /* --- Sections --- */
   section { margin-bottom: 28px; }
   section > h2 {
@@ -687,115 +702,59 @@
 
 <!-- Core Frame -- Four Buckets -->
 <section id="frame">
-  <h2>Core Frame &mdash; What to Run First</h2>
+  <h2>Core Frame</h2>
   <div class="frame-row">
 
     <!-- 1. Start -->
     <div class="bucket-card b-start">
       <h3>1. Start</h3>
-      <div class="question">Was the Pod created, scheduled, and able to start its container?</div>
-      <div class="say">The workload is failing before it can become a healthy running pod, so I want the scheduler/container creation signal first.</div>
-      <pre>kubectl get pods -n &lt;ns&gt;
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
-kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
-      <ul>
-        <li><strong>ErrImagePull / ImagePullBackOff</strong> &rarr; inspect image name, tag, pull secret, imagePullPolicy</li>
-        <li><strong>Pending</strong> &rarr; inspect scheduling reason, PVC, node constraints, taints/affinity</li>
-        <li><strong>CreateContainerConfigError</strong> &rarr; inspect config/secret/env refs, volume mounts</li>
-        <li><strong>Init container failure</strong> &rarr; inspect init container image, command, mounts</li>
-        <li><strong>Command / entrypoint / args problem</strong> &rarr; check command/args in describe pod, compare with Dockerfile ENTRYPOINT/CMD</li>
-        <li><strong>Missing ConfigMap / Secret / volume mount</strong> &rarr; check events for referenced object name, verify it exists in the namespace</li>
-        <li><strong>PVC not binding</strong> &rarr; kubectl get pvc -n &lt;ns&gt;, check storageClass and access mode match available PVs</li>
-        <li><strong>Node capacity / taints / affinity / scheduling blockers</strong> &rarr; kubectl describe node, check Conditions, taints, allocatable vs requested</li>
+      <div class="question">Was the pod created, scheduled, and able to start its container?</div>
+      <ul class="sym-list">
+        <li><a href="#sym-no-pod" class="fix-link">No pod</a></li>
+        <li><a href="#sym-pending" class="fix-link">Pod Pending</a></li>
+        <li><a href="#sym-container-creating" class="fix-link">ContainerCreating</a></li>
+        <li><a href="#sym-image-pull" class="fix-link">ErrImagePull / ImagePullBackOff</a></li>
+        <li><a href="#sym-create-config-error" class="fix-link">CreateContainerConfigError</a></li>
+        <li><a href="#sym-init-container" class="fix-link">Init container failure</a></li>
+        <li><a href="#sym-wrong-version" class="fix-link">Wrong version running</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to scheduling pressure, taints/affinity, node placement, or PVC/storage
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Pod Pending
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
-      <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
     </div>
 
     <!-- 2. Stay Up -->
     <div class="bucket-card b-stayup">
       <h3>2. Stay Up</h3>
       <div class="question">Did the app keep running and become Ready?</div>
-      <div class="say">The pod exists but is not stabilising, so I want pod state, describe output, and logs before I decide what branch this belongs to.</div>
-      <pre>kubectl get pods -n &lt;ns&gt;
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
-kubectl logs &lt;pod&gt; -n &lt;ns&gt;
-kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
-      <ul>
-        <li><strong>CrashLoopBackOff</strong> &rarr; logs route you to actual cause (config, dep, DNS, OOM)</li>
-        <li><strong>0/1 Ready</strong> &rarr; probe path/port/startup timing</li>
-        <li><strong>Restarts climbing</strong> &rarr; liveness probe, intermittent crash, OOM</li>
-        <li><strong>OOMKilled / exit 137</strong> &rarr; memory limit vs actual usage</li>
-        <li><strong>Error / app boot failure</strong> &rarr; check logs for stack trace or error message, compare entrypoint/command with expected startup</li>
-        <li><strong>Startup dependency failure</strong> &rarr; check logs for connection errors, verify dependency pod is Running and Service has endpoints</li>
+      <ul class="sym-list">
+        <li><a href="#sym-crashloop" class="fix-link">CrashLoopBackOff</a></li>
+        <li><a href="#sym-not-ready" class="fix-link">Running but 0/1 Ready</a></li>
+        <li><a href="#sym-restarts" class="fix-link">Restarts increasing</a></li>
+        <li><a href="#sym-oom" class="fix-link">OOMKilled / exit 137</a></li>
+        <li><a href="#sym-multi-container" class="fix-link">Multi-container log confusion</a></li>
       </ul>
-      <div class="docs">Docs: Debug Running Pods, Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Assign Memory Resources to Containers and Pods.</div>
     </div>
 
     <!-- 3. Receive Traffic -->
     <div class="bucket-card b-traffic">
       <h3>3. Receive Traffic</h3>
-      <div class="question">Can traffic reach the app through the Kubernetes routing path?</div>
-      <div class="say">If the pod is Running and Ready, I first decide how traffic is meant to enter: Ingress, LoadBalancer/NodePort Service, or internal ClusterIP Service. Then I test that path layer by layer instead of guessing.</div>
-      <pre>kubectl get ingress -n &lt;ns&gt;
-kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
-
-kubectl get svc -n &lt;ns&gt;
-kubectl describe svc &lt;service&gt; -n &lt;ns&gt;
-kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
-
-kubectl port-forward pod/&lt;pod&gt; 8080:&lt;container-port&gt; -n &lt;ns&gt;
-# then: curl localhost:8080/&lt;path&gt;
-
-kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
-# then: curl localhost:8080/&lt;path&gt;</pre>
-      <ul>
-        <li><strong>No endpoints</strong> &rarr; selector mismatch or pods not Ready</li>
-        <li><strong>Pod port-forward works but Service port-forward fails</strong> &rarr; Service selector / targetPort / endpoints problem</li>
-        <li><strong>Neither pod nor Service port-forward works</strong> &rarr; app itself is not serving, wrong port, wrong path, or wrong bind address</li>
-        <li><strong>Need actual endpoint path</strong> &rarr; get it from readiness/liveness probe path, repo docs, or app routes &mdash; Kubernetes does not invent the app URL path</li>
-        <li><strong>Service works internally but not externally</strong> &rarr; ingress branch</li>
-        <li><strong>Wrong port</strong> &rarr; compare svc port/targetPort with container port</li>
-        <li><strong>Wrong named port</strong> &rarr; compare port name in Service spec with containerPort name in Deployment</li>
-        <li><strong>Ingress host / path / backend mismatch</strong> &rarr; kubectl describe ingress, compare rules with Service name and port</li>
-        <li><strong>External path broken while internal Service path works</strong> &rarr; check ingress controller logs, describe ingress for host/path rules and backend config</li>
+      <div class="question">Can traffic reach the app through the K8s routing path?</div>
+      <ul class="sym-list">
+        <li><a href="#sym-service-fails" class="fix-link">Service path fails</a></li>
+        <li><a href="#sym-endpoints-empty" class="fix-link">Endpoints empty</a></li>
+        <li><a href="#sym-external-fails" class="fix-link">External route fails</a></li>
+        <li><a href="#sym-localhost-only" class="fix-link">Works inside container only</a></li>
       </ul>
-      <div class="docs">Docs: Debug Services, Service, EndpointSlices, Ingress, Ingress Controllers.</div>
     </div>
 
     <!-- 4. Reach Dep -->
     <div class="bucket-card b-dep">
       <h3>4. Reach Dep</h3>
       <div class="question">Can the app reach what it depends on?</div>
-      <div class="say">The app may be up but broken against something it depends on, so I want logs and then in-container checks if needed.</div>
-      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
-kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
-kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh</pre>
-      <ul>
-        <li><strong>DNS</strong> &rarr; nslookup &lt;service&gt;.&lt;ns&gt;.svc.cluster.local</li>
-        <li><strong>TCP</strong> &rarr; nc -zv &lt;host&gt; &lt;port&gt; or wget -qO- http://...</li>
-        <li><strong>Env</strong> &rarr; env | grep POSTGRES (or relevant vars)</li>
-        <li><strong>Auth/RBAC</strong> &rarr; kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; ...</li>
-        <li><strong>NetworkPolicy / egress restriction</strong> &rarr; kubectl get networkpolicy -n &lt;ns&gt;, check if egress rules block the destination port/namespace</li>
-        <li><strong>Storage dependency problem</strong> &rarr; kubectl get pvc -n &lt;ns&gt;, check PVC status and events, verify the volume is mounted and writable</li>
+      <ul class="sym-list">
+        <li><a href="#sym-dep-fails" class="fix-link">Feature fails on DB/API</a></li>
+        <li><a href="#sym-dns" class="fix-link">DNS / hostname failure</a></li>
+        <li><a href="#sym-forbidden" class="fix-link">Forbidden / Unauthorized</a></li>
+        <li><a href="#sym-networkpolicy" class="fix-link">Traffic silently blocked</a></li>
       </ul>
-      <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Network Policies, Using RBAC Authorization, Service Accounts.</div>
     </div>
 
   </div>
@@ -875,7 +834,7 @@ kubectl get deploy -A</pre>
   <div class="likelihood-label likelihood-high">High Likelihood</div>
 
   <!-- Nothing looks right / wrong namespace or context -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-nothing-right">
     <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Nothing looks right / expected objects seem missing</h4>
@@ -915,7 +874,7 @@ Output:
   </div>
 
   <!-- No pod / expected pod missing -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-no-pod">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>No pod / expected pod missing</h4>
@@ -956,7 +915,7 @@ Output:
   </div>
 
   <!-- Pod Pending -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-pending">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Pod Pending</h4>
@@ -973,12 +932,29 @@ kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
         <li>PVC / storage binding &rarr; <a class="fix-link" href="#domain-resource-scheduling">kubectl get pvc -n &lt;ns&gt;</a></li>
         <li>taints / affinity / node placement &rarr; <a class="fix-link" href="#domain-resource-scheduling">kubectl describe node</a></li>
       </ul>
+      <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to scheduling pressure, taints/affinity, node placement, or PVC/storage
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Pod Pending
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
     </div>
   </div>
 
   <!-- Pod stuck ContainerCreating / image pull / create config error -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-container-creating">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Pod stuck ContainerCreating / image pull / create config error</h4>
@@ -1016,7 +992,7 @@ Output:
   </div>
 
   <!-- ErrImagePull -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-image-pull">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>ErrImagePull / ImagePullBackOff</h4>
@@ -1055,7 +1031,7 @@ Output:
   </div>
 
   <!-- CreateContainerConfigError -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-create-config-error">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>CreateContainerConfigError / CreateContainerError</h4>
@@ -1096,7 +1072,7 @@ Output:
   </div>
 
   <!-- CrashLoopBackOff -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-crashloop">
     <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>CrashLoopBackOff</h4>
@@ -1141,7 +1117,7 @@ Output:
   </div>
 
   <!-- Running but 0/1 Ready -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-not-ready">
     <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Running but 0/1 Ready</h4>
@@ -1180,7 +1156,7 @@ Output:
   </div>
 
   <!-- Pod healthy, Service path fails -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-service-fails">
     <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Pod Running/Ready, but Service path fails</h4>
@@ -1220,7 +1196,7 @@ Output:
   </div>
 
   <!-- Endpoints empty -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-endpoints-empty">
     <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Endpoints / EndpointSlices empty or wrong</h4>
@@ -1260,7 +1236,7 @@ Output:
   </div>
 
   <!-- App responds but feature fails -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-dep-fails">
     <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>App responds, but feature fails when calling DB / API / storage</h4>
@@ -1305,7 +1281,7 @@ Output:
   <div class="likelihood-label likelihood-moderate" id="symptoms-moderate" style="margin-top:20px;">Moderate Likelihood</div>
 
   <!-- Init container failure -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-init-container">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Init container failure</h4>
@@ -1343,7 +1319,7 @@ Output:
   </div>
 
   <!-- Running, Ready, but restarts increasing -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-restarts">
     <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Running, Ready, but restarts increasing</h4>
@@ -1383,7 +1359,7 @@ Output:
   </div>
 
   <!-- OOMKilled -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-oom">
     <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>OOMKilled / exit 137</h4>
@@ -1422,7 +1398,7 @@ Output:
   </div>
 
   <!-- Service works internally, external fails -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-external-fails">
     <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Service works internally, external route fails</h4>
@@ -1463,7 +1439,7 @@ Output:
   </div>
 
   <!-- DNS failures -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-dns">
     <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>"Name or service not known", lookup failures, wrong hostname behaviour</h4>
@@ -1503,7 +1479,7 @@ Output:
   </div>
 
   <!-- App runs but wrong version -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-wrong-version">
     <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>App runs, but behaviour does not match the expected version</h4>
@@ -1542,7 +1518,7 @@ Output:
   </div>
 
   <!-- Pod Running but app only works from inside the container -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-localhost-only">
     <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Pod is Running, but app only works from inside the container</h4>
@@ -1581,7 +1557,7 @@ Output:
   </div>
 
   <!-- Multi-container pod / wrong logs -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-multi-container">
     <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Logs are confusing or empty in a multi-container pod</h4>
@@ -1622,7 +1598,7 @@ Output:
   <div class="likelihood-label likelihood-low" id="symptoms-low" style="margin-top:20px;">Lower Likelihood</div>
 
   <!-- Forbidden -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-forbidden">
     <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Forbidden / Unauthorized</h4>
@@ -1661,7 +1637,7 @@ Output:
   </div>
 
   <!-- NetworkPolicy -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-networkpolicy">
     <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Traffic silently blocked despite objects looking correct</h4>
@@ -1701,7 +1677,7 @@ Output:
   </div>
 
   <!-- Rollout stuck -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-rollout-stuck">
     <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Rollout stuck or deployment not progressing</h4>
@@ -1745,7 +1721,7 @@ Output:
   </div>
 
   <!-- Job/CronJob -->
-  <div class="symptom-card">
+  <div class="symptom-card" id="sym-job">
     <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
       <span class="chevron">&#9654;</span>
       <h4>Job / CronJob issue</h4>
@@ -2693,7 +2669,7 @@ function toggleAllFixes(open) {
 
 function openFixFromHash() {
   var id = location.hash.replace('#', '');
-  if (!id.startsWith('domain-') && !id.startsWith('fix-')) return;
+  if (!id.startsWith('domain-') && !id.startsWith('fix-') && !id.startsWith('sym-')) return;
   var card = document.getElementById(id);
   if (!card) return;
   card.classList.add('open');
