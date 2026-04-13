@@ -1,155 +1,121 @@
+KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ cd codespace/drill-api-django
+bash: cd: codespace/drill-api-django: No such file or directory
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres (mac-eks-drill) $ cd codespace/drill-app-django
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ tree
+.
+├── config
+│   ├── __init__.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── deploy.sh
+├── Dockerfile
+├── incidents
+│   ├── apps.py
+│   ├── fixtures
+│   │   └── seed_incidents.json
+│   ├── __init__.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   └── __init__.py
+│   ├── models.py
+│   ├── serializers.py
+│   ├── urls.py
+│   └── views.py
+├── manage.py
+├── manifests
+│   ├── api-configmap.yaml
+│   ├── api-deployment.yaml
+│   ├── api-secret.yaml
+│   ├── api-service.yaml
+│   ├── db-configmap.yaml
+│   ├── db-deployment.yaml
+│   ├── db-pvc.yaml
+│   ├── db-secret.yaml
+│   ├── db-service.yaml
+│   ├── ingress.yaml
+│   └── namespace.yaml
+├── README.md
+├── requirements.txt
+└── session.log
+
+5 directories, 30 files
 @KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get pods
-NAME                            READY   STATUS                            RESTARTS      AGE
-incident-api-7b4cc59548-zvl6r   0/1     Init:CreateContainerConfigError   0             56s
-incident-api-7c67c46db6-nhl9n   1/1     Running                           4 (35m ago)   24h
-incident-api-7c67c46db6-vvtcj   1/1     Running                           4 (35m ago)   24h
-incident-db-66c9bddb6d-jxsrt    1/1     Running                           4 (35m ago)   24h
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl describe pod incident-api-7b4cc59548-zvl6r
-Name:             incident-api-7b4cc59548-zvl6r
-Namespace:        incident-mgmt
-Priority:         0
-Service Account:  default
-Node:             k3d-drill-cluster-server-0/172.18.0.3
-Start Time:       Mon, 13 Apr 2026 12:02:31 +0000
-Labels:           component=api
-                  pod-template-hash=7b4cc59548
-Annotations:      <none>
-Status:           Pending
-IP:               10.42.0.83
-IPs:
-  IP:           10.42.0.83
-Controlled By:  ReplicaSet/incident-api-7b4cc59548
-Init Containers:
-  wait-for-db:
-    Container ID:  containerd://f6d2bf8906b239bf25dd21eb4a1646acbb8c0fafe3d1213d4c19b6e01b08f5a9
-    Image:         busybox:1.36
-    Image ID:      docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
-    Port:          <none>
-    Host Port:     <none>
-    Command:
-      sh
-      -c
-      until nc -z incident-db-svc 5432; do
-        echo "waiting for incident-db-svc:5432..."
-        sleep 2
-      done
-      
-    State:          Terminated
-      Reason:       Completed
-      Exit Code:    0
-      Started:      Mon, 13 Apr 2026 12:02:31 +0000
-      Finished:     Mon, 13 Apr 2026 12:02:31 +0000
-    Ready:          True
-    Restart Count:  0
-    Environment:    <none>
-    Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9ptb8 (ro)
-  run-migrations:
-    Container ID:  
-    Image:         incident-api:local
-    Image ID:      
-    Port:          <none>
-    Host Port:     <none>
-    Command:
-      sh
-      -c
-      python manage.py migrate --noinput
-      python manage.py loaddata seed_incidents
-      
-    State:          Waiting
-      Reason:       CreateContainerConfigError
-    Ready:          False
-    Restart Count:  0
-    Environment Variables from:
-      incident-api-config   ConfigMap  Optional: false
-      incident-api-secrets  Secret     Optional: false
-    Environment:            <none>
-    Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9ptb8 (ro)
-Containers:
-  incident-api:
-    Container ID:   
-    Image:          incident-api:local
-    Image ID:       
-    Port:           8200/TCP
-    Host Port:      0/TCP
-    State:          Waiting
-      Reason:       PodInitializing
-    Ready:          False
-    Restart Count:  0
-    Limits:
-      cpu:     250m
-      memory:  256Mi
-    Requests:
-      cpu:      100m
-      memory:   128Mi
-    Liveness:   http-get http://:8200/api/v1/status delay=10s timeout=1s period=30s #success=1 #failure=3
-    Readiness:  http-get http://:8200/api/v1/status delay=5s timeout=1s period=10s #success=1 #failure=3
-    Environment Variables from:
-      incident-api-config   ConfigMap  Optional: false
-      incident-api-secrets  Secret     Optional: false
-    Environment:            <none>
-    Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9ptb8 (ro)
-Conditions:
-  Type                        Status
-  PodReadyToStartContainers   True 
-  Initialized                 False 
-  Ready                       False 
-  ContainersReady             False 
-  PodScheduled                True 
-Volumes:
-  kube-api-access-9ptb8:
-    Type:                    Projected (a volume that contains injected data from multiple sources)
-    TokenExpirationSeconds:  3607
-    ConfigMapName:           kube-root-ca.crt
-    Optional:                false
-    DownwardAPI:             true
-QoS Class:                   Burstable
-Node-Selectors:              <none>
-Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
-                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
-Events:
-  Type     Reason     Age                    From               Message
-  ----     ------     ----                   ----               -------
-  Normal   Scheduled  4m15s                  default-scheduler  Successfully assigned incident-mgmt/incident-api-7b4cc59548-zvl6r to k3d-drill-cluster-server-0
-  Normal   Pulled     4m15s                  kubelet            spec.initContainers{wait-for-db}: Container image "busybox:1.36" already present on machine
-  Normal   Created    4m15s                  kubelet            spec.initContainers{wait-for-db}: Created container wait-for-db
-  Normal   Started    4m15s                  kubelet            spec.initContainers{wait-for-db}: Started container wait-for-db
-  Normal   Pulled     117s (x11 over 4m14s)  kubelet            spec.initContainers{run-migrations}: Container image "incident-api:local" already present on machine
-  Warning  Failed     117s (x11 over 4m14s)  kubelet            spec.initContainers{run-migrations}: Error: secret "incident-api-secrets" not found
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get secret
-NAME                       TYPE     DATA   AGE
-incident-api-credentials   Opaque   2      24h
-incident-db-credentials    Opaque   2      24h
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get secret incident-api-credentials -o yaml
-apiVersion: v1
-data:
-  POSTGRES_PASSWORD: V2s0IXBOejhyUQ==
-  POSTGRES_USER: aW5jaWRlbnRfYWRtaW4=
-kind: Secret
-metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"v1","kind":"Secret","metadata":{"annotations":{},"name":"incident-api-credentials","namespace":"incident-mgmt"},"stringData":{"POSTGRES_PASSWORD":"Wk4!pNz8rQ","POSTGRES_USER":"incident_admin"},"type":"Opaque"}
-  creationTimestamp: "2026-04-12T12:02:09Z"
-  name: incident-api-credentials
-  namespace: incident-mgmt
-  resourceVersion: "9544"
-  uid: b52b88ab-ac57-4c03-940a-3c7d0105074c
-type: Opaque
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get deploy
-NAME           READY   UP-TO-DATE   AVAILABLE   AGE
-incident-api   2/2     1            2           24h
-incident-db    1/1     1            1           24h
+NAME                            READY   STATUS    RESTARTS      AGE
+incident-api-7c67c46db6-nhl9n   1/1     Running   5 (43m ago)   26h
+incident-api-7c67c46db6-vvtcj   1/1     Running   5 (43m ago)   26h
+incident-db-66c9bddb6d-jxsrt    1/1     Running   5 (43m ago)   26h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get endpoints
+NAME               ENDPOINTS         AGE
+incident-api-svc   <none>            26h
+incident-db-svc    10.42.0.85:5432   26h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get svc
+NAME               TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+incident-api-svc   ClusterIP   10.43.6.226   <none>        80/TCP     26h
+incident-db-svc    ClusterIP   10.43.12.84   <none>        5432/TCP   26h
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl describe svc incident-api-svc
+Name:                     incident-api-svc
+Namespace:                incident-mgmt
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 component=backend
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.6.226
+IPs:                      10.43.6.226
+Port:                     <unset>  80/TCP
+TargetPort:               8200/TCP
+Endpoints:                
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl apply -f manifests/api-deployment.yaml
+deployment.apps/incident-api unchanged
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubetcl get pods --show-labels
+bash: kubetcl: command not found
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get pods --
+--all-namespaces               (If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with …)
+--allow-missing-template-keys  (If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath…)
+--as-group                     (Group to impersonate for the operation, this flag can be repeated to specify multiple groups.)
+--as-uid                       (UID to impersonate for the operation.)
+--as-user-extra                (User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.)
+--as                           (Username to impersonate for the operation. User could be a regular user or a service account in a namespace.)
+--cache-dir                    (Default cache directory)
+--certificate-authority        (Path to a cert file for the certificate authority)
+--chunk-size                   (Return large lists in chunks rather than all at once. Pass 0 to disable.)
+--client-certificate           (Path to a client certificate file for TLS)
+--client-key                   (Path to a client key file for TLS)
+--cluster                      (The name of the kubeconfig cluster to use)
+--context                      (The name of the kubeconfig context to use)
+--disable-compression          (If true, opt-out of response compression for all requests to the server)
+--field-selector               (Selector (field query) to filter on, supports '=', '==', and '!='.(e.g. --field-selector key1=value1,key2=value2). The server o…)
+--filename                     (Filename, directory, or URL to files identifying the resource to get from a server.)
+--help                         (help for get)
+--ignore-not-found             (If set to true, suppresses NotFound error for specific objects that do not exist. Using this flag with commands that query for …)
+--insecure-skip-tls-verify     (If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure)
+--kubeconfig                   (Path to the kubeconfig file to use for CLI requests.)
+--kuberc                       (Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning …)
+--kustomize                    (Process the kustomization directory. This flag can't be used together with -f or -R.)
+--label-columns                (Accepts a comma separated list of labels that are going to be presented as columns. Names are case-sensitive. You can also use …)
+--log-flush-frequency          (Maximum number of seconds between log flushes)
+--match-server-version         (Require server version to match client version)
+--namespace                    (If present, the namespace scope for this CLI request)
+--no-headers                   (When using the default or custom-column output format, don't print headers (default print headers).)
+--output                       (Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-j…)
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get pods --show-labels
+NAME                            READY   STATUS    RESTARTS      AGE   LABELS
+incident-api-7c67c46db6-nhl9n   1/1     Running   5 (48m ago)   26h   component=api,pod-template-hash=7c67c46db6
+incident-api-7c67c46db6-vvtcj   1/1     Running   5 (48m ago)   26h   component=api,pod-template-hash=7c67c46db6
+incident-db-66c9bddb6d-jxsrt    1/1     Running   5 (48m ago)   26h   component=database,pod-template-hash=66c9bddb6d
 @KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl describe deploy incident-api
 Name:                   incident-api
 Namespace:              incident-mgmt
 CreationTimestamp:      Sun, 12 Apr 2026 12:02:09 +0000
 Labels:                 component=api
-Annotations:            deployment.kubernetes.io/revision: 4
+Annotations:            deployment.kubernetes.io/revision: 5
 Selector:               component=api
-Replicas:               2 desired | 1 updated | 3 total | 2 available | 1 unavailable
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
 StrategyType:           RollingUpdate
 MinReadySeconds:        0
 RollingUpdateStrategy:  25% max unavailable, 25% max surge
@@ -181,10 +147,10 @@ Pod Template:
       python manage.py loaddata seed_incidents
       
     Environment Variables from:
-      incident-api-config   ConfigMap  Optional: false
-      incident-api-secrets  Secret     Optional: false
-    Environment:            <none>
-    Mounts:                 <none>
+      incident-api-config       ConfigMap  Optional: false
+      incident-api-credentials  Secret     Optional: false
+    Environment:                <none>
+    Mounts:                     <none>
   Containers:
    incident-api:
     Image:      incident-api:local
@@ -199,68 +165,55 @@ Pod Template:
     Liveness:   http-get http://:8200/api/v1/status delay=10s timeout=1s period=30s #success=1 #failure=3
     Readiness:  http-get http://:8200/api/v1/status delay=5s timeout=1s period=10s #success=1 #failure=3
     Environment Variables from:
-      incident-api-config   ConfigMap  Optional: false
-      incident-api-secrets  Secret     Optional: false
-    Environment:            <none>
-    Mounts:                 <none>
-  Volumes:                  <none>
-  Node-Selectors:           <none>
-  Tolerations:              <none>
+      incident-api-config       ConfigMap  Optional: false
+      incident-api-credentials  Secret     Optional: false
+    Environment:                <none>
+    Mounts:                     <none>
+  Volumes:                      <none>
+  Node-Selectors:               <none>
+  Tolerations:                  <none>
 Conditions:
   Type           Status  Reason
   ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
   Available      True    MinimumReplicasAvailable
-  Progressing    False   ProgressDeadlineExceeded
-OldReplicaSets:  incident-api-7c67c46db6 (2/2 replicas created), incident-api-7884f7c6c6 (0/0 replicas created)
-NewReplicaSet:   incident-api-7b4cc59548 (1/1 replicas created)
+OldReplicaSets:  incident-api-7884f7c6c6 (0/0 replicas created), incident-api-7b4cc59548 (0/0 replicas created)
+NewReplicaSet:   incident-api-7c67c46db6 (2/2 replicas created)
 Events:
   Type    Reason             Age   From                   Message
   ----    ------             ----  ----                   -------
-  Normal  ScalingReplicaSet  10m   deployment-controller  Scaled up replica set incident-api-7b4cc59548 to 1
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl apply -f api-deployment.yaml
-error: the path "api-deployment.yaml" does not exist
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl apply -f manifests/api-deployment.yaml
-deployment.apps/incident-api configured
-@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get pods
-NAME                            READY   STATUS    RESTARTS      AGE
-incident-api-7c67c46db6-nhl9n   1/1     Running   4 (47m ago)   24h
-incident-api-7c67c46db6-vvtcj   1/1     Running   4 (47m ago)   24h
-incident-db-66c9bddb6d-jxsrt    1/1     Running   4 (47m ago)   24h
+  Normal  ScalingReplicaSet  126m  deployment-controller  Scaled down replica set incident-api-7b4cc59548 to 0 from 1
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl apply -f manifest/api-service.yaml
+error: the path "manifest/api-service.yaml" does not exist
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl apply -f manifests/api-service.yaml
+Warning: resource services/incident-api-svc is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+service/incident-api-svc configured
 @KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ kubectl get endpoints
 NAME               ENDPOINTS                         AGE
-incident-api-svc   10.42.0.75:8200,10.42.0.80:8200   24h
-incident-db-svc    10.42.0.77:5432                   24h
+incident-api-svc   10.42.0.88:8200,10.42.0.89:8200   26h
+incident-db-svc    10.42.0.85:5432                   26h
 @KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ curl -i localhost/api/v1/status
 HTTP/1.1 200 OK
-Date: Mon, 13 Apr 2026 12:16:18 GMT
+Date: Mon, 13 Apr 2026 14:23:59 GMT
 Content-Type: application/json
 Content-Length: 45
 Connection: keep-alive
-Allow: GET, OPTIONS
+Allow: OPTIONS, GET
 X-Content-Type-Options: nosniff
 Referrer-Policy: same-origin
 Cross-Origin-Opener-Policy: same-origin
 
 {"status":"healthy","service":"incident-api"}@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ curl -i localhost/api/v1/incidents
 HTTP/1.1 200 OK
-Date: Mon, 13 Apr 2026 12:18:46 GMT
+Date: Mon, 13 Apr 2026 14:24:19 GMT
 Content-Type: application/json
 Content-Length: 483
 Connection: keep-alive
-Allow: GET, OPTIONS
+Allow: OPTIONS, GET
 X-Content-Type-Options: nosniff
 Referrer-Policy: same-origin
 Cross-Origin-Opener-Policy: same-origin
 
-[{"id":2,"title":"Elevated 5xx rate on /api/checkout","severity":"high","status":"open","reporter":"grafana-alert","created_at":"2026-04-10T09:42:00Z"},{"id":1,"title":"Connection pool exhausted on payment gateway","severity":"critical","status":"investigating","reporter":"oncall-bot","created_at":"2026-04-10T08:15:00Z"},{"id":3,"title":"Cert renewal failed for staging.internal","severity":"medium","status":"resolved","reporter":"j.martinez","created_at":"2026-04-09T14:30:00Z"}]@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ curl -i localhost/api/v1/incidents/new
-HTTP/1.1 405 Method Not Allowed
-Date: Mon, 13 Apr 2026 12:19:39 GMT
-Content-Type: application/json
-Content-Length: 40
-Connection: keep-alive
-Allow: POST, OPTIONS
-X-Content-Type-Options: nosniff
-Referrer-Policy: same-origin
-Cross-Origin-Opener-Policy: same-origin
+[{"id":2,"title":"Elevated 5xx rate on /api/checkout","severity":"high","status":"open","reporter":"grafana-alert","created_at":"2026-04-10T09:42:00Z"},{"id":1,"title":"Connection pool exhausted on payment gateway","severity":"critical","status":"investigating","reporter":"oncall-bot","created_at":"2026-04-10T08:15:00Z"},{"id":3,"title":"Cert renewal failed for staging.internal","severity":"medium","status":"resolved","reporter":"j.martinez","created_at":"2026-04-09T14:30:00Z"}]@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ 
 
-{"detail":"Method \"GET\" not allowed."}@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ 
+@KeyomaKriel ➜ /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django (mac-eks-drill) $ 

@@ -271,6 +271,7 @@
   <a href="#commands">Repo Commands</a>
   <a href="#files">Open Files</a>
   <a href="#live">Live Checks</a>
+  <a href="#scope">Scope</a>
   <a href="#recap">Recap</a>
 </nav>
 
@@ -355,79 +356,118 @@ cat README.md      # skim only &mdash; what is this, how to run it</pre>
     <!-- Step 1: Dockerfile -->
     <div class="card">
       <div class="step-title"><span class="step-num">1</span><h3>Dockerfile</h3></div>
-      <ul class="extract">
-        <li><span class="badge badge-port">Port</span> <code>EXPOSE</code> &mdash; the container port. Probes and Service targetPort must match this.</li>
-        <li><span class="badge badge-start">Start</span> <code>CMD</code> / <code>ENTRYPOINT</code> &mdash; what process runs. Note WSGI module paths.</li>
-        <li><span class="badge badge-start">Build</span> Single-stage vs multi-stage. Base image confirms language.</li>
-      </ul>
-      <div class="why">The port here is the source-of-truth contract. If the Deployment, Service, or probes reference a different port, that's likely the break.</div>
-      <div class="say">"I'm checking what actually starts in the container and which port it listens on, because that has to match probes and Service targetPort."</div>
+      <div class="say">"I'm opening the Dockerfile first to see what actually starts in the container and what port it binds to."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: CMD / ENTRYPOINT</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">This is the startup command. Look for the process name and the bind port (e.g. <code>--bind 0.0.0.0:8200</code>). If it references a WSGI module like <code>config.wsgi:application</code>, note which project package that points to.</p>
+      <div class="say">"The startup command is [process] binding to port [N]. That port is what probes and the Service targetPort must match."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: EXPOSE</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">EXPOSE is a hint, not the source of truth. The actual listening port comes from the startup command above. If they differ, trust the command.</p>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Build pattern</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Single-stage vs multi-stage. Base image confirms language (python:3.12-slim, golang:1.22-alpine, etc.).</p>
+      <div class="say">"This is a [language] app, [single/multi]-stage build, running [process] on port [N]. Moving to the app code."</div>
     </div>
 
     <!-- Step 2: App code -->
     <div class="card">
       <div class="step-title"><span class="step-num">2</span><h3>App code &mdash; routes, health, DB config</h3></div>
-      <p style="color:var(--muted);font-size:13px;margin:0 0 8px;">
-        <strong>Django:</strong> config/settings.py &rarr; */urls.py &rarr; */views.py &nbsp;|&nbsp;
-        <strong>Python:</strong> app.py &nbsp;|&nbsp;
+      <div class="say">"Now I'm looking at the app code to find the health endpoint, main routes, and how it connects to the database."</div>
+
+      <p style="color:var(--muted);font-size:13px;margin:8px 0 8px;">
+        <strong>Django:</strong> config/settings.py &rarr; */urls.py &rarr; */views.py<br>
+        <strong>Python:</strong> app.py or main.py<br>
         <strong>Go:</strong> main.go
       </p>
-      <ul class="extract">
-        <li><span class="badge badge-probe">Probe</span> Health/readiness path &mdash; what path returns 200, what it checks. This is what the probe must target.</li>
-        <li><span class="badge badge-traffic">Routes</span> All user-visible endpoints and what they do.</li>
-        <li><span class="badge badge-config">Config</span> Which env var names for DB? (<code>PG*</code>, <code>POSTGRES_*</code>, <code>DB_*</code> &mdash; varies)</li>
-        <li><span class="badge badge-start">Startup</span> Does it seed data? Run migrations? Crash if DB unreachable?</li>
-      </ul>
-      <div class="why">Probe path mismatches are one of the most common failures. If the app serves <code>/api/v1/status</code> but the probe targets <code>/health</code>, readiness silently fails.</div>
-      <div class="say">"I'm checking which paths the app really serves and whether health endpoints exist, because probe-path mismatches are a common failure."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:10px 0 6px;">Sub-step: DB config (Django: config/settings.py &nbsp;|&nbsp; others: app entry file)</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Find the <code>DATABASES</code> dict (Django) or the DB connection function. Note which env var names it reads: <code>PG*</code>, <code>POSTGRES_*</code>, or <code>DB_*</code>.</p>
+      <div class="say">"The app reads database config from env vars [list them]. I'll need to check these against the ConfigMap and Secret later."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Sub-step: Routes and health endpoint (Django: */urls.py + */views.py &nbsp;|&nbsp; others: app entry file)</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Find the health/readiness endpoint path and what it checks (DB query? always 200?). Note the main data route. Don't map every endpoint.</p>
+      <div class="say">"The health endpoint is [path] and it [checks DB / always returns 200]. The main data route is [path]. This is what the probe must target."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Sub-step: Startup behaviour</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Does the app create tables and seed data on startup? Does it run migrations? Will it crash if the DB is unreachable?</p>
+      <div class="say">"On startup, the app [seeds data / runs migrations via init container / crashes if DB is down]. That tells me what failure looks like if a dependency is misconfigured. Moving to the Deployment manifest."</div>
     </div>
 
     <!-- Step 3: Deployment -->
     <div class="card">
       <div class="step-title"><span class="step-num">3</span><h3>Deployment manifest</h3></div>
-      <ul class="extract">
-        <li><span class="badge badge-start">Image</span> Image name/tag, <code>imagePullPolicy</code>.</li>
-        <li><span class="badge badge-start">Override</span> <code>command</code> / <code>args</code> &mdash; if present, overrides Dockerfile CMD.</li>
-        <li><span class="badge badge-config">Config</span> <code>envFrom</code> &mdash; which ConfigMaps and Secrets. These names must exist in the namespace.</li>
-        <li><span class="badge badge-probe">Probes</span> Path, port, timing. Must match what the app actually serves on the container port.</li>
-        <li><span class="badge badge-traffic">Labels</span> Pod template labels &mdash; the Service selector must match these exactly.</li>
-        <li><span class="badge badge-start">Init</span> How many init containers? What does each do? Which read from ConfigMap/Secret?</li>
-      </ul>
-      <div class="why">This is where most contracts live: image, config references, probe targets, labels. Any naming mismatch here silently breaks things.</div>
-      <div class="say">"Now I'm checking how Kubernetes runs the app: image, startup override, config injection, probes, and init containers."</div>
+      <div class="say">"Now I'm checking how Kubernetes actually runs this app &mdash; image, config injection, probes, and init containers."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Image + imagePullPolicy</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Note the image name and tag. If <code>imagePullPolicy: Never</code>, the image must be pre-loaded on the node.</p>
+      <div class="say">"The image is [name:tag] with pull policy [value]."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: command / args</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">If present, this overrides the Dockerfile CMD. If absent, the Dockerfile CMD applies.</p>
+      <div class="say">"[There is / there is no] command override. The container starts with [CMD from Dockerfile / override command]."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: envFrom (ConfigMap + Secret references)</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Note the exact names. These must exist in the namespace. A typo here causes <code>CreateContainerConfigError</code>.</p>
+      <div class="say">"Config comes from ConfigMap [name] and Secret [name]. I'll verify those exist and have the right values."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Probes (readiness + liveness)</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Note path, port, and timing. The path must match the health endpoint I found in the app code. The port must match the container's listening port.</p>
+      <div class="say">"Readiness probe hits [path] on port [N], liveness hits [path] on port [N]. That [matches / doesn't match] what the app serves."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Pod template labels</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">These are what the Service selector must match. Note the exact key-value pairs.</p>
+      <div class="say">"Pod labels are [key: value]. The Service selector must match this exactly."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Init containers</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">How many? What does each do? Which ones read from ConfigMap/Secret? The main container won't start until all init containers succeed.</p>
+      <div class="say">"There are [N] init containers: [what each does]. [They read / don't read] from the same ConfigMap/Secret as the main container. Moving to the Service."</div>
     </div>
 
     <!-- Step 4: Service -->
     <div class="card">
       <div class="step-title"><span class="step-num">4</span><h3>Service manifest</h3></div>
-      <ul class="extract">
-        <li><span class="badge badge-traffic">Selector</span> Must match Deployment pod labels. Any character difference = empty endpoints.</li>
-        <li><span class="badge badge-port">Ports</span> <code>port</code> (what Ingress connects to) &rarr; <code>targetPort</code> (must match container port).</li>
-      </ul>
-      <div class="why">If the selector doesn't match pod labels, endpoints are empty and traffic silently fails while pods look healthy.</div>
-      <div class="say">"This tells me how traffic reaches the pod. The selector must match pod labels, and targetPort must match the app's listening port."</div>
+      <div class="say">"Now I'm checking how traffic reaches the pods."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Selector</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Compare character-for-character against the pod template labels from the Deployment. Any difference means empty endpoints.</p>
+      <div class="say">"Service selector is [key: value]. That [matches / doesn't match] the pod labels I saw in the Deployment."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: port &rarr; targetPort</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;"><code>port</code> is what Ingress and other services connect to. <code>targetPort</code> must match the container's listening port.</p>
+      <div class="say">"Service maps port [X] to targetPort [Y]. That targetPort [matches / doesn't match] the container port [N] from the Dockerfile. Moving to the Ingress."</div>
     </div>
 
     <!-- Step 5: Ingress -->
     <div class="card">
       <div class="step-title"><span class="step-num">5</span><h3>Ingress manifest</h3></div>
-      <ul class="extract">
-        <li><span class="badge badge-traffic">Backend</span> Service name and port &mdash; must match the Service exactly.</li>
-        <li><span class="badge badge-traffic">Routing</span> <code>ingressClassName</code>, host, path rules.</li>
-      </ul>
-      <div class="why">This is the last hop before the user-visible URL. If the backend name or port is wrong, external access fails while internal routing still works.</div>
-      <div class="say">"This is the user-visible entry path. If the app is unreachable externally, this is one of the first contracts I'd verify."</div>
+      <div class="say">"This is the last hop before the user-visible URL."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Backend service name + port</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">The service name must match the Service I just read. The port must match the Service <code>port</code> (not targetPort).</p>
+      <div class="say">"Ingress routes [path] to service [name] on port [N]. That [matches / doesn't match] the Service I just checked."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: ingressClassName, host, path</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;"><code>ingressClassName</code> must match the installed controller (usually <code>nginx</code>). If a host is set, requests need a matching Host header.</p>
+      <div class="say">"IngressClass is [name], path is [path]. That should be enough to verify the external routing chain. Moving to config if I need to check values."</div>
     </div>
 
     <!-- Step 6: ConfigMap / Secret -->
     <div class="card">
       <div class="step-title"><span class="step-num">6</span><h3>ConfigMap + Secret <span style="font-weight:400;color:var(--muted);font-size:13px;font-family:inherit;">&mdash; check when needed</span></h3></div>
-      <ul class="extract">
-        <li><span class="badge badge-config">Values</span> DB host must match the DB Service name. DB name, user, password must match on both sides.</li>
-        <li><span class="badge badge-config">Names</span> ConfigMap/Secret names must match what the Deployment <code>envFrom</code> references.</li>
-      </ul>
-      <div class="why">Config mismatches between the app side and the database side are the single most common failure domain. Any naming drift breaks the connection.</div>
-      <div class="say">"I'm checking whether the config names and values actually match what the app and dependent service expect."</div>
+      <div class="say">"I'm checking whether the config values match what the app and the database actually expect."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: DB hostname value</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">The DB host env var must point to the DB Service name (not the Deployment name). Compare against <code>kubectl get svc</code> later.</p>
+      <div class="say">"DB host is set to [value]. I need to confirm that's the actual DB Service name."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Credentials + DB name</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">User, password, and database name must match between the app's Secret/ConfigMap and the database's Secret/ConfigMap.</p>
+      <div class="say">"Credentials and DB name [match / don't match] between the app config and the database config. That's the most common failure domain."</div>
+
+      <h3 style="font-size:14px;color:var(--green);margin:14px 0 6px;">Find: Object names</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">The ConfigMap and Secret names must match what the Deployment <code>envFrom</code> references. A one-character typo here blocks the container from starting.</p>
+      <div class="say">"ConfigMap name is [X], Secret name is [Y]. Those [match / don't match] what the Deployment references. I've finished reading the key files."</div>
     </div>
   </section>
 
@@ -435,17 +475,41 @@ cat README.md      # skim only &mdash; what is this, how to run it</pre>
   <section class="section" id="live">
     <div class="card">
       <div class="label label-live">After orientation &mdash; First live checks</div>
-      <h2>Verify reality matches what you read</h2>
+      <h2>Do the objects exist and match what you read?</h2>
       <pre>kubectl get pods -n &lt;ns&gt;                # Running + Ready?
-kubectl get endpoints -n &lt;ns&gt;           # Populated for each Service?
-kubectl get ingress -n &lt;ns&gt;             # ADDRESS populated?
-curl localhost/&lt;health-path&gt;            # 200?
-curl localhost/&lt;data-path&gt;              # Returns data?</pre>
-      <div class="say">"Files told me what should happen. These commands tell me what is actually happening. Any gap between the two is where the problem lives &mdash; and I want to verify the full user-visible path, not just that pods are Running."</div>
+kubectl get svc -n &lt;ns&gt;                 # Service exists, correct ports?
+kubectl get ingress -n &lt;ns&gt;             # If ingress exists: ADDRESS populated?
+kubectl get endpoints -n &lt;ns&gt;           # If checking routing: endpoints populated?</pre>
+      <p style="color:var(--muted);font-size:13px;margin:8px 0 0;">Only <code>curl</code> if you already have a port-forward running or if the environment exposes the app to localhost (e.g. k3d/kind with port mappings). Do not assume <code>curl localhost/</code> works by default.</p>
+      <div class="say">"Now that I know what should exist from reading the files, I'm checking whether the live pods, services, and ingress objects match that expectation."</div>
     </div>
   </section>
 
-  <!-- ========== 5. RECAP ========== -->
+  <!-- ========== 5. SCOPE CONTROL ========== -->
+  <section class="section" id="scope">
+    <div class="card">
+      <div class="label label-stop">Scope control &mdash; Don't go deeper than this</div>
+      <h2>You are done orienting when you can answer the 5 questions</h2>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 12px;">If you can say what the app is, what starts it, what port it listens on, what paths matter, and which manifests wire it &mdash; stop reading and start working. Do not try to understand the whole codebase.</p>
+      <div style="columns:2;column-gap:20px;">
+        <ul style="padding-left:18px;margin:0;">
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't read models/serializers in detail</li>
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't map every endpoint</li>
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't study framework conventions</li>
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't read test files</li>
+        </ul>
+        <ul style="padding-left:18px;margin:0;">
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't read business logic</li>
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't inspect CI/CD config</li>
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't read every manifest field</li>
+          <li style="color:var(--danger);font-size:13px;margin-bottom:4px;">Don't panic if the framework is unfamiliar</li>
+        </ul>
+      </div>
+      <div class="say" style="margin-top:12px;">"I have enough context to understand how this app is built, configured, and deployed. I'm going to move on to the task now."</div>
+    </div>
+  </section>
+
+  <!-- ========== 6. RECAP ========== -->
   <section class="section" id="recap">
     <div class="card">
       <div class="label label-recap">Summary template &mdash; say this at the end</div>

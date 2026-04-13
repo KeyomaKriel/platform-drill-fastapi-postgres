@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Orientation — Interview Quick Reference</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182243;
+      --text: #eef2ff;
+      --muted: #b8c2e0;
+      --line: #2b396d;
+      --accent: #7aa2ff;
+      --green: #90f0c8;
+      --warn: #ffd38a;
+      --danger: #ff9b9b;
+      --purple: #c4a0ff;
+      --shadow: 0 14px 34px rgba(0,0,0,.28);
+      --radius: 16px;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(122,162,255,.14), transparent 30%),
+        radial-gradient(circle at top right, rgba(144,240,200,.10), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11,16,32,.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      padding: 8px 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .toc a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+
+    .toc a:hover {
+      color: var(--accent);
+      background: rgba(122,162,255,.08);
+      border-color: rgba(122,162,255,.2);
+    }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 20px 56px;
+    }
+
+    .hero, .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.05;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .hero-rule {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      color: var(--green);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .section { margin-bottom: 24px; }
+
+    .card {
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+
+    .label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .label-spot  { background: rgba(144,240,200,.15); color: var(--green); }
+    .label-cmd   { background: rgba(122,162,255,.15); color: var(--accent); }
+    .label-read  { background: rgba(196,160,255,.15); color: var(--purple); }
+    .label-focus { background: rgba(255,155,155,.15); color: var(--danger); }
+    .label-live  { background: rgba(255,211,138,.15); color: var(--warn); }
+    .label-recap { background: rgba(255,255,255,.09); color: var(--text); }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 21px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    p { margin: 0 0 10px; }
+
+    pre {
+      margin: 10px 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #0a0f1d;
+      border: 1px solid var(--line);
+      overflow: auto;
+      color: #d9e3ff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: .94em;
+      color: var(--warn);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .fw-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .fw-card h3 { color: var(--green); }
+
+    .signals {
+      font-family: var(--mono);
+      color: var(--warn);
+      font-size: 12px;
+      line-height: 1.75;
+      margin-bottom: 10px;
+    }
+
+    .mini dt {
+      margin-top: 6px;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .mini dd {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .say {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--green);
+      border-radius: 0 10px 10px 0;
+      background: rgba(144,240,200,.06);
+      font-style: italic;
+      font-size: 14px;
+    }
+
+    .step-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: var(--purple);
+      background: rgba(196,160,255,.15);
+      flex-shrink: 0;
+    }
+
+    .step-title h3 {
+      font-family: var(--mono);
+      font-size: 15px;
+      margin: 0;
+    }
+
+    .extract {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .extract li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 2px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .b-start   { background: rgba(122,162,255,.18); color: var(--accent); }
+    .b-port    { background: rgba(144,240,200,.18); color: var(--green); }
+    .b-probe   { background: rgba(255,155,155,.18); color: var(--danger); }
+    .b-config  { background: rgba(255,211,138,.18); color: var(--warn); }
+    .b-traffic { background: rgba(196,160,255,.18); color: var(--purple); }
+
+    .why {
+      margin-top: 10px;
+      padding-left: 12px;
+      border-left: 2px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .focus-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    .focus-list li { margin-bottom: 6px; }
+
+    .focus-list li::marker { color: var(--danger); }
+
+    .callout {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,211,138,.2);
+      background: rgba(255,211,138,.06);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .recap-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .recap-item {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 12px;
+    }
+
+    .recap-item h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .recap-item:nth-child(1) h4 { color: var(--accent); }
+    .recap-item:nth-child(2) h4 { color: var(--green); }
+    .recap-item:nth-child(3) h4 { color: var(--warn); }
+    .recap-item:nth-child(4) h4 { color: var(--purple); }
+    .recap-item:nth-child(5) h4 { color: var(--danger); }
+
+    .recap-item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .slot {
+      background: rgba(255,255,255,.08);
+      border-radius: 4px;
+      padding: 0 5px;
+      font-family: var(--mono);
+      color: var(--warn);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 860px) {
+      .grid-3 { grid-template-columns: 1fr; }
+      .recap-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .wrap { padding: 20px 14px 44px; }
+      .hero, .card { border-radius: 18px; }
+      .recap-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="toc">
+    <a href="#recognize">Recognize</a>
+    <a href="#commands">Repo Commands</a>
+    <a href="#files">Open Files</a>
+    <a href="#dont">Do Not Waste Time</a>
+    <a href="#live">Live Checks</a>
+    <a href="#recap">Recap</a>
+  </nav>
+
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Interview Quick Reference</div>
+      <h1>Repo Orientation</h1>
+      <p class="sub">Recognize the app fast. Open the right files. Extract the contracts. Say what you’re checking as you go.</p>
+      <div class="hero-rule">You do not need deep framework knowledge. You need fast pattern recognition and a clean repo-to-runtime story.</div>
+    </section>
+
+    <section class="section" id="recognize">
+      <div class="card">
+        <div class="label label-spot">10 seconds — Spot the app type</div>
+        <h2>What kind of repo is this?</h2>
+        <div class="grid-3">
+          <div class="fw-card">
+            <h3>Django</h3>
+            <div class="signals">manage.py<br>config/ or project/<br>views.py, urls.py<br>models.py, migrations/</div>
+            <dl class="mini">
+              <dt>Routes</dt><dd><code>*/urls.py</code> + <code>*/views.py</code></dd>
+              <dt>Config</dt><dd><code>config/settings.py</code></dd>
+              <dt>Entry</dt><dd><code>manage.py</code> or gunicorn <code>config.wsgi:application</code></dd>
+            </dl>
+            <div class="say">“This looks like a Django app. <code>manage.py</code> is the signal. I’d expect settings in the project package, routes in <code>urls.py</code>, and handlers in <code>views.py</code>.”</div>
+          </div>
+
+          <div class="fw-card">
+            <h3>Python (Flask / FastAPI)</h3>
+            <div class="signals">app.py or main.py<br>requirements.txt<br>fewer framework folders</div>
+            <dl class="mini">
+              <dt>Routes</dt><dd>often in <code>app.py</code> or <code>main.py</code></dd>
+              <dt>Config</dt><dd>env vars read directly in app code</dd>
+              <dt>Entry</dt><dd>gunicorn / uvicorn + app module</dd>
+            </dl>
+            <div class="say">“This looks like a simpler Python service. Routes and startup logic should be concentrated in one or two files.”</div>
+          </div>
+
+          <div class="fw-card">
+            <h3>Go</h3>
+            <div class="signals">go.mod<br>main.go<br>maybe cmd/, internal/, pkg/</div>
+            <dl class="mini">
+              <dt>Routes</dt><dd>often in <code>main.go</code> or handler files</dd>
+              <dt>Config</dt><dd>env vars usually read in startup code</dd>
+              <dt>Entry</dt><dd>compiled binary in Dockerfile <code>CMD</code></dd>
+            </dl>
+            <div class="say">“This is a Go service. <code>go.mod</code> and <code>main.go</code> are the signals. I’m checking <code>main.go</code> for startup, routes, and the listening port.”</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="commands">
+      <div class="card">
+        <div class="label label-cmd">30 seconds — Map the repo</div>
+        <h2>Get the shape before opening files</h2>
+        <pre>pwd
+ls
+tree -L 2          # or: find . -maxdepth 2 -type f | sort
+cat README.md      # skim only</pre>
+        <div class="say">“I’m mapping the repo first so I know where the app code, container config, and Kubernetes manifests live before I go into details.”</div>
+      </div>
+    </section>
+
+    <section class="section" id="files">
+      <div class="card" style="padding-bottom:10px;">
+        <div class="label label-read">3–4 minutes — Open these files in order</div>
+        <h2>Open one, extract the key facts, move on</h2>
+      </div>
+
+      <div class="card">
+        <div class="step-title"><span class="step-num">1</span><h3>Dockerfile</h3></div>
+        <ul class="extract">
+          <li><span class="badge b-start">Start</span> <code>CMD</code> / <code>ENTRYPOINT</code> — what process actually starts.</li>
+          <li><span class="badge b-port">Port</span> <code>EXPOSE</code> — useful clue, but not the source of truth by itself.</li>
+          <li><span class="badge b-start">Build</span> base image, language, multi-stage vs single-stage.</li>
+        </ul>
+        <div class="why">The actual listening port comes from what the app binds to in the startup command or app code. Probes and <code>targetPort</code> must match that real listening port, not just whatever <code>EXPOSE</code> suggests.</div>
+        <div class="say">“I’m checking what actually starts in the container and which port it really listens on, because that has to line up with probes and Service <code>targetPort</code>.”</div>
+      </div>
+
+      <div class="card">
+        <div class="step-title"><span class="step-num">2</span><h3>App code — routes, health, config</h3></div>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 10px;"><strong>Django:</strong> <code>config/settings.py</code> → <code>*/urls.py</code> → <code>*/views.py</code> &nbsp;|&nbsp; <strong>Python:</strong> <code>app.py</code> / <code>main.py</code> &nbsp;|&nbsp; <strong>Go:</strong> <code>main.go</code></p>
+        <ul class="extract">
+          <li><span class="badge b-traffic">Routes</span> main user-visible route.</li>
+          <li><span class="badge b-probe">Probe</span> health/readiness route and what it checks.</li>
+          <li><span class="badge b-traffic">Failing Path</span> the exact failing path if the scenario gives one.</li>
+          <li><span class="badge b-config">Config</span> obvious DB env var names: <code>PG*</code>, <code>POSTGRES_*</code>, <code>DB_*</code>, etc.</li>
+          <li><span class="badge b-start">Startup</span> whether startup runs migrations, seeds data, or fails hard when the DB is unreachable.</li>
+        </ul>
+        <div class="why">You are not trying to understand the whole app. You are trying to learn what paths exist, what the probe should target, and what inputs the app expects.</div>
+        <div class="say">“I’m checking which paths the app really serves and whether health endpoints exist, because probe-path mismatches are a common failure.”</div>
+      </div>
+
+      <div class="card">
+        <div class="step-title"><span class="step-num">3</span><h3>Deployment manifest</h3></div>
+        <ul class="extract">
+          <li><span class="badge b-start">Image</span> image name/tag and <code>imagePullPolicy</code>.</li>
+          <li><span class="badge b-start">Override</span> <code>command</code> / <code>args</code> — these override the Dockerfile.</li>
+          <li><span class="badge b-config">Config</span> <code>env</code> / <code>envFrom</code> — which ConfigMaps and Secrets are referenced.</li>
+          <li><span class="badge b-probe">Probes</span> readiness/liveness path, port, and timing.</li>
+          <li><span class="badge b-port">Port</span> <code>containerPort</code> — useful check, but the app still has to bind there.</li>
+          <li><span class="badge b-traffic">Labels</span> pod template labels — the Service selector must match these.</li>
+          <li><span class="badge b-start">Init</span> init containers and what each one does.</li>
+        </ul>
+        <div class="why">This is where most breakable contracts live: startup override, config injection, labels, probes, and init behavior.</div>
+        <div class="say">“Now I’m checking how Kubernetes runs the app: image, startup override, config injection, probes, labels, and init containers.”</div>
+      </div>
+
+      <div class="card">
+        <div class="step-title"><span class="step-num">4</span><h3>Service manifest</h3></div>
+        <ul class="extract">
+          <li><span class="badge b-traffic">Selector</span> must match Deployment pod labels exactly.</li>
+          <li><span class="badge b-port">Ports</span> <code>port</code> is what callers hit; <code>targetPort</code> must match the actual app listening port.</li>
+          <li><span class="badge b-traffic">Type</span> <code>ClusterIP</code>, <code>NodePort</code>, or <code>LoadBalancer</code>.</li>
+        </ul>
+        <div class="why">Healthy pods with an incorrect selector still give you empty endpoints and broken traffic.</div>
+        <div class="say">“This tells me how traffic reaches the pod. The selector must match pod labels, and <code>targetPort</code> must match the app’s listening port.”</div>
+      </div>
+
+      <div class="card">
+        <div class="step-title"><span class="step-num">5</span><h3>Ingress manifest</h3></div>
+        <ul class="extract">
+          <li><span class="badge b-traffic">Routing</span> <code>ingressClassName</code>, host, and path rules.</li>
+          <li><span class="badge b-traffic">Backend</span> backend Service name and port — must match the Service exactly.</li>
+        </ul>
+        <div class="why">This is the outside-facing contract. If external access fails while internal routing works, this layer moves up the list.</div>
+        <div class="say">“This is the user-visible entry path. If the app is unreachable externally, this is one of the first contracts I’d verify.”</div>
+      </div>
+
+      <div class="card">
+        <div class="step-title"><span class="step-num">6</span><h3>ConfigMap / Secret <span style="font-weight:400;color:var(--muted);font-size:13px;font-family:inherit;">— inspect when needed</span></h3></div>
+        <ul class="extract">
+          <li><span class="badge b-config">Names</span> ConfigMap/Secret names must match what the Deployment references.</li>
+          <li><span class="badge b-config">Values</span> DB host should match the DB Service name; DB name/user/password should line up on both sides.</li>
+        </ul>
+        <div class="why">Config mismatches are one of the most common causes of startup and readiness failures.</div>
+        <div class="say">“I’m checking whether the config names and values actually match what the app and dependent service expect.”</div>
+      </div>
+    </section>
+
+    <section class="section" id="dont">
+      <div class="card">
+        <div class="label label-focus">Do not waste time on this</div>
+        <h2>Narrow the scope aggressively</h2>
+        <ul class="focus-list">
+          <li>Do not get pulled into business logic.</li>
+          <li>Do not read models or serializers unless the bug clearly points there.</li>
+          <li>Do not try to understand every framework convention.</li>
+          <li>Do not inspect every route in the app.</li>
+          <li>Do not inspect every YAML field.</li>
+          <li>Stop once you know startup, listening port, main route, health route, probes, Service, Ingress, and config references.</li>
+        </ul>
+        <div class="say">“I’m not trying to understand the whole application. I’m narrowing to the startup path, traffic path, and config contracts that would explain the failure.”</div>
+      </div>
+    </section>
+
+    <section class="section" id="live">
+      <div class="card">
+        <div class="label label-live">After repo orientation — first live checks</div>
+        <h2>Now verify the cluster matches what you just read</h2>
+        <pre>kubectl get pods -n &lt;ns&gt;
+kubectl get svc -n &lt;ns&gt;
+kubectl get ingress -n &lt;ns&gt;       # if ingress exists
+kubectl get endpoints -n &lt;ns&gt;     # if checking service routing</pre>
+        <div class="say">“Now that I know what the repo says should exist, I’m checking whether the live pods, services, and ingress objects match that expectation.”</div>
+        <div class="callout"><strong>Do not default yet to:</strong> <code>kubectl describe pod</code>, <code>kubectl logs</code>, <code>curl localhost</code>, or hitting multiple endpoints. Use those only after these quick checks tell you which layer looks wrong. Also, <code>curl localhost</code> only makes sense if a port-forward or local routing already maps localhost to the app.</div>
+      </div>
+    </section>
+
+    <section class="section" id="recap">
+      <div class="card">
+        <div class="label label-recap">Small final recap</div>
+        <h2>Use the buckets only to summarize at the end</h2>
+        <div class="recap-grid">
+          <div class="recap-item">
+            <h4>Shape</h4>
+            <p>“This is a <span class="slot">[framework]</span> API for <span class="slot">[purpose]</span>, backed by <span class="slot">[DB]</span>.”</p>
+          </div>
+          <div class="recap-item">
+            <h4>Start</h4>
+            <p>“It runs <span class="slot">[process]</span> on <span class="slot">[port]</span>; init behavior is <span class="slot">[summary]</span>.”</p>
+          </div>
+          <div class="recap-item">
+            <h4>Supply</h4>
+            <p>“Config comes from <span class="slot">[CM/Secret]</span>; DB host should resolve to <span class="slot">[service]</span>.”</p>
+          </div>
+          <div class="recap-item">
+            <h4>Ship</h4>
+            <p>“Traffic path is <span class="slot">Ingress</span> → <span class="slot">Service</span> → <span class="slot">Pod</span>.”</p>
+          </div>
+          <div class="recap-item">
+            <h4>Signals</h4>
+            <p>“The main things I’d expect to fail are <span class="slot">probes</span>, <span class="slot">selector/ports</span>, or <span class="slot">config refs</span>.”</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

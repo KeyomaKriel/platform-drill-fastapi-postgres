@@ -152,3 +152,93 @@ Design requirements:
 Most important instruction:
 At every step where I might need to speak in the interview, put the narration directly in that exact step.
 Do not make me look elsewhere for what to say.
+
+---
+
+
+Better, but still not right.
+
+The top half is much better:
+	•	framework recognition is clearer
+	•	narration is embedded where you need it
+	•	file order is much more usable under pressure
+	•	the tone is more interview-practical than the old version  ￼
+
+But there are still a few important problems.
+
+1. The “After orientation — First live checks” section is wrong
+It regressed into exactly the problem you were trying to avoid.
+
+It currently says:
+	•	kubectl get pods
+	•	kubectl get endpoints
+	•	kubectl get ingress
+	•	curl localhost/<health-path>
+	•	curl localhost/<data-path>  ￼
+
+That is not a good default block.
+
+Problems:
+	•	it is missing kubectl get svc, which should be there
+	•	it jumps to curl localhost/... as if localhost is automatically meaningful
+	•	it does not say that curl is only valid if you already have a port-forward or known local routing
+	•	it says “first live checks” but includes checks that are not first-line defaults
+
+That section should instead be:
+
+kubectl get pods -n <ns>
+kubectl get svc -n <ns>
+kubectl get ingress -n <ns>       # if ingress exists
+kubectl get endpoints -n <ns>     # if checking service routing
+
+And then a note like:
+
+Only curl if localhost is actually mapped to the app through a port-forward or the environment already exposes it locally.
+
+Right now the live-checks block is teaching a bad habit.  ￼
+
+2. The app-code step tells you to find “all user-visible endpoints”
+That is too much. In an interview, that wording will make you feel like you must inspect the whole app.
+
+Change it to:
+	•	main user-visible route
+	•	health/readiness route
+	•	failing route if the scenario gives one
+
+Not “all user-visible endpoints.”  ￼
+
+3. The Dockerfile step overstates EXPOSE
+It says:
+
+“EXPOSE — the container port. Probes and Service targetPort must match this.”  ￼
+
+That is too absolute.
+
+Better:
+	•	EXPOSE is a clue
+	•	the stronger source of truth is the app bind port and startup command
+	•	probes and Service targetPort must match the actual listening port
+
+Otherwise you risk learning the wrong thing. EXPOSE helps, but it is not what makes the app listen.
+
+4. The live-check narration is too broad
+This line:
+
+“I want to verify the full user-visible path…”  ￼
+
+That is fine later, but for first live checks it is a bit too ambitious. First live checks should be more like:
+
+“Now that I know what should exist, I’m checking whether the live pods, services, and ingress objects match that expectation.”
+
+That keeps the first step smaller.
+
+My blunt verdict:
+	•	Recognition section: good
+	•	File-order section: mostly good
+	•	Narration placement: good
+	•	Live-check section: needs rewriting
+	•	Scope-control / anti-panic section: missing
+	•	A few technical statements: need tightening
+
+So overall: closer, definitely improved, but not done yet.
+
