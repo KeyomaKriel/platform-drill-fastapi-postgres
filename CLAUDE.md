@@ -52,8 +52,10 @@ When designing scenarios, reading manifests, or evaluating fixes, always use the
 │   ├── drill-app-django/                   # Django app
 │   ├── drill-app-go/                       # Go app
 │   ├── drills/
-│   │   └── codespace-drills/               # Active round of scenario files and feedback
-│   │       └── round-NN/                   # Archived previous rounds (not scanned)
+│   │   └── codespace-drills/
+│   │       ├── round-01/                   # Completed round (not scanned)
+│   │       ├── round-02/                   # Current active round
+│   │       └── round-NN/                   # Latest round-NN/ is always the active round
 │   ├── guides/
 │   │   └── automated-multi-app-drill-setup.md  # Operational reference
 │   └── scripts/
@@ -77,9 +79,9 @@ The repo is cloned inside the Codespace at `/workspaces/platform-drill-fastapi-p
 - **Selected app**: The app directory the user has chosen for the current drill session (e.g. `codespace/drill-app-django`). All scenario generation, fault injection, and evaluation are scoped to this app.
 - **Healthy baseline**: The selected app is deployed, all pods Running/Ready, endpoints populated, and the app's health and data endpoints return expected responses through Ingress (`curl localhost/...`).
 - **Session log**: Terminal capture file (`session.log`) inside the selected app directory in the Codespace. The user starts it with `script -q -a ./session.log`.
-- **Scenario files**: Drill scenario and answer files in `codespace/drills/codespace-drills/`. Named `drill-<NN>-scenario.md` and `drill-<NN>-scenario-answer.md`. Numbering resets each round.
-- **Feedback files**: Evaluation results in `codespace/drills/codespace-drills/`. Named `drill-<NN>-feedback.md`.
-- **Rounds**: When the user starts a new round, existing files are moved into a `round-NN/` subfolder. Only files in the top-level `codespace-drills/` directory are scanned for domain coverage and scenario numbering. Archived rounds are not scanned — this allows Tier 1 domains to be practised again.
+- **Scenario files**: Drill scenario and answer files inside the active round folder. Named `drill-<NN>-scenario.md` and `drill-<NN>-scenario-answer.md`. Numbering resets each round.
+- **Feedback files**: Evaluation results inside the active round folder. Named `drill-<NN>-feedback.md`.
+- **Rounds**: Each round lives in `codespace/drills/codespace-drills/round-NN/`. The **latest (highest-numbered) `round-NN/`** subfolder is always the active round. All scenario generation, domain coverage scanning, and feedback writing happen inside this folder. Earlier rounds are not scanned — this allows Tier 1 domains to be practised again. The user creates new round folders when they want a fresh start.
 
 ---
 
@@ -142,8 +144,9 @@ If no app is specified, use whichever app is currently deployed. If none is depl
 ### Pre-flight checks
 
 1. **Verify healthy baseline** for the selected app. If unhealthy, restore before proceeding.
-2. **Determine the next scenario number.** Scan `codespace/drills/codespace-drills/drill-*-scenario.md` (top-level only, not inside `round-*` subfolders) and increment from the highest number found. If no scenarios exist in the current round, start at 01.
-3. **Check failure domain coverage.** Read previous scenario answer files to determine which failure domains have been used and on which apps.
+2. **Find the active round folder.** List `codespace/drills/codespace-drills/round-*/` and use the highest-numbered one. If none exist, ask the user.
+3. **Determine the next scenario number.** Scan `drill-*-scenario.md` inside the active round folder and increment from the highest number found. If no scenarios exist, start at 01.
+4. **Check failure domain coverage.** Read previous scenario answer files inside the active round folder to determine which failure domains have been used.
 
 ### Task types
 
@@ -187,14 +190,14 @@ This is the default behaviour when the user asks for the next drill scenario.
 
 **File creation:**
 
-1. Create `codespace/drills/codespace-drills/drill-<NN>-scenario.md` containing:
+1. Create `codespace/drills/codespace-drills/round-NN/drill-<NN>-scenario.md` containing:
    - Setup instructions (which app, verify healthy first)
    - The base64-encoded break command to paste in the Codespace
    - Session log start command
    - A vague, realistic symptom prompt suitable for a technical interview
    - 15-minute timer
 
-2. Create `codespace/drills/codespace-drills/drill-<NN>-scenario-answer.md` containing:
+2. Create `codespace/drills/codespace-drills/round-NN/drill-<NN>-scenario-answer.md` containing:
    - App name, failure domain, tier
    - Exactly what was injected and why it causes the symptom
    - What will happen after injection (pod states, error messages, curl behaviour)
@@ -292,7 +295,7 @@ These are the most interview-realistic fault patterns:
    - Read the scenario answer file for the injected fault details.
    - Give structured feedback using the task-type evaluation model below.
    - Reveal what the task required (for debugging: injected fault and domain).
-   - Write a feedback file to `codespace/drills/codespace-drills/drill-<NN>-feedback.md`.
+   - Write a feedback file to `codespace/drills/codespace-drills/round-NN/drill-<NN>-feedback.md`.
 5. **Restore healthy baseline** if a fault was injected: re-apply the app's manifests from the Codespace, verify all endpoints return 200.
 6. **Wait for the user** to request the next drill.
 
@@ -348,7 +351,7 @@ These are the most interview-realistic fault patterns:
 
 ### Feedback files
 
-Save to `codespace/drills/codespace-drills/`.
+Save to the active round folder.
 
 **Filename:** `drill-<NN>-feedback.md`
 
