@@ -52,7 +52,8 @@ When designing scenarios, reading manifests, or evaluating fixes, always use the
 │   ├── drill-app-django/                   # Django app
 │   ├── drill-app-go/                       # Go app
 │   ├── drills/
-│   │   └── codespace-drills/               # Scenario files and feedback
+│   │   └── codespace-drills/               # Active round of scenario files and feedback
+│   │       └── round-NN/                   # Archived previous rounds (not scanned)
 │   ├── guides/
 │   │   └── automated-multi-app-drill-setup.md  # Operational reference
 │   └── scripts/
@@ -76,8 +77,9 @@ The repo is cloned inside the Codespace at `/workspaces/platform-drill-fastapi-p
 - **Selected app**: The app directory the user has chosen for the current drill session (e.g. `codespace/drill-app-django`). All scenario generation, fault injection, and evaluation are scoped to this app.
 - **Healthy baseline**: The selected app is deployed, all pods Running/Ready, endpoints populated, and the app's health and data endpoints return expected responses through Ingress (`curl localhost/...`).
 - **Session log**: Terminal capture file (`session.log`) inside the selected app directory in the Codespace. The user starts it with `script -q -a ./session.log`.
-- **Scenario files**: Drill scenario and answer files in `codespace/drills/codespace-drills/`. Named `drill-<NN>-scenario.md` and `drill-<NN>-scenario-answer.md`.
+- **Scenario files**: Drill scenario and answer files in `codespace/drills/codespace-drills/`. Named `drill-<NN>-scenario.md` and `drill-<NN>-scenario-answer.md`. Numbering resets each round.
 - **Feedback files**: Evaluation results in `codespace/drills/codespace-drills/`. Named `drill-<NN>-feedback.md`.
+- **Rounds**: When the user starts a new round, existing files are moved into a `round-NN/` subfolder. Only files in the top-level `codespace-drills/` directory are scanned for domain coverage and scenario numbering. Archived rounds are not scanned — this allows Tier 1 domains to be practised again.
 
 ---
 
@@ -140,7 +142,7 @@ If no app is specified, use whichever app is currently deployed. If none is depl
 ### Pre-flight checks
 
 1. **Verify healthy baseline** for the selected app. If unhealthy, restore before proceeding.
-2. **Determine the next scenario number.** Scan `codespace/drills/codespace-drills/drill-*-scenario.md` and increment from the highest number found.
+2. **Determine the next scenario number.** Scan `codespace/drills/codespace-drills/drill-*-scenario.md` (top-level only, not inside `round-*` subfolders) and increment from the highest number found. If no scenarios exist in the current round, start at 01.
 3. **Check failure domain coverage.** Read previous scenario answer files to determine which failure domains have been used and on which apps.
 
 ### Task types
