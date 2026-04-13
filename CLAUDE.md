@@ -216,7 +216,7 @@ This is the default behaviour when the user asks for the next drill scenario.
 **Failure domain selection:**
 
 - Check which domains have been used in previous drills (read answer files).
-- Pick a Tier 1 domain that hasn't been used, unless all Tier 1 are covered, then Tier 2.
+- Pick a Tier 1 domain that hasn't been used, unless all Tier 1 are covered, then Tier 2. Once Tier 2 is also covered, tell the user so the user can decide how to proceed.
 - If the user specifies a domain or tier, honour that.
 
 **Visibility rules:**

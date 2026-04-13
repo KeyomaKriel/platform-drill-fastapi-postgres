@@ -328,59 +328,42 @@ cat README.md      # skim only &mdash; what is this app, how to run it</pre>
         <h2>Open files in this order. Extract tagged facts from each.</h2>
         <p style="color: var(--muted); margin: 0 0 14px;">Each file feeds multiple buckets. Don't jump between files &mdash; read one, extract everything, move on.</p>
 
-        <!-- Project structure -->
-        <div class="file-card">
-          <div class="file-name">Project structure (from Phase 1 scan)</div>
-          <ul class="extract-list">
-            <li><span class="tag shape">Shape</span> Framework pattern &mdash; flat file (Flask/Go) vs project+app packages (Django) vs module tree (Node)</li>
-            <li><span class="tag shape">Shape</span> Where are routes defined? Where is DB config? (same file, or separate config/settings?)</li>
-            <li><span class="tag start">Start</span> Is there a <code>manage.py</code>, <code>go.mod</code>, <code>requirements.txt</code>, <code>package.json</code>? &mdash; confirms language and dependency model</li>
-          </ul>
-          <div class="file-narration">"The project structure tells me this is a [framework] app. Routes are in [file], DB config is in [file]. I know which files to read next."</div>
-        </div>
-
         <!-- Dockerfile -->
         <div class="file-card">
           <div class="file-name">Dockerfile</div>
           <ul class="extract-list">
-            <li><span class="tag shape">Shape</span> Base image, language, single-stage vs multi-stage build</li>
-            <li><span class="tag start">Start</span> CMD / ENTRYPOINT &mdash; what process runs (gunicorn? compiled binary? node?)</li>
+            <li><span class="tag shape">Shape</span> Base image, language, build steps</li>
+            <li><span class="tag start">Start</span> CMD / ENTRYPOINT &mdash; what process runs</li>
             <li><span class="tag start">Start</span> EXPOSE &mdash; what port the container expects</li>
-            <li><span class="tag start">Start</span> If CMD references a WSGI/ASGI module path (e.g. <code>config.wsgi:application</code>), note which project package it points to</li>
           </ul>
-          <div class="file-narration">"The Dockerfile tells me this is a [language] app running [process] on port [N]. The entry point is [CMD]."</div>
+          <div class="file-narration">"The Dockerfile tells me this is a [language] app running [process] on port [N]."</div>
         </div>
 
-        <!-- App code -->
+        <!-- Main app file -->
         <div class="file-card">
-          <div class="file-name">App code &mdash; find routes, DB config, and health endpoints</div>
-          <p style="color: var(--muted); margin: 0 0 10px; font-size: 13px;">
-            <strong>Flask/Go:</strong> single file &mdash; routes, DB connection, and health check are all in <code>app.py</code> / <code>main.go</code>.<br>
-            <strong>Django:</strong> split across files &mdash; DB config in <code>config/settings.py</code>, routes in <code>&lt;app&gt;/urls.py</code>, endpoints in <code>&lt;app&gt;/views.py</code>, data model in <code>&lt;app&gt;/models.py</code>.
-          </p>
+          <div class="file-name">Main app file (app.py / main.go / index.js / ...)</div>
           <ul class="extract-list">
-            <li><span class="tag shape">Shape</span> Routes/endpoints &mdash; what the app does, what paths it serves</li>
-            <li><span class="tag signals">Signals</span> Health/readiness endpoints &mdash; what path, what they check (DB? always 200?)</li>
-            <li><span class="tag supply">Supply</span> Where DB config comes from &mdash; env vars read directly (Flask/Go) or via settings file (Django)</li>
-            <li><span class="tag supply">Supply</span> Which env var names? (<code>PG*</code>, <code>POSTGRES_*</code>, <code>DB_*</code> &mdash; varies by app)</li>
-            <li><span class="tag start">Start</span> Startup behaviour &mdash; does the app seed data on boot? Run migrations? Crash if DB is unreachable?</li>
+            <li><span class="tag start">Start</span> Listening port, startup logic, DB init</li>
+            <li><span class="tag supply">Supply</span> Env vars it reads (DB host, creds, config)</li>
+            <li><span class="tag signals">Signals</span> Health/readiness endpoints, what they check</li>
+            <li><span class="tag shape">Shape</span> Routes/endpoints &mdash; what the app does</li>
           </ul>
-          <div class="file-narration">"The app has [N] endpoints at [paths]. Health check is [path] and it [checks DB / always returns 200]. DB config comes from env vars [list] read in [file]. On startup it [seeds/migrates/crashes if DB down]."</div>
+          <div class="file-narration">"The app listens on [port], connects to [DB] using env vars [X, Y, Z], and has endpoints [list]. Health check hits [path] and returns [condition]."</div>
         </div>
 
         <!-- Deployment -->
         <div class="file-card">
           <div class="file-name">Deployment manifest</div>
           <ul class="extract-list">
-            <li><span class="tag ship">Ship</span> Image name/tag, imagePullPolicy, replicas</li>
+            <li><span class="tag ship">Ship</span> Image name/tag, replicas</li>
             <li><span class="tag ship">Ship</span> Labels on pod template (used by Service selector)</li>
-            <li><span class="tag start">Start</span> command / args &mdash; if present, overrides Dockerfile CMD</li>
-            <li><span class="tag supply">Supply</span> env / envFrom &mdash; which ConfigMaps and Secrets inject env vars</li>
+            <li><span class="tag start">Start</span> command / args (if overriding Dockerfile CMD)</li>
+            <li><span class="tag supply">Supply</span> env / envFrom &mdash; where config comes from</li>
             <li><span class="tag supply">Supply</span> volumeMounts &mdash; any mounted files or PVCs</li>
-            <li><span class="tag signals">Signals</span> Probes &mdash; path, port, timing. Are readiness and liveness the same path or different?</li>
-            <li><span class="tag ship">Ship</span> initContainers &mdash; how many? What does each one do? (wait for dependency? run migrations? load data?) Which ones read from ConfigMap/Secret?</li>
+            <li><span class="tag signals">Signals</span> Probes &mdash; path, port, timing</li>
+            <li><span class="tag ship">Ship</span> initContainers &mdash; what must succeed before start</li>
           </ul>
-          <div class="file-narration">"The Deployment runs image [X] with [N] init containers: [list what each does]. Config comes from [ConfigMap/Secret names]. Probes target [path:port]. Migrations/seeding happen [in init container / at app startup / not at all]."</div>
+          <div class="file-narration">"The Deployment runs image [X], pulls config from [ConfigMap/Secret], has [readiness/liveness] probes on [path:port], and an init container that [does what]."</div>
         </div>
 
         <!-- ConfigMap + Secret -->
@@ -464,12 +447,11 @@ curl [host][path]                              # Hit each route from the Ingress
               "<span class="kw">Containerized</span> with Docker &mdash;
               runs <span class="slot">[process]</span>
               on port <span class="slot">[N]</span>.<br>
-              <span class="slot">[N]</span> <span class="kw">init container(s)</span>:
-              <span class="slot">[list what each does &mdash; wait for DB / run migrations / load seed data]</span>.<br>
-              <span class="kw">Migrations/seeding</span> happen
-              <span class="slot">[in init container / at app startup / not at all]</span>.<br>
+              On <span class="kw">startup</span> it
+              <span class="slot">[connects to DB / runs migrations / seeds data]</span>.<br>
               If the DB isn't reachable,
-              <span class="slot">[init container loops / app crashes / app degrades]</span>."
+              <span class="slot">[it crashes / retries / degrades]</span>.<br>
+              <span class="slot">[Init container waits for X / no init container]</span>."
             </p>
           </div>
           <div class="summary-bucket supply">
@@ -529,7 +511,7 @@ curl [host][path]                              # Hit each route from the Ingress
         <h3>What not to do</h3>
         <ul class="dont">
           <li>Don't try to fill buckets one at a time &mdash; you'll re-read files</li>
-          <li>Don't read the whole codebase &mdash; find the key files (routes, config, models) and stop</li>
+          <li>Don't read the whole codebase &mdash; just the main file</li>
           <li>Don't explain business logic in depth</li>
           <li>Don't start fixing before you've read the key files</li>
           <li>Don't narrate while reading &mdash; extract first, narrate at the end</li>
@@ -538,16 +520,16 @@ curl [host][path]                              # Hit each route from the Ingress
 
       <section class="card half">
         <h3>The connection chain to verify</h3>
-        <pre>App reads DB host from env var [PGHOST / POSTGRES_HOST / DB_HOST]
-  &rarr; Deployment envFrom references ConfigMap [name]
-    &rarr; ConfigMap value = DB Service name [name]
+        <pre>App code reads env var PGHOST
+  &rarr; Deployment envFrom references ConfigMap
+    &rarr; ConfigMap value = DB Service name
       &rarr; DB Service selector = DB pod labels
         &rarr; DB pod is Running + Ready
 
-App listens on port [N]
-  &rarr; Deployment containerPort = [N]
-    &rarr; Service targetPort = [N], port = [M]
-      &rarr; Ingress backend port = Service port [M]
+App listens on port 7600
+  &rarr; Deployment containerPort = 7600
+    &rarr; Service targetPort = 7600
+      &rarr; Ingress backend port = Service port
         &rarr; curl localhost/ works</pre>
       </section>
 

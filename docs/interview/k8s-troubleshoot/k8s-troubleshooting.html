@@ -1934,9 +1934,8 @@ curl -i localhost:8080/readyz</pre>
       </ul>
 
       <h4>Likely fixes</h4>
-      <pre>kubectl edit deploy &lt;deploy&gt; -n &lt;ns&gt;
-# Fix readinessProbe.httpGet.path, .port, .initialDelaySeconds
-# Fix livenessProbe.httpGet.path, .port, .timeoutSeconds, .failureThreshold</pre>
+      <pre># Fix the probe path/port/timing in the manifest, then re-apply:
+kubectl apply -f manifests/&lt;deployment-file&gt;.yaml</pre>
 
       <h4>Verify</h4>
       <pre>kubectl get pods -n &lt;ns&gt;                  # 1/1 Ready, or restarts stop
@@ -1997,10 +1996,9 @@ kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | sort</pre>
 
       <h4>Likely fixes</h4>
       <ul>
-        <li><strong>Missing object:</strong> <code>kubectl create configmap &lt;cm&gt; --from-literal=KEY=value -n &lt;ns&gt;</code></li>
-        <li><strong>Wrong reference name:</strong> <code>kubectl edit deploy &lt;deploy&gt; -n &lt;ns&gt;</code> &mdash; fix <code>configMapRef.name</code> or <code>secretRef.name</code></li>
-        <li><strong>Wrong value:</strong> <code>kubectl edit configmap &lt;cm&gt; -n &lt;ns&gt;</code></li>
-        <li><strong>After any config change:</strong> <code>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;</code></li>
+        <li><strong>Wrong reference name or wrong value:</strong> fix in the manifest, then <code>kubectl apply -f manifests/&lt;file&gt;.yaml</code></li>
+        <li><strong>Missing object:</strong> <code>kubectl apply -f manifests/&lt;configmap-or-secret&gt;.yaml</code> (or <code>kubectl create</code> if no manifest exists)</li>
+        <li><strong>After any config change:</strong> <code>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;</code> &mdash; pods must restart to pick up new ConfigMap/Secret values</li>
       </ul>
 
       <h4>Verify</h4>
@@ -2058,11 +2056,13 @@ kubectl port-forward svc/&lt;svc&gt; 8080:&lt;svc-port&gt; -n &lt;ns&gt;</pre>
       </ul>
 
       <h4>Likely fixes</h4>
-      <pre># Selector mismatch
-kubectl patch svc &lt;svc&gt; -n &lt;ns&gt; -p '{"spec":{"selector":{"app":"&lt;correct-label&gt;"}}}'
+      <pre># Fix the selector or targetPort in the manifest, then re-apply:
+kubectl apply -f manifests/&lt;service-file&gt;.yaml
 
-# Wrong targetPort
-kubectl patch svc &lt;svc&gt; -n &lt;ns&gt; -p '{"spec":{"ports":[{"port":&lt;svc-port&gt;,"targetPort":&lt;correct-port&gt;}]}}'</pre>
+# Note: kubectl apply merges map fields. If a patch added an extra
+# selector key the manifest doesn't mention, apply won't remove it.
+# Use kubectl replace -f to fully replace, or kubectl edit to remove
+# the extra key manually.</pre>
 
       <h4>Verify</h4>
       <pre>kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;               # pod IPs populated
@@ -2177,7 +2177,7 @@ kubectl top nodes</pre>
       <h4>OOMKilled (exit 137)</h4>
       <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State shows OOMKilled
 kubectl get pod &lt;pod&gt; -n &lt;ns&gt; -o jsonpath='{.spec.containers[0].resources.limits.memory}'</pre>
-      <p>Fix: <code>kubectl edit deploy &lt;deploy&gt; -n &lt;ns&gt;</code> &mdash; increase <code>resources.limits.memory</code>.</p>
+      <p>Fix: increase <code>resources.limits.memory</code> in the manifest, then <code>kubectl apply -f manifests/&lt;deployment-file&gt;.yaml</code>.</p>
 
       <h4>Storage (PVC issues)</h4>
       <pre>kubectl get pvc -n &lt;ns&gt;
@@ -2244,15 +2244,8 @@ kubectl get pods -n ingress-nginx</pre>
       </ul>
 
       <h4>Likely fixes</h4>
-      <pre># Wrong backend port
-kubectl patch ingress &lt;ing&gt; -n &lt;ns&gt; --type=json \
-  -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/port/number","value":&lt;correct-port&gt;}]'
-
-# Wrong IngressClass
-kubectl patch ingress &lt;ing&gt; -n &lt;ns&gt; -p '{"spec":{"ingressClassName":"nginx"}}'
-
-# Or re-apply from manifest
-kubectl apply -f manifests/ingress.yaml</pre>
+      <pre># Fix the backend service/port, ingressClassName, or path in the manifest, then re-apply:
+kubectl apply -f manifests/&lt;ingress-file&gt;.yaml</pre>
 
       <h4>Verify</h4>
       <pre>kubectl get ingress -n &lt;ns&gt;              # ADDRESS populated
@@ -2316,9 +2309,9 @@ curl localhost/                                     # test after each deletion</
 
       <h4>Likely fixes</h4>
       <ul>
-        <li>Wrong <code>podSelector</code> &rarr; <code>kubectl edit networkpolicy &lt;policy&gt; -n &lt;ns&gt;</code></li>
-        <li>Missing DNS egress rule &rarr; add egress allow for <code>kube-system</code> on UDP/TCP 53</li>
-        <li>Missing app-to-database rule &rarr; add egress allow with correct <code>podSelector</code> and port</li>
+        <li>Wrong <code>podSelector</code> &rarr; fix in the manifest, then <code>kubectl apply -f manifests/&lt;networkpolicy-file&gt;.yaml</code></li>
+        <li>Missing DNS egress rule &rarr; add to the manifest and <code>kubectl apply</code></li>
+        <li>Missing app-to-database rule &rarr; add to the manifest and <code>kubectl apply</code></li>
       </ul>
 
       <h4>Verify</h4>
@@ -2380,15 +2373,12 @@ kubectl get role &lt;role&gt; -n &lt;ns&gt; -o yaml</pre>
       </ul>
 
       <h4>Likely fixes</h4>
-      <pre># Subject name wrong — edit binding
-kubectl edit rolebinding &lt;binding&gt; -n &lt;ns&gt;
+      <pre># Fix in the manifest and re-apply:
+kubectl apply -f manifests/&lt;rbac-file&gt;.yaml
 
-# RoleRef wrong (immutable) — delete and recreate
+# RoleRef is immutable — if wrong, delete and re-apply:
 kubectl delete rolebinding &lt;binding&gt; -n &lt;ns&gt;
-kubectl create rolebinding &lt;binding&gt; --role=&lt;role&gt; --serviceaccount=&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;
-
-# Role missing permissions
-kubectl edit role &lt;role&gt; -n &lt;ns&gt;</pre>
+kubectl apply -f manifests/&lt;rbac-file&gt;.yaml</pre>
 
       <h4>Verify</h4>
       <pre>kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; &lt;verb&gt; &lt;resource&gt; -n &lt;ns&gt;
@@ -2451,8 +2441,7 @@ kubectl get secret &lt;secret&gt; -n &lt;ns&gt; -o jsonpath='{.data.&lt;key&gt;}
 
       <h4>Likely fixes</h4>
       <ul>
-        <li><strong>Wrong ConfigMap value:</strong> <code>kubectl edit configmap &lt;cm&gt; -n &lt;ns&gt;</code>, then <code>kubectl rollout restart</code></li>
-        <li><strong>Wrong Secret value:</strong> <code>kubectl edit secret &lt;secret&gt; -n &lt;ns&gt;</code> (base64-encoded), then <code>kubectl rollout restart</code></li>
+        <li><strong>Wrong ConfigMap/Secret value:</strong> fix in the manifest, then <code>kubectl apply -f manifests/&lt;file&gt;.yaml</code>, then <code>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;</code></li>
         <li><strong>Schema not initialized:</strong> restart may trigger migrations if the app runs them on startup</li>
       </ul>
 
