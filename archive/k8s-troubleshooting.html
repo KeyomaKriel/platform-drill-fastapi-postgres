@@ -475,30 +475,6 @@
   }
   .controls button:hover { background: #f0f0f0; }
 
-  /* --- AI helper prompt blocks --- */
-  .ai-prompt {
-    margin-top: 12px;
-    padding: 10px 14px;
-    border-left: 3px solid #27ae60;
-    background: rgba(39,174,96,.06);
-    border-radius: 8px;
-  }
-  .ai-prompt-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: #27ae60;
-    margin-bottom: 6px;
-  }
-  .ai-prompt pre {
-    font-size: 12px;
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  body.dark .ai-prompt { background: rgba(39,174,96,.1); }
-
   /* --- Fix / Resolution sections (dropdown cards) --- */
   .fix-card {
     background: #fff;
@@ -708,23 +684,6 @@ kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
         <li><strong>PVC not binding</strong> &rarr; kubectl get pvc -n &lt;ns&gt;, check storageClass and access mode match available PVs</li>
         <li><strong>Node capacity / taints / affinity / scheduling blockers</strong> &rarr; kubectl describe node, check Conditions, taints, allocatable vs requested</li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to scheduling pressure, taints/affinity, node placement, or PVC/storage
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Pod Pending
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
     </div>
 
@@ -894,23 +853,6 @@ kubectl get deploy,svc,ingress -A | grep -i &lt;app-name&gt;</pre>
         <li>wrong cluster/context &rarr; fix kube context before continuing</li>
         <li>object name assumption wrong &rarr; search actual deploy/service/ingress names first</li>
       </ul>
-          <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this looks like wrong context, wrong namespace, wrong object name, or a real workload problem
-2. the key signal
-3. the next 1-2 commands
-4. what I should check next
-
-Do not guess beyond the evidence.
-
-Symptom: Nothing looks right / expected objects seem missing
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
     </div>
   </div>
 
@@ -934,23 +876,6 @@ kubectl describe deploy &lt;deploy&gt; -n &lt;ns&gt;</pre>
         <li>Deployment exists but ReplicaSet not creating pods &rarr; <a class="fix-link" href="#domain-resource-scheduling">check events for scheduling or resource issues</a>, or <a class="fix-link" href="#domain-config-env">config/secret/volume ref errors</a></li>
         <li>Wrong labels or selectors &rarr; <a class="fix-link" href="#domain-service-routing">pod template labels don't match</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether the Deployment is missing, scaled to zero, or failing to create pods
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: No pod / expected pod missing
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Deployments, ReplicaSets, Debug Pods.</div>
     </div>
   </div>
@@ -994,23 +919,6 @@ kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
         <li>image pull failure &rarr; <a class="fix-link" href="#domain-image-pull">check image spec in deployment</a></li>
         <li>container creation failure &rarr; <a class="fix-link" href="#domain-config-env">check config/secret/volume refs</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. which container creation step is failing
-2. whether this looks like image pull, config/secret/env, or volume related
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Pod stuck ContainerCreating / image pull / create config error
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Images, ConfigMaps, Secrets.</div>
     </div>
   </div>
@@ -1033,23 +941,6 @@ kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spe
         <li>registry auth problem &rarr; <a class="fix-link" href="#domain-image-pull">imagePullSecrets configured?</a></li>
         <li>pull policy &rarr; <a class="fix-link" href="#domain-image-pull">imagePullPolicy vs what's loaded locally</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this looks like wrong image name/tag, registry auth, or pull policy
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Symptom: ErrImagePull / ImagePullBackOff
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Pods, Pod Lifecycle, Images (container images reference).</div>
     </div>
   </div>
@@ -1074,23 +965,6 @@ kubectl get secret -n &lt;ns&gt;</pre>
         <li>bad volume or mount &rarr; <a class="fix-link" href="#domain-config-env">volume name mismatch, wrong path</a></li>
         <li>bad command / args &rarr; <a class="fix-link" href="#domain-startup-crash">entrypoint override broken</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to missing ConfigMap/Secret, bad env key/reference, bad volume/mount, or broken command/args
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Symptom: CreateContainerConfigError / CreateContainerError
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Pods, Debug Running Pods, ConfigMaps, Secrets.</div>
     </div>
   </div>
@@ -1117,25 +991,6 @@ kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State section: ex
         <li>no logs + exit 137 &rarr; <a class="fix-link" href="#domain-resource-scheduling">OOMKilled</a> (check describe pod Last State)</li>
         <li>probe-driven restart &rarr; <a class="fix-link" href="#domain-probe-failure">check probe config in describe</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Treat CrashLoopBackOff as a symptom, not the root cause.
-
-Tell me:
-1. the most important signal from logs / previous logs / describe
-2. whether this points more to config/env, dependency, DNS, OOMKilled, probe failure, or app startup crash
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: CrashLoopBackOff
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Pod Lifecycle, Debug Running Pods, Configure Liveness Readiness and Startup Probes, DNS for Services and Pods, Resource Management for Pods and Containers.</div>
     </div>
   </div>
@@ -1158,23 +1013,6 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
         <li>app boot incomplete &rarr; <a class="fix-link" href="#domain-probe-failure">logs show slow startup, needs startupProbe or longer initialDelaySeconds</a></li>
         <li>dependency reachable enough to start but not enough to serve &rarr; <a class="fix-link" href="#domain-app-level">partial failure in logs</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether readiness is failing due to wrong probe path, wrong probe port, startup timing, or a real app problem
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Running but 0/1 Ready
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Debug Running Pods.</div>
     </div>
   </div>
@@ -1198,23 +1036,6 @@ kubectl get pods -n &lt;ns&gt; --show-labels</pre>
         <li>endpoints present but wrong port &rarr; <a class="fix-link" href="#domain-service-routing">compare svc port/targetPort with container port</a></li>
         <li>service exists but points nowhere useful &rarr; <a class="fix-link" href="#domain-service-routing">selector matches wrong pods</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to selector mismatch, empty endpoints, wrong targetPort, wrong named port, or wrong backend pods
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Pod Running/Ready, but Service path fails
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Services, Service, EndpointSlices.</div>
     </div>
   </div>
@@ -1238,23 +1059,6 @@ kubectl get pods -n &lt;ns&gt; --show-labels       # compare against selector</p
         <li>pods not Ready &rarr; <a class="fix-link" href="#domain-probe-failure">route to Stay up (readiness problem)</a></li>
         <li>backend set wrong &rarr; <a class="fix-link" href="#domain-service-routing">selector matches unintended pods</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to selector mismatch, pods not Ready, or the Service selecting the wrong backend
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Endpoints / EndpointSlices empty or wrong
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Services, EndpointSlices, Service.</div>
     </div>
   </div>
@@ -1280,23 +1084,6 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;dep-service&gt;.&lt;n
         <li>RBAC / service account issue &rarr; <a class="fix-link" href="#domain-rbac">kubectl auth can-i checks</a></li>
         <li>NetworkPolicy blocking &rarr; <a class="fix-link" href="#domain-networkpolicy">kubectl get networkpolicy -n &lt;ns&gt;</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points more to wrong env/config, DNS, connection refused, RBAC/service account, NetworkPolicy, or storage dependency failure
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: App responds, but feature fails when calling DB / API / storage
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Using RBAC Authorization, Service Accounts, Network Policies, Persistent Volumes.</div>
     </div>
   </div>
@@ -1321,23 +1108,6 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;init-container-name&gt;</pre>
         <li>dependency setup failure &rarr; <a class="fix-link" href="#domain-startup-crash">init container waiting for something that isn't ready</a></li>
         <li>bad image / command / mount &rarr; <a class="fix-link" href="#domain-startup-crash">wrong image, bad script, missing volume</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. which init container is failing
-2. whether this looks like dependency wait failure, bad image/command, or missing mount/config
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Init container failure
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Running Pods, Pod Lifecycle, Init Containers.</div>
     </div>
   </div>
@@ -1361,23 +1131,6 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
         <li>OOM &rarr; <a class="fix-link" href="#domain-resource-scheduling">Last State shows OOMKilled, exit 137</a></li>
         <li>app error after boot &rarr; <a class="fix-link" href="#domain-startup-crash">works at start then fails under load or after timeout</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether restarts look probe-driven, crash-driven, or OOM-related
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Running, Ready, but restarts increasing
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Assign Memory Resources to Containers and Pods.</div>
     </div>
   </div>
@@ -1400,23 +1153,6 @@ kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spe
         <li>boot spike &rarr; <a class="fix-link" href="#domain-resource-scheduling">app allocates heavily at startup then settles</a></li>
         <li>no limit set but node is under pressure &rarr; <a class="fix-link" href="#domain-resource-scheduling"><code>kubectl describe node</code>, check Conditions</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this looks like memory limit too low, startup memory spike, or node pressure
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Symptom: OOMKilled / exit 137
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Assign Memory Resources to Containers and Pods, Node-pressure Eviction, Pod Lifecycle.</div>
     </div>
   </div>
@@ -1441,23 +1177,6 @@ kubectl get pods -n ingress-nginx            # is the controller healthy?</pre>
         <li>ingress controller issue &rarr; <a class="fix-link" href="#domain-ingress">controller pod not running or misconfigured</a></li>
         <li>ingressClassName missing or wrong &rarr; <a class="fix-link" href="#domain-ingress">add or fix ingressClassName</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to ingress host/path mismatch, wrong backend service/port, bad ingressClassName, or ingress controller health
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Service works internally, external route fails
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Ingress, Ingress Controllers, Debug Services.</div>
     </div>
   </div>
@@ -1481,23 +1200,6 @@ kubectl get svc -n &lt;ns&gt;                     # verify actual service names<
         <li>wrong namespace assumption &rarr; <a class="fix-link" href="#domain-dns">need &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</a></li>
         <li>hostname correct but DNS broken &rarr; <a class="fix-link" href="#domain-dns">check coredns pods in kube-system</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to wrong service name, wrong namespace assumption, missing FQDN, or real cluster DNS trouble
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Name or service not known / lookup failures / wrong hostname behaviour
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution.</div>
     </div>
   </div>
@@ -1521,23 +1223,6 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; | head</pre>
         <li>mutable tag ambiguity like <code>latest</code> &rarr; use explicit version tag</li>
         <li>expected code path missing &rarr; image built from wrong commit or wrong Dockerfile context</li>
       </ul>
-          <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this looks like wrong image tag, stale mutable tag, or image built from the wrong code/context
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Symptom: App runs, but behaviour does not match the expected version
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
     </div>
   </div>
 
@@ -1560,23 +1245,6 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
         <li>containerPort documented wrong &rarr; align manifest with actual listening port</li>
         <li>probe hits a port/path the app is not really serving &rarr; fix probe and/or app config</li>
       </ul>
-          <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to binding on 127.0.0.1 instead of 0.0.0.0, wrong containerPort, or wrong path/port assumptions
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Pod is Running, but app only works from inside the container
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
     </div>
   </div>
 
@@ -1598,23 +1266,6 @@ kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;container-name&gt; --previous</pre
         <li>sidecar logs fine but app container failing &rarr; use <code>-c</code> for the app container</li>
         <li>init container was the failing one &rarr; inspect init container logs separately</li>
       </ul>
-          <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether I am looking at the wrong container
-2. whether the failing container is the app container, sidecar, or init container
-3. the next 1-2 commands
-4. what output would confirm the right logging target
-
-Do not guess beyond the evidence.
-
-Symptom: Logs are confusing or empty in a multi-container pod
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
     </div>
   </div>
 
@@ -1639,23 +1290,6 @@ kubectl auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;
         <li>wrong service account &rarr; <a class="fix-link" href="#domain-rbac">pod spec references wrong SA</a></li>
         <li>wrong identity assumptions &rarr; <a class="fix-link" href="#domain-rbac">SA exists but bindings are in wrong namespace</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to missing RBAC permission, wrong service account, or bindings in the wrong namespace
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Forbidden / Unauthorized
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Using RBAC Authorization, Service Accounts, Authenticating, Authorization Overview.</div>
     </div>
   </div>
@@ -1679,23 +1313,6 @@ kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;target-host&gt; &lt;tar
         <li>allow rule exists but podSelector or namespaceSelector is wrong &rarr; <a class="fix-link" href="#domain-networkpolicy">fix selectors</a></li>
         <li>egress policy blocking outbound traffic &rarr; <a class="fix-link" href="#domain-networkpolicy">add egress allow</a></li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether this points to NetworkPolicy blocking ingress or egress
-2. the key signal
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Traffic silently blocked despite objects looking correct
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Network Policies, Cluster Networking.</div>
     </div>
   </div>
@@ -1721,25 +1338,6 @@ kubectl get pods -n &lt;ns&gt;                    # are new pods stuck?</pre>
         <li><strong style="color:var(--traffic)">Receive Traffic</strong>, if Pods are healthy but not serving</li>
         <li><strong style="color:var(--dep)">Reach Dep</strong>, if the app is up but broken against dependencies</li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Treat this as a routing symptom, not the root cause.
-
-Tell me:
-1. where the rollout is stuck
-2. whether this should route to Start, Stay Up, Receive Traffic, or Reach Dep
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Rollout stuck or deployment not progressing
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Deployments, Debug Pods.</div>
     </div>
   </div>
@@ -1765,23 +1363,6 @@ kubectl logs &lt;job-pod&gt; -n &lt;ns&gt;</pre>
         <li><strong style="color:var(--stayup)">Stay up</strong>, if Job Pod crashes</li>
         <li><strong style="color:var(--dep)">Reach Dep</strong>, if job logic fails against dependencies</li>
       </ul>
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. whether the job pod cannot start, crashes while running, or fails against a dependency
-2. which bucket this routes into
-3. the next 1-2 commands
-4. the smallest justified fix if already clear
-
-Do not guess beyond the evidence.
-
-Symptom: Job / CronJob issue
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Jobs, CronJobs, Debug Pods, Debug Running Pods.</div>
     </div>
   </div>
@@ -1843,24 +1424,6 @@ kubectl get svc -n &lt;ns&gt;                                # what init is wait
 kubectl logs &lt;pod&gt; -n &lt;ns&gt;            # clean startup, no errors</pre>
       <div class="say-block">"Restarts have stopped, pod is staying Running, logs are clean."</div>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal from logs / previous logs / describe
-2. whether this is really an app startup crash rather than config, dependency, probe, or OOM
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix if the evidence is already sufficient
-
-Do not guess beyond the evidence.
-
-Domain: Startup / Crash
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Running Pods, Determine the Reason for Pod Failure.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -1906,24 +1469,6 @@ kubectl create secret generic &lt;secret&gt; --from-literal=KEY=value -n &lt;ns&
       <pre>kubectl get pods -n &lt;ns&gt; -w             # pod moves past error, reaches Running</pre>
       <div class="say-block">"Pod is past the error state and running."</div>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is image pull, missing image auth, imagePullPolicy, or container creation/config failure
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: Image Pull / Container Creation
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Images, Pull an Image from a Private Registry.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -1970,24 +1515,6 @@ curl -i localhost:8080/readyz</pre>
 kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;       # endpoints populate</pre>
       <div class="say-block">"Pod is 1/1 Ready, endpoints are populated."</div>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is readiness, liveness, or startup probe failure
-3. whether the likely issue is wrong path, wrong port, bad timing, or a real app problem
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: Probe Failure
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Configure Liveness, Readiness and Startup Probes.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2036,24 +1563,6 @@ kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;KEY&gt;   # correct val
 kubectl logs &lt;pod&gt; -n &lt;ns&gt;                        # clean startup</pre>
       <div class="say-block">"No warning events, correct values injected, clean startup."</div>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is missing ConfigMap/Secret, wrong reference name, wrong key, or wrong injected value
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: Config / Secret / Env
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: ConfigMaps, Secrets.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2098,24 +1607,6 @@ curl -i localhost:8080/                            # valid response
 curl -s localhost/                                 # end-to-end through Ingress</pre>
       <div class="say-block">"Endpoints are populated, port-forward works, and the external curl returns a valid response."</div>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is selector mismatch, empty endpoints, wrong targetPort, wrong named port, or wrong backend pods
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: Service Routing / Port / Endpoint
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Service, Debug Services.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2155,24 +1646,6 @@ kubectl get networkpolicy -n &lt;ns&gt;</pre>
       <h4>Verify</h4>
       <pre>kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;service&gt;   # returns valid cluster IP</pre>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is wrong namespace, wrong service name, missing FQDN, or cluster DNS trouble
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: DNS / Service Discovery / Namespace
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: DNS for Services and Pods.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2221,24 +1694,6 @@ kubectl get pv</pre>
 kubectl get pods -n &lt;ns&gt;      # Running, Ready
 curl -s localhost/             # end-to-end</pre>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is scheduling pressure, taints/affinity, node placement, OOMKilled, or PVC/storage binding
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: Resource / Scheduling / Storage
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Resource Management for Pods and Containers, Persistent Volumes.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2286,24 +1741,6 @@ kubectl apply -f manifests/ingress.yaml</pre>
 kubectl describe ingress &lt;ing&gt; -n &lt;ns&gt;   # Backends show correct service
 curl -s localhost/                        # end-to-end</pre>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is wrong host/path rule, wrong backend service/port, bad ingressClassName, or ingress controller health
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: Ingress / External Routing
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Ingress, Ingress Controllers.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2352,24 +1789,6 @@ curl localhost/                                     # test after each deletion</
       <pre>kubectl get networkpolicy -n &lt;ns&gt;
 curl -s localhost/                        # traffic flows end-to-end</pre>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is ingress blocking, egress blocking, default-deny with no matching allow, or a selector mismatch in the policy
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: NetworkPolicy
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Network Policies.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2421,24 +1840,6 @@ kubectl edit role &lt;role&gt; -n &lt;ns&gt;</pre>
       <pre>kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; &lt;verb&gt; &lt;resource&gt; -n &lt;ns&gt;
 # Expected: yes</pre>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is missing permission, wrong service account, or binding in the wrong namespace
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: RBAC
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Using RBAC Authorization, Configure Service Accounts for Pods.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
@@ -2488,24 +1889,6 @@ kubectl get secret &lt;secret&gt; -n &lt;ns&gt; -o jsonpath='{.data.&lt;key&gt;}
 kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | sort     # env vars correct
 curl -s localhost/                            # app responds through full path</pre>
 
-            <div class="ai-prompt">
-        <div class="ai-prompt-label">AI helper prompt</div>
-        <pre>Interpret this Kubernetes troubleshooting output concisely.
-
-Tell me:
-1. the key signal
-2. whether this is dependency down, wrong host/port, connection refused, partial startup dependency failure, or app logic failing against the dependency
-3. what it rules in or rules out
-4. the next 1-2 commands to confirm
-5. the smallest justified fix
-
-Do not guess beyond the evidence.
-
-Domain: App-Level dependency failure
-
-Output:
-&lt;paste raw command output here&gt;</pre>
-      </div>
       <div class="docs">Docs: Debug Running Pods.</div>
       <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
     </div>
