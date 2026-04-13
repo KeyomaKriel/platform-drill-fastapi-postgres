@@ -671,14 +671,11 @@
     <a href="#triage">Triage</a>
     <a href="#truth">Truth Source</a>
     <a href="#caution">Cautions</a>
-    <a href="#scope">Scope</a>
     <a href="#symptoms-high" class="bucket-start">Symptoms</a>
     <a href="#domains">Domains</a>
     <a href="#views">Views</a>
-    <a href="#config-source">Config Source</a>
     <a href="#entry-path-view">Entry Path</a>
     <a href="#verify">Verify</a>
-    <a href="#say">Say</a>
     <a href="#commands">Commands</a>
   </nav>
   <button class="theme-toggle" onclick="toggleTheme()">Dark</button>
@@ -2594,21 +2591,6 @@ curl http://localhost:8080/&lt;path&gt;</pre>
     <div class="verify-step"><strong>App end to end</strong> &mdash; <code>curl localhost/health</code> and <code>curl localhost/items</code></div>
   </div>
   <div class="verify-warning">Do not stop at "Pods are Running". Services depend on backend endpoints, and ingress only proves the external edge if the backend chain is sound.</div>
-</section>
-
-<!-- What to Say -->
-<section id="say">
-  <h2>What to Say in the Interview</h2>
-  <div class="phrases">
-    <div class="phrase">"I'm going to start with the symptom, not jump to a root cause."</div>
-    <div class="phrase">"First I want the nearest truth source."</div>
-    <div class="phrase">"If the Pod is broken, I'll inspect Pod state, describe output, and logs."</div>
-    <div class="phrase">"If the Pod is Running and Ready, I'll move outward from Pod to Service to Ingress."</div>
-    <div class="phrase">"I want to make one justified change, then verify end to end."</div>
-    <div class="phrase">"I want to separate app-level failure from Kubernetes routing failure, so I'll test the pod directly first, then the Service, then ingress if needed."</div>
-    <div class="phrase">"I want to identify the entry object first. If there is an Ingress, I'll use its host and path rules. If there is no Ingress, I'll inspect the Service type to see whether this is external LoadBalancer/NodePort access or internal ClusterIP routing."</div>
-  </div>
-  <p style="font-size:12px;color:#888;margin-top:8px;">That matches the official debugging flow and shows controlled reasoning rather than guesswork.</p>
 </section>
 
 <!-- Core Commands -->
