@@ -197,6 +197,8 @@ This is the default behaviour when the user asks for the next drill scenario.
    - A vague, realistic symptom prompt suitable for a technical interview
    - 15-minute timer
 
+   **CRITICAL: The user reads this file. It must contain ZERO clues about the fault type, failure domain, what the break does, or what to look for. The base64-encoded command exists specifically so the user cannot read it. Do not include any text, comments, headings, or context in this file that hints at what is broken. The symptom prompt must be vague. The file title must be generic (e.g. "Debugging (Django App)"). No domain names, no fault descriptions, no signal hints.**
+
 2. Create `codespace/drills/codespace-drills/round-NN/drill-<NN>-scenario-answer.md` containing:
    - App name, failure domain, tier
    - Exactly what was injected and why it causes the symptom
@@ -228,6 +230,8 @@ This is the default behaviour when the user asks for the next drill scenario.
 
 - **Do NOT reveal, hint at, or discuss the fault type, failure domain, or what the break does in the visible response.** Just create the files silently.
 - On success, respond with a minimal confirmation such as ‘Done.’ Do not include any fault details.
+- **The scenario file (`drill-<NN>-scenario.md`) is user-facing.** It must contain zero clues. All fault details, domain info, signals, and answer content go ONLY in the answer file (`drill-<NN>-scenario-answer.md`), which the user does not read until evaluation.
+- **The answer file content must never appear in Claude Code’s visible output.** Use a subagent to write it, or write it silently. Do not echo its contents.
 
 ### Failure domain likelihood tiers
 

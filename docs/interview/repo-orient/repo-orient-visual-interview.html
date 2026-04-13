@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Orientation &mdash; Interview Quick Reference</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182243;
+      --text: #eef2ff;
+      --muted: #b8c2e0;
+      --line: #2b396d;
+      --accent: #7aa2ff;
+      --green: #90f0c8;
+      --warn: #ffd38a;
+      --danger: #ff9b9b;
+      --purple: #c4a0ff;
+      --shadow: 0 12px 32px rgba(0,0,0,.28);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top left, rgba(122,162,255,.14), transparent 30%),
+                  radial-gradient(circle at top right, rgba(144,240,200,.10), transparent 25%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* --- Sticky TOC --- */
+    .toc {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11,16,32,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      padding: 8px 20px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .toc a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .toc a:hover { background: rgba(122,162,255,.15); color: var(--accent); }
+
+    /* --- Hero --- */
+    .hero {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(24px, 4vw, 36px); line-height: 1.1; }
+    .sub { margin: 0; color: var(--muted); font-size: 15px; }
+    .hero-rule {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      font-size: 14px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* --- Section --- */
+    h2 { font-size: 19px; margin: 0 0 12px; }
+    h3 { font-size: 16px; margin: 0 0 8px; }
+
+    .section { margin-bottom: 24px; }
+
+    .label {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .label-spot   { background: rgba(144,240,200,.15); color: var(--green); }
+    .label-cmd    { background: rgba(122,162,255,.15); color: var(--accent); }
+    .label-read   { background: rgba(196,160,255,.15); color: var(--purple); }
+    .label-live   { background: rgba(255,211,138,.15); color: var(--warn); }
+    .label-recap  { background: rgba(255,155,155,.15); color: var(--danger); }
+
+    /* --- Card --- */
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    /* --- Framework recognition grid --- */
+    .fw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 740px) { .fw-grid { grid-template-columns: 1fr; } }
+
+    .fw-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .fw-card h3 { color: var(--green); margin-bottom: 6px; }
+
+    .fw-signals {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12px;
+      color: var(--warn);
+      line-height: 1.7;
+      margin-bottom: 6px;
+    }
+
+    .fw-detail {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 0;
+    }
+    .fw-detail dt { color: var(--text); font-weight: 600; margin-top: 6px; }
+    .fw-detail dd { margin: 0 0 0 0; }
+
+    /* --- Say block --- */
+    .say {
+      border-left: 3px solid var(--green);
+      background: rgba(144,240,200,.06);
+      padding: 8px 14px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 10px;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    /* --- File step cards --- */
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(196,160,255,.15);
+      color: var(--purple);
+      font-weight: 800;
+      font-size: 14px;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .step-title h3 {
+      margin: 0;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 15px;
+    }
+
+    .extract {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .extract li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .badge-port    { background: rgba(144,240,200,.2); color: var(--green); }
+    .badge-probe   { background: rgba(255,155,155,.2); color: var(--danger); }
+    .badge-config  { background: rgba(255,211,138,.2); color: var(--warn); }
+    .badge-traffic { background: rgba(196,160,255,.2); color: var(--purple); }
+    .badge-start   { background: rgba(122,162,255,.2); color: var(--accent); }
+
+    .why {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+      padding-left: 14px;
+      border-left: 2px solid var(--line);
+    }
+
+    pre {
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #0a0f1d;
+      border: 1px solid var(--line);
+      overflow: auto;
+      color: #d9e3ff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* --- Recap buckets --- */
+    .recap-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    @media (max-width: 740px) { .recap-grid { grid-template-columns: 1fr 1fr; } }
+    .recap-item {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+    }
+    .recap-item h4 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+    .recap-item.s-shape h4   { color: var(--accent); }
+    .recap-item.s-start h4   { color: var(--green); }
+    .recap-item.s-supply h4  { color: var(--warn); }
+    .recap-item.s-ship h4    { color: var(--purple); }
+    .recap-item.s-signals h4 { color: var(--danger); }
+    .recap-item p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .recap-item .slot {
+      background: rgba(255,255,255,.08);
+      border-radius: 3px;
+      padding: 0 5px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      color: var(--warn);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sticky TOC -->
+<nav class="toc">
+  <a href="#recognize">Recognize</a>
+  <a href="#commands">Repo Commands</a>
+  <a href="#files">Open Files</a>
+  <a href="#live">Live Checks</a>
+  <a href="#recap">Recap</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="eyebrow">Interview Quick Reference</div>
+    <h1>Repo Orientation</h1>
+    <p class="sub">Recognize the app. Read 5 files. Say what you found. Verify live. Move on.</p>
+    <div class="hero-rule">You are not being tested on framework expertise. You are being tested on whether you can orient to an unfamiliar repo, understand how it's deployed, and verify the contracts that make it work.</div>
+  </section>
+
+  <!-- ========== 1. RECOGNIZE ========== -->
+  <section class="section" id="recognize">
+    <div class="card">
+      <div class="label label-spot">10 seconds &mdash; Spot the framework</div>
+      <h2>What kind of app is this?</h2>
+
+      <div class="fw-grid">
+
+        <!-- Django -->
+        <div class="fw-card">
+          <h3>Django</h3>
+          <div class="fw-signals">manage.py<br>config/ or project/<br>views.py, urls.py<br>models.py, migrations/</div>
+          <dl class="fw-detail">
+            <dt>Routes</dt><dd>*/urls.py + */views.py</dd>
+            <dt>Config</dt><dd>config/settings.py</dd>
+            <dt>Entry</dt><dd>manage.py / gunicorn config.wsgi</dd>
+          </dl>
+          <div class="say">"This looks like a Django app. manage.py is the signal. I'd expect settings in the project package, routes in urls.py, and handlers in views.py."</div>
+        </div>
+
+        <!-- Simple Python -->
+        <div class="fw-card">
+          <h3>Python (Flask / FastAPI)</h3>
+          <div class="fw-signals">app.py or main.py<br>requirements.txt<br>fewer framework folders</div>
+          <dl class="fw-detail">
+            <dt>Routes</dt><dd>app.py or main.py (same file)</dd>
+            <dt>Config</dt><dd>env vars read in app code</dd>
+            <dt>Entry</dt><dd>gunicorn / uvicorn + app file</dd>
+          </dl>
+          <div class="say">"This looks like a simpler Python service. Routes and startup logic should be concentrated in one or two files."</div>
+        </div>
+
+        <!-- Go -->
+        <div class="fw-card">
+          <h3>Go</h3>
+          <div class="fw-signals">go.mod<br>main.go<br>maybe cmd/, internal/</div>
+          <dl class="fw-detail">
+            <dt>Routes</dt><dd>main.go (or handlers.go)</dd>
+            <dt>Config</dt><dd>env vars read in main.go</dd>
+            <dt>Entry</dt><dd>compiled binary in Dockerfile CMD</dd>
+          </dl>
+          <div class="say">"This is a Go service. go.mod and main.go are the signals. I'm going to check main.go for startup, routes, and the listening port."</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 2. REPO COMMANDS ========== -->
+  <section class="section" id="commands">
+    <div class="card">
+      <div class="label label-cmd">30 seconds &mdash; Map the repo</div>
+      <h2>Get the shape before opening any files</h2>
+      <pre>pwd
+ls
+tree -L 2          # or: find . -maxdepth 2 -type f | sort
+cat README.md      # skim only &mdash; what is this, how to run it</pre>
+      <div class="say">"I'm mapping the repo first so I know where the app code, container config, and Kubernetes manifests live before I start reading anything."</div>
+    </div>
+  </section>
+
+  <!-- ========== 3. OPEN THESE FILES ========== -->
+  <section class="section" id="files">
+    <div class="card" style="padding-bottom:8px;">
+      <div class="label label-read">3&ndash;4 minutes &mdash; Read these files in order</div>
+      <h2>Open one, extract everything, move on</h2>
+    </div>
+
+    <!-- Step 1: Dockerfile -->
+    <div class="card">
+      <div class="step-title"><span class="step-num">1</span><h3>Dockerfile</h3></div>
+      <ul class="extract">
+        <li><span class="badge badge-port">Port</span> <code>EXPOSE</code> &mdash; the container port. Probes and Service targetPort must match this.</li>
+        <li><span class="badge badge-start">Start</span> <code>CMD</code> / <code>ENTRYPOINT</code> &mdash; what process runs. Note WSGI module paths.</li>
+        <li><span class="badge badge-start">Build</span> Single-stage vs multi-stage. Base image confirms language.</li>
+      </ul>
+      <div class="why">The port here is the source-of-truth contract. If the Deployment, Service, or probes reference a different port, that's likely the break.</div>
+      <div class="say">"I'm checking what actually starts in the container and which port it listens on, because that has to match probes and Service targetPort."</div>
+    </div>
+
+    <!-- Step 2: App code -->
+    <div class="card">
+      <div class="step-title"><span class="step-num">2</span><h3>App code &mdash; routes, health, DB config</h3></div>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 8px;">
+        <strong>Django:</strong> config/settings.py &rarr; */urls.py &rarr; */views.py &nbsp;|&nbsp;
+        <strong>Python:</strong> app.py &nbsp;|&nbsp;
+        <strong>Go:</strong> main.go
+      </p>
+      <ul class="extract">
+        <li><span class="badge badge-probe">Probe</span> Health/readiness path &mdash; what path returns 200, what it checks. This is what the probe must target.</li>
+        <li><span class="badge badge-traffic">Routes</span> All user-visible endpoints and what they do.</li>
+        <li><span class="badge badge-config">Config</span> Which env var names for DB? (<code>PG*</code>, <code>POSTGRES_*</code>, <code>DB_*</code> &mdash; varies)</li>
+        <li><span class="badge badge-start">Startup</span> Does it seed data? Run migrations? Crash if DB unreachable?</li>
+      </ul>
+      <div class="why">Probe path mismatches are one of the most common failures. If the app serves <code>/api/v1/status</code> but the probe targets <code>/health</code>, readiness silently fails.</div>
+      <div class="say">"I'm checking which paths the app really serves and whether health endpoints exist, because probe-path mismatches are a common failure."</div>
+    </div>
+
+    <!-- Step 3: Deployment -->
+    <div class="card">
+      <div class="step-title"><span class="step-num">3</span><h3>Deployment manifest</h3></div>
+      <ul class="extract">
+        <li><span class="badge badge-start">Image</span> Image name/tag, <code>imagePullPolicy</code>.</li>
+        <li><span class="badge badge-start">Override</span> <code>command</code> / <code>args</code> &mdash; if present, overrides Dockerfile CMD.</li>
+        <li><span class="badge badge-config">Config</span> <code>envFrom</code> &mdash; which ConfigMaps and Secrets. These names must exist in the namespace.</li>
+        <li><span class="badge badge-probe">Probes</span> Path, port, timing. Must match what the app actually serves on the container port.</li>
+        <li><span class="badge badge-traffic">Labels</span> Pod template labels &mdash; the Service selector must match these exactly.</li>
+        <li><span class="badge badge-start">Init</span> How many init containers? What does each do? Which read from ConfigMap/Secret?</li>
+      </ul>
+      <div class="why">This is where most contracts live: image, config references, probe targets, labels. Any naming mismatch here silently breaks things.</div>
+      <div class="say">"Now I'm checking how Kubernetes runs the app: image, startup override, config injection, probes, and init containers."</div>
+    </div>
+
+    <!-- Step 4: Service -->
+    <div class="card">
+      <div class="step-title"><span class="step-num">4</span><h3>Service manifest</h3></div>
+      <ul class="extract">
+        <li><span class="badge badge-traffic">Selector</span> Must match Deployment pod labels. Any character difference = empty endpoints.</li>
+        <li><span class="badge badge-port">Ports</span> <code>port</code> (what Ingress connects to) &rarr; <code>targetPort</code> (must match container port).</li>
+      </ul>
+      <div class="why">If the selector doesn't match pod labels, endpoints are empty and traffic silently fails while pods look healthy.</div>
+      <div class="say">"This tells me how traffic reaches the pod. The selector must match pod labels, and targetPort must match the app's listening port."</div>
+    </div>
+
+    <!-- Step 5: Ingress -->
+    <div class="card">
+      <div class="step-title"><span class="step-num">5</span><h3>Ingress manifest</h3></div>
+      <ul class="extract">
+        <li><span class="badge badge-traffic">Backend</span> Service name and port &mdash; must match the Service exactly.</li>
+        <li><span class="badge badge-traffic">Routing</span> <code>ingressClassName</code>, host, path rules.</li>
+      </ul>
+      <div class="why">This is the last hop before the user-visible URL. If the backend name or port is wrong, external access fails while internal routing still works.</div>
+      <div class="say">"This is the user-visible entry path. If the app is unreachable externally, this is one of the first contracts I'd verify."</div>
+    </div>
+
+    <!-- Step 6: ConfigMap / Secret -->
+    <div class="card">
+      <div class="step-title"><span class="step-num">6</span><h3>ConfigMap + Secret <span style="font-weight:400;color:var(--muted);font-size:13px;font-family:inherit;">&mdash; check when needed</span></h3></div>
+      <ul class="extract">
+        <li><span class="badge badge-config">Values</span> DB host must match the DB Service name. DB name, user, password must match on both sides.</li>
+        <li><span class="badge badge-config">Names</span> ConfigMap/Secret names must match what the Deployment <code>envFrom</code> references.</li>
+      </ul>
+      <div class="why">Config mismatches between the app side and the database side are the single most common failure domain. Any naming drift breaks the connection.</div>
+      <div class="say">"I'm checking whether the config names and values actually match what the app and dependent service expect."</div>
+    </div>
+  </section>
+
+  <!-- ========== 4. LIVE CHECKS ========== -->
+  <section class="section" id="live">
+    <div class="card">
+      <div class="label label-live">After orientation &mdash; First live checks</div>
+      <h2>Verify reality matches what you read</h2>
+      <pre>kubectl get pods -n &lt;ns&gt;                # Running + Ready?
+kubectl get endpoints -n &lt;ns&gt;           # Populated for each Service?
+kubectl get ingress -n &lt;ns&gt;             # ADDRESS populated?
+curl localhost/&lt;health-path&gt;            # 200?
+curl localhost/&lt;data-path&gt;              # Returns data?</pre>
+      <div class="say">"Files told me what should happen. These commands tell me what is actually happening. Any gap between the two is where the problem lives &mdash; and I want to verify the full user-visible path, not just that pods are Running."</div>
+    </div>
+  </section>
+
+  <!-- ========== 5. RECAP ========== -->
+  <section class="section" id="recap">
+    <div class="card">
+      <div class="label label-recap">Summary template &mdash; say this at the end</div>
+      <h2>Narrate what you know by bucket</h2>
+      <div class="recap-grid">
+        <div class="recap-item s-shape">
+          <h4>Shape</h4>
+          <p>"This is a <span class="slot">[framework]</span> API for <span class="slot">[purpose]</span>, backed by <span class="slot">[DB]</span>, deployed via <span class="slot">[manifests]</span> into <span class="slot">[namespace]</span>."</p>
+        </div>
+        <div class="recap-item s-start">
+          <h4>Start</h4>
+          <p>"Runs <span class="slot">[process]</span> on port <span class="slot">[N]</span>. <span class="slot">[N]</span> init containers. Migrations happen <span class="slot">[where]</span>. If DB down: <span class="slot">[crashes/degrades]</span>."</p>
+        </div>
+        <div class="recap-item s-supply">
+          <h4>Supply</h4>
+          <p>"<span class="slot">[N]</span> env vars from ConfigMap <span class="slot">[name]</span> + Secret <span class="slot">[name]</span>. DB host = <span class="slot">[service name]</span>."</p>
+        </div>
+        <div class="recap-item s-ship">
+          <h4>Ship</h4>
+          <p>"<span class="slot">[N]</span> replicas. Probes on <span class="slot">[path:port]</span>. Service <span class="slot">[port]</span>&rarr;<span class="slot">[targetPort]</span>. Ingress <span class="slot">[path]</span>&rarr;<span class="slot">[svc:port]</span>."</p>
+        </div>
+        <div class="recap-item s-signals">
+          <h4>Signals</h4>
+          <p>"DB down &rarr; <span class="slot">[crash/503]</span>. Probe wrong &rarr; endpoints empty. Selector wrong &rarr; pods healthy but no traffic. Ingress wrong &rarr; internal works, external fails."</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

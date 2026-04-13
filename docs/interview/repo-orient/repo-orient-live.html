@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Orientation — Live Interview Guide</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182243;
+      --text: #eef2ff;
+      --muted: #b8c2e0;
+      --line: #2b396d;
+      --accent: #7aa2ff;
+      --accent-2: #90f0c8;
+      --warn: #ffd38a;
+      --danger: #ff9b9b;
+      --shadow: 0 16px 40px rgba(0,0,0,.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(122,162,255,.16), transparent 30%),
+        radial-gradient(circle at top right, rgba(144,240,200,.12), transparent 25%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 56px; }
+
+    /* --- Hero --- */
+    .hero {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    h1 { margin: 0 0 10px; font-size: clamp(26px, 4vw, 38px); line-height: 1.1; }
+    .sub { margin: 0; color: var(--muted); font-size: 16px; }
+
+    .five-questions {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    .five-questions .q {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .five-questions .q .num {
+      display: block;
+      font-size: 22px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 700px) {
+      .five-questions { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* --- Sections --- */
+    h2 { font-size: 20px; margin: 28px 0 14px; }
+    h3 { font-size: 17px; margin: 0 0 10px; }
+
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .label-spot  { background: rgba(144,240,200,.15); color: var(--accent-2); }
+    .label-read  { background: rgba(122,162,255,.15); color: var(--accent); }
+    .label-say   { background: rgba(196,160,255,.15); color: #c4a0ff; }
+    .label-stop  { background: rgba(255,155,155,.15); color: var(--danger); }
+
+    /* --- Cards --- */
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    /* --- Framework recognition --- */
+    .fw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 700px) { .fw-grid { grid-template-columns: 1fr; } }
+
+    .fw-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .fw-card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent-2); }
+    .fw-card .signals {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 13px;
+      color: var(--warn);
+      margin-bottom: 8px;
+    }
+    .fw-card .say {
+      font-size: 13px;
+      font-style: italic;
+      color: var(--muted);
+      border-left: 3px solid var(--accent);
+      padding-left: 10px;
+      margin-top: 8px;
+    }
+
+    /* --- File cards --- */
+    .file-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .file-card:last-child { margin-bottom: 0; }
+    .file-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    .extract {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .extract li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .extract li:last-child { margin-bottom: 0; }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+      background: rgba(122,162,255,.2);
+      color: var(--accent);
+    }
+    .badge.port    { background: rgba(144,240,200,.2); color: var(--accent-2); }
+    .badge.config  { background: rgba(255,211,138,.2); color: var(--warn); }
+    .badge.probe   { background: rgba(255,155,155,.2); color: var(--danger); }
+    .badge.traffic { background: rgba(196,160,255,.2); color: #c4a0ff; }
+
+    .say-line {
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text);
+      border-left: 3px solid var(--accent-2);
+      padding: 8px 12px;
+      margin-top: 10px;
+      background: rgba(144,240,200,.06);
+      border-radius: 0 8px 8px 0;
+    }
+
+    pre {
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #0a0f1d;
+      border: 1px solid var(--line);
+      overflow: auto;
+      color: #d9e3ff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* --- Chain --- */
+    .chain {
+      background: var(--panel);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 12px 12px 0;
+      padding: 16px 20px;
+      margin-top: 12px;
+    }
+    .chain h4 { margin: 0 0 8px; color: var(--accent); font-size: 14px; text-transform: uppercase; letter-spacing: .08em; }
+
+    /* --- Stop list --- */
+    .stop-list {
+      columns: 2;
+      column-gap: 20px;
+      padding-left: 18px;
+    }
+    .stop-list li { margin-bottom: 4px; font-size: 14px; color: var(--muted); }
+    .stop-list li::marker { color: var(--danger); }
+
+    /* --- Narration script --- */
+    .script-list {
+      list-style: none;
+      padding: 0;
+      counter-reset: script;
+    }
+    .script-list li {
+      counter-increment: script;
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .script-list li::before {
+      content: counter(script);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(144,240,200,.15);
+      color: var(--accent-2);
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .script-list li em { color: var(--accent-2); font-style: normal; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="eyebrow">Live Interview Reference</div>
+      <h1>Repo Orientation</h1>
+      <p class="sub">Answer five things fast. Read five files. Say what you found.</p>
+
+      <div class="five-questions">
+        <div class="q"><span class="num">1</span>What kind of app?</div>
+        <div class="q"><span class="num">2</span>What process starts it?</div>
+        <div class="q"><span class="num">3</span>What port?</div>
+        <div class="q"><span class="num">4</span>What endpoints?</div>
+        <div class="q"><span class="num">5</span>Which manifests wire it?</div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: SPOT THE FRAMEWORK -->
+    <section class="card">
+      <div class="section-label label-spot">10 seconds &mdash; Spot the framework</div>
+      <pre>pwd && ls && tree -L 2</pre>
+
+      <div class="fw-grid">
+        <div class="fw-card">
+          <h4>Django</h4>
+          <div class="signals">manage.py + config/ + models.py + views.py + urls.py + migrations/</div>
+          <div class="say">"This looks like a Django app. manage.py is the signal. Settings in the project package, routes in urls.py, handlers in views.py."</div>
+        </div>
+        <div class="fw-card">
+          <h4>Simple Python</h4>
+          <div class="signals">app.py or main.py + requirements.txt</div>
+          <div class="say">"This looks like a simpler Python service. Routes and startup logic should be concentrated in one or two files."</div>
+        </div>
+        <div class="fw-card">
+          <h4>Go</h4>
+          <div class="signals">go.mod + main.go</div>
+          <div class="say">"This is a Go service. I'm going to check main.go for startup, routes, and the listening port."</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: READ THESE 5 FILES -->
+    <section class="card">
+      <div class="section-label label-read">3&ndash;4 minutes &mdash; Read these 5 files only</div>
+
+      <!-- 1. Dockerfile -->
+      <div class="file-card">
+        <h4>1. Dockerfile</h4>
+        <ul class="extract">
+          <li><span class="badge port">Port</span> EXPOSE &mdash; the container port. Service targetPort and probe port must match this.</li>
+          <li><span class="badge">Start</span> CMD / ENTRYPOINT &mdash; what process runs. If it references a WSGI module path, note which package.</li>
+          <li><span class="badge">Build</span> Base image, single-stage vs multi-stage.</li>
+        </ul>
+        <div class="say-line">"The Dockerfile tells me this is a [language] app running [process] on port [N]. This port is the contract that probes and Service targetPort must match."</div>
+      </div>
+
+      <!-- 2. App entrypoint -->
+      <div class="file-card">
+        <h4>2. App code &mdash; routes, health, config</h4>
+        <p style="color: var(--muted); font-size: 13px; margin: 0 0 8px;">
+          <strong>Django:</strong> config/settings.py (DB config) + */urls.py (routes) + */views.py (handlers)<br>
+          <strong>Python:</strong> app.py or main.py<br>
+          <strong>Go:</strong> main.go
+        </p>
+        <ul class="extract">
+          <li><span class="badge probe">Probe</span> Health/readiness endpoints &mdash; what path, what they check. This is what the probe must target.</li>
+          <li><span class="badge">Routes</span> All endpoints and what they do.</li>
+          <li><span class="badge config">Config</span> Which env var names for DB? (PG*, POSTGRES_*, DB_* &mdash; varies by app)</li>
+          <li><span class="badge">Start</span> Startup behaviour &mdash; seeds data? Runs migrations? Crashes if DB down?</li>
+        </ul>
+        <div class="say-line">"The app has [N] endpoints. Health check is [path] and it [checks DB / always 200]. DB config comes from env vars [list]. On startup it [seeds/migrates/crashes if DB down]."</div>
+      </div>
+
+      <!-- 3. Deployment -->
+      <div class="file-card">
+        <h4>3. Deployment manifest</h4>
+        <ul class="extract">
+          <li><span class="badge">Image</span> Image name/tag, imagePullPolicy.</li>
+          <li><span class="badge traffic">Labels</span> Pod template labels &mdash; the Service selector must match these.</li>
+          <li><span class="badge config">Config</span> envFrom &mdash; which ConfigMaps and Secrets. These names must exist in the namespace.</li>
+          <li><span class="badge probe">Probes</span> Path, port, timing. Must match what the app actually serves.</li>
+          <li><span class="badge">Init</span> How many init containers? What does each do? Which read from ConfigMap/Secret?</li>
+          <li><span class="badge">Override</span> command/args &mdash; if present, overrides Dockerfile CMD.</li>
+        </ul>
+        <div class="say-line">"The Deployment runs [image] with [N] init containers. Config comes from [names]. Probes target [path:port]. Migrations/seeding happen [where]."</div>
+      </div>
+
+      <!-- 4. Service -->
+      <div class="file-card">
+        <h4>4. Service manifest</h4>
+        <ul class="extract">
+          <li><span class="badge traffic">Selector</span> Must match Deployment pod labels exactly.</li>
+          <li><span class="badge port">Ports</span> port (what Ingress connects to) &rarr; targetPort (must match container port).</li>
+        </ul>
+        <div class="say-line">"Service selects [labels], maps port [X] to targetPort [Y]. If either drifts from the Deployment, traffic fails silently while pods look healthy."</div>
+      </div>
+
+      <!-- 5. Ingress -->
+      <div class="file-card">
+        <h4>5. Ingress manifest</h4>
+        <ul class="extract">
+          <li><span class="badge traffic">Backend</span> Service name and port &mdash; must match the Service.</li>
+          <li><span class="badge">Routing</span> IngressClassName, host, path rules.</li>
+        </ul>
+        <div class="say-line">"Ingress routes [path] to [service] on port [N]. This is the last hop before the user-visible URL."</div>
+      </div>
+
+      <!-- Bonus: DB + ConfigMap/Secret -->
+      <div class="file-card">
+        <h4>Also check: ConfigMap + Secret + DB manifests</h4>
+        <ul class="extract">
+          <li><span class="badge config">Values</span> DB host, port, database name, creds. Cross-reference: does DB host match the DB Service name?</li>
+          <li><span class="badge config">Creds</span> Do app creds match DB creds? Any mismatch is the most common failure domain.</li>
+          <li><span class="badge">DB Service</span> Service name = the hostname the app config must point to.</li>
+        </ul>
+        <div class="say-line">"Config points to DB host [name] &mdash; I'm verifying that matches the actual DB Service name and that creds match on both sides."</div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: THE CONTRACT CHAIN -->
+    <section class="card">
+      <div class="section-label label-read">Verify &mdash; The contract chain</div>
+      <p style="color: var(--muted); font-size: 14px; margin: 0 0 12px;">Every connection in this chain is a contract between two manifests. If any link breaks, the app fails.</p>
+
+      <div class="chain">
+        <h4>Config chain</h4>
+        <pre style="margin:0;">App reads DB host from env var [PGHOST / POSTGRES_HOST / DB_HOST]
+  &rarr; Deployment envFrom references ConfigMap [name]
+    &rarr; ConfigMap value = DB Service name
+      &rarr; DB Service selector = DB pod labels
+        &rarr; DB pod Running + Ready</pre>
+      </div>
+
+      <div class="chain" style="margin-top:12px;">
+        <h4>Traffic chain</h4>
+        <pre style="margin:0;">App listens on port [N]
+  &rarr; Deployment containerPort = [N]
+    &rarr; Service targetPort = [N], port = [M]
+      &rarr; Ingress backend port = [M]
+        &rarr; curl localhost/ works</pre>
+      </div>
+
+      <pre style="margin-top:12px;">kubectl get pods -n [ns]                # Running + Ready?
+kubectl get endpoints -n [ns]           # Populated?
+curl localhost/[health-path]            # 200?
+curl localhost/[data-path]              # Returns data?</pre>
+      <div class="say-line">"Files told me what should happen. These commands tell me what is actually happening. Any gap is where the problem lives &mdash; and I want to verify the full user-visible path, not just that pods are Running."</div>
+    </section>
+
+    <!-- SECTION 4: WHAT TO SAY -->
+    <section class="card">
+      <div class="section-label label-say">Narration script</div>
+      <p style="color: var(--muted); font-size: 14px; margin: 0 0 12px;">Say these out loud during orientation. Keep it plain.</p>
+      <ol class="script-list">
+        <li><em>"I'm mapping the repo first</em> &mdash; where the app code, container config, and Kubernetes manifests live."</li>
+        <li><em>"This looks like a [Django / Python / Go] app</em> because of [manage.py / app.py / go.mod]."</li>
+        <li><em>"I'm checking the Dockerfile</em> to confirm the startup command and app port."</li>
+        <li><em>"Now I'm checking the app routes and health endpoints</em> so I know what the probes and traffic path should target."</li>
+        <li><em>"Now I'm checking the Deployment, Service, and Ingress</em> to verify the startup, config, and traffic contracts."</li>
+        <li><em>"I'm cross-referencing the config values</em> against the Service names and DB config &mdash; any mismatch here is the most common failure."</li>
+        <li><em>"Now I'm verifying live</em> &mdash; pods healthy, endpoints populated, and the user-visible path returns expected responses."</li>
+      </ol>
+    </section>
+
+    <!-- SECTION 5: DON'T READ DEEPER THAN THIS -->
+    <section class="card">
+      <div class="section-label label-stop">Don't go deeper than this</div>
+      <ul class="stop-list">
+        <li>Django models in detail</li>
+        <li>Serializers / middleware</li>
+        <li>Business logic</li>
+        <li>Every endpoint's response shape</li>
+        <li>Deep framework conventions</li>
+        <li>Every manifest field</li>
+        <li>Test files</li>
+        <li>CI/CD config</li>
+      </ul>
+      <p style="color: var(--muted); font-size: 13px; margin-top: 10px;">You are not being tested on framework expertise. You are being tested on whether you can orient to an unfamiliar repo, understand how it's deployed, and verify the contracts that make it work.</p>
+    </section>
+
+  </div>
+</body>
+</html>
