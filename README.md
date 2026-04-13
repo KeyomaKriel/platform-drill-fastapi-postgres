@@ -1,8 +1,8 @@
 # Platform Drill System
 
-Practice environment for a 60-minute hands-on Platform Engineer technical interview. You run drills through Claude Code, which acts as interviewer, scenario generator, and evaluator.
+Practice environment for a 60-minute hands-on Platform Engineer technical interview. You run drills through Claude Code (locally), which acts as interviewer, scenario generator, and evaluator. You debug inside a GitHub Codespace running k3d.
 
-The system creates fresh workspaces for each drill from a canonical template repo, deploys to a local Kubernetes cluster, and evaluates your debugging process, implementation quality, and communication.
+Three drill apps (Flask, Django, Go) give you variation in framework, project structure, and K8s manifest patterns. One app is deployed at a time. Claude Code generates realistic single-fault debugging scenarios, orientation tasks, implementation tasks, and trade-off questions.
 
 ---
 
@@ -10,49 +10,58 @@ The system creates fresh workspaces for each drill from a canonical template rep
 
 ```
 ./
-├── CLAUDE.md              # The operating manual — Claude Code follows this
-├── source-repo/           # Canonical template repo (DO NOT edit during drills)
-├── workspaces/            # Disposable drill workspaces (auto-created, auto-deleted)
-├── drills/drill-feedback/ # Persistent feedback files from completed drills
-├── playbook.md            # Triage reference — updated after debugging drills
-├── playbook-old.md        # Previous playbook version
-├── CLAUDE-old.md          # Previous operating manual version
-├── prompts/               # Prompt drafts used to build the system
-├── kind-config.yaml       # Kind cluster config (drill infrastructure)
-├── cluster.yaml           # EKS cluster config (reference only)
-├── cheat-sheet-general.md # General K8s cheat sheet
-└── k8s-debug-flowchart.png
+├── CLAUDE.md                               # Operating manual — Claude Code follows this
+├── .devcontainer/                          # Codespace provisioning (k3d + nginx ingress)
+├── codespace/
+│   ├── drill-app/                          # Flask app (fleet tracking)
+│   ├── drill-app-django/                   # Django app (incident management)
+│   ├── drill-app-go/                       # Go app (warehouse inventory)
+│   ├── drills/codespace-drills/            # Scenario files, answer keys, feedback
+│   ├── guides/                             # Setup and operational guides
+│   └── scripts/                            # Automation scripts
+├── playbook.md                             # Troubleshooting handbook
+├── docs/                                   # Reference docs (HTML troubleshooting guide, etc.)
+└── prompts/                                # Prompt drafts
 ```
 
 **What each key part does:**
 
-| Path | Role | Who edits it |
-|------|------|--------------|
-| `CLAUDE.md` | Full operating manual. Claude Code reads this to know how to run drills. | You, intentionally, outside drills |
-| `source-repo/` | The candidate-facing project template. Contains app code, Dockerfile, K8s manifests, README. | You, intentionally, outside drills. Never during a drill. |
-| `workspaces/` | Where fresh drill workspaces are created. Each drill gets `workspaces/drill-workspace-01/`, `02/`, etc. | Claude Code creates them. You work inside them. They get deleted after evaluation. |
-| `drills/drill-feedback/` | Structured feedback from each completed drill. Persists across drills. | Claude Code writes these after evaluation. |
-| `playbook.md` | Your triage reference. Claude Code proposes updates after debugging drills. | Claude Code updates with your approval. |
+| Path | Role |
+|------|------|
+| `CLAUDE.md` | Full operating manual. Claude Code reads this to know how to run drills, generate scenarios, and evaluate. |
+| `.devcontainer/` | Provisions the Codespace with Docker, kubectl, helm, k3d, nginx Ingress. Runs automatically on Codespace creation. |
+| `codespace/drill-app*` | Three self-contained apps, each with Dockerfile, K8s manifests, and `deploy.sh`. |
+| `codespace/drills/codespace-drills/` | Scenario files (`drill-NN-scenario.md`), answer keys, and feedback from completed drills. |
+| `codespace/guides/automated-multi-app-drill-setup.md` | Comprehensive setup and operational guide for the Codespace workflow. |
+| `playbook.md` | Troubleshooting handbook — 11 failure domains, diagnostic commands, fix patterns. |
+
+---
+
+## Available apps
+
+| App | Framework | Domain | Namespace | Health endpoint |
+|-----|-----------|--------|-----------|-----------------|
+| `drill-app` | Flask (Python) | Fleet tracking | `fleet-ops` | `/api/v1/status` |
+| `drill-app-django` | Django + DRF (Python) | Incident management | `incident-mgmt` | `/api/v1/status` |
+| `drill-app-go` | Go stdlib net/http | Warehouse inventory | `warehouse-sys` | `/readyz` |
+
+Each app has different env var names, port numbers, init container patterns, probe configurations, and project structures — giving you unfamiliar repos to orient to each time.
 
 ---
 
 ## How the system works
 
-### Phase 1 — Baseline bootstrap and verification
+### Phase 1 — Environment setup and verification
 
-Sets up or verifies the local environment: kind cluster, Calico CNI, nginx Ingress, app image built and loaded, full stack deployed and healthy.
+Verifies the Codespace is running, the k3d cluster and nginx Ingress are healthy, and the selected app is deployed.
 
-Run this first, or whenever you need to restore a clean baseline.
+### Phase 2 — Scenario generation
 
-### Phase 2 — Drill workspace generation and task setup
-
-Creates a fresh workspace under `workspaces/` by copying `source-repo/`. Chooses a task type and presents it as a realistic interview prompt.
-
-Task types: repo orientation, single-fault debugging, small implementation/change, verification/trade-off.
+Generates a drill scenario for the selected app. For debugging drills, creates a base64-encoded fault injection command, a vague symptom prompt, and a detailed answer key with narration guidance.
 
 ### Phase 3 — Silent interviewer and evaluation
 
-Claude Code stays silent while you work. When you're done, it reads your session log, verifies the outcome, gives structured feedback, writes a feedback file, and optionally proposes playbook updates.
+Claude Code stays silent while you work in the Codespace. When you're done, it reads your session log, verifies the outcome, gives structured feedback, and writes a feedback file.
 
 ### Phase 4 — Guided coaching
 
@@ -62,20 +71,40 @@ Instead of silent observation, Claude Code walks you through step by step — te
 
 ## Typical workflow
 
-1. Open Claude Code in this folder.
-2. Say **"run phase 1"** to bootstrap or verify the environment.
-3. Wait for Phase 1 to complete and confirm healthy.
-4. Say **"next scenario"** to start a drill.
-5. Claude Code creates a workspace and presents a task.
-6. In a **separate terminal**, cd into the workspace and start the session log:
+1. **Create a Codespace** (one-time):
+   ```bash
+   gh codespace create -R KeyomaKriel/platform-drill-fastapi-postgres -b mac-eks-drill -m basicLinux32gb --idle-timeout 30m --default-permissions
    ```
-   cd /path/to/workspaces/drill-workspace-01
+
+2. **Open the Codespace** in your browser:
+   ```bash
+   gh codespace code -c <codespace-name> --web
+   ```
+
+3. **Deploy an app** from the Codespace terminal:
+   ```bash
+   cd /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django
+   bash deploy.sh
+   ```
+
+4. **Open Claude Code locally** and say:
+   > Generate the next drill scenario for drill-app-django.
+
+5. Claude Code creates the scenario files silently.
+
+6. **In the Codespace**, start the session log, inject the fault, and start debugging:
+   ```bash
+   cd /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django
    script -q -a ./session.log
+   # Paste the base64 break command from the scenario file
+   # Debug the symptom
    ```
-7. Do the task in that terminal.
-8. When done, go back to Claude Code and say **"evaluate my fix"** (or "evaluate", "done", etc.).
-9. Claude Code reads the log, evaluates your work, writes feedback.
-10. Say **"next scenario"** to start another drill.
+
+7. When done, go back to Claude Code:
+   > Evaluate my fix.
+
+8. Claude Code reads the log, evaluates, writes feedback. Then:
+   > Generate the next drill scenario.
 
 ---
 
@@ -83,125 +112,89 @@ Instead of silent observation, Claude Code walks you through step by step — te
 
 | Say this | What happens |
 |----------|-------------|
-| `run phase 1` / `set up the environment` / `bootstrap` | Runs Phase 1 — creates or verifies the baseline environment |
-| `next scenario` / `start drill` / `new drill` / `start phase 2` | Runs Phase 2 — creates a fresh workspace and presents a task |
-| `evaluate my fix` / `evaluate` / `done` / `check my work` | Triggers Phase 3 evaluation — reads your session log and gives feedback |
-| `just break something` / `test me` | Skips workspace creation, injects a fault directly, enters Phase 3 |
-| `coach me on this one` / `help me through this` | Switches to Phase 4 — guided coaching instead of silent observation |
-| `back to phase 3` / `test me again` | Returns from coaching to silent interviewer mode |
-| `hint` / `I'm stuck` | Gets a small directional hint (Phase 3 only — won't give away the answer) |
-| `how am I doing overall` | Gets a summary of patterns across all completed drills |
+| `run phase 1` / `check the codespace` | Verifies Codespace, cluster, and app health |
+| `next scenario` / `generate the next drill for drill-app-go` | Generates a scenario for the specified (or current) app |
+| `evaluate my fix` / `done` / `check my work` | Reads session log, evaluates, writes feedback |
+| `just break something` | Injects a fault directly without creating scenario files |
+| `coach me on this one` | Switches to guided coaching mode |
+| `back to phase 3` / `test me again` | Returns to silent interviewer mode |
+| `hint` / `I'm stuck` | Gets a small directional hint (won't give away the answer) |
+| `how am I doing overall` | Summary of patterns across all completed drills |
 
 ---
 
-## Session logs, workspaces, and feedback
+## Switching between apps
 
-**Workspaces:**
-- Created at `./workspaces/drill-workspace-<NN>/` for each drill
-- Contains a copy of `source-repo/` contents with simulated git history
-- Deleted after evaluation. Never reused.
+Only one app can be deployed at a time (they all use the same Ingress path `/`).
 
-**Session log:**
-- Lives at `./workspaces/drill-workspace-<NN>/session.log`
-- You start it with `script -q -a ./session.log` in the workspace
-- Claude Code reads it during evaluation
-- Deleted with the workspace
+In the Codespace:
 
-**Feedback files:**
-- Saved to `./drills/drill-feedback/scenario-<NN>-<slug>.md`
-- Persist across drills — these are your training record
-- Include: what was broken, whether you fixed it, evaluation ratings, suggested narration
+```bash
+# Tear down current app
+kubectl delete namespace incident-mgmt
 
-**What gets deleted after each drill:** The workspace directory and its session log.
-
-**What persists:** Feedback files, playbook updates, the source repo, the cluster state (restored to healthy).
+# Deploy a different one
+cd /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-go
+bash deploy.sh
+```
 
 ---
 
-## Important operating rules
+## Session logs and feedback
 
-1. **`source-repo/` is read-only during drills.** All your drill work happens in a workspace. If you want to change the template (add a manifest, update app code), do it intentionally outside of a drill.
+**Session log:** Captured in the selected app directory (`session.log`) inside the Codespace. Start with `script -q -a ./session.log`. Claude Code reads it during evaluation.
 
-2. **Phase 1 is for baseline setup, not editing.** It builds from `source-repo/` and deploys. It does not modify `source-repo/`.
+**Feedback files:** Saved to `codespace/drills/codespace-drills/drill-<NN>-feedback.md`. Persist across drills — these are your training record.
 
-3. **Each drill starts from a fresh workspace.** Previous drill state does not leak into the next one.
-
-4. **Faults are injected into the live cluster, not into workspace files.** You discover problems through runtime behaviour, not by diffing files.
-
-5. **Claude Code does not help during Phase 3** unless you explicitly ask for a hint or switch to coaching mode.
+**What persists:** Feedback files, scenario files, answer keys, playbook updates.
 
 ---
 
 ## Reset and cleanup
 
-**If a drill went wrong or the environment is messy:**
-
-- Say **"run phase 1"** to Claude Code. It will verify and fix the cluster, clean up stale workspaces, and restore the healthy baseline.
-
-**If the cluster is deeply broken:**
-
-- Delete the kind cluster and re-bootstrap:
-  ```
-  kind delete cluster --name drill-cluster
-  ```
-  Then say **"run phase 1"** to rebuild from scratch.
-
-**If you want to manually clean up workspaces:**
-
-```
-rm -rf ./workspaces/drill-workspace-*
+**Restore a healthy app after a drill:**
+```bash
+# In the Codespace — re-apply manifests
+cd /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django
+kubectl apply -f manifests/
+kubectl rollout status deployment/incident-api -n incident-mgmt
 ```
 
-**If you want to start a completely fresh drill session** (clean workspace state, fresh cluster):
+**If the cluster is broken:**
+```bash
+# In the Codespace — recreate from scratch
+bash /workspaces/platform-drill-fastapi-postgres/.devcontainer/setup-cluster.sh
+```
 
-1. `kind delete cluster --name drill-cluster`
-2. `rm -rf ./workspaces/drill-workspace-*`
-3. Open Claude Code and say "run phase 1"
-
----
-
-## Common usage patterns
-
-**I want a normal drill:**
-Say "next scenario". Claude Code picks a task type, creates a workspace, and presents the task.
-
-**I want debugging only:**
-Say "just break something" or "next debugging scenario". Claude Code injects a fault and gives you a vague symptom.
-
-**I want coaching instead of testing:**
-Say "coach me on this one" before or during a drill. Claude Code guides you step by step instead of staying silent.
-
-**I want to inspect the source repo first:**
-Look at `source-repo/` directly. It's just a normal project folder. Don't edit it during drills.
-
-**I want another scenario of the same type:**
-Say "another debugging drill" or "give me another implementation task". Claude Code will honour specific requests.
-
-**I want to see my progress:**
-Say "how am I doing overall" or look at the files in `drills/drill-feedback/`.
+**If the Codespace is gone:**
+```bash
+# From your Mac
+gh codespace create -R KeyomaKriel/platform-drill-fastapi-postgres -b mac-eks-drill -m basicLinux32gb --idle-timeout 30m --default-permissions
+```
 
 ---
 
 ## Quick start
 
-```
-# 1. Open Claude Code in this folder
+```bash
+# 1. Create and open Codespace (one-time)
+gh codespace create -R KeyomaKriel/platform-drill-fastapi-postgres -b mac-eks-drill -m basicLinux32gb --idle-timeout 30m --default-permissions
+gh codespace code -c <name> --web
 
-# 2. Bootstrap the environment
-> run phase 1
+# 2. In the Codespace terminal, deploy an app
+cd /workspaces/platform-drill-fastapi-postgres/codespace/drill-app-django
+bash deploy.sh
 
-# 3. Wait for it to complete, then start a drill
-> next scenario
+# 3. Locally in Claude Code
+> Generate the next drill scenario for drill-app-django.
 
-# 4. In a separate terminal, cd into the workspace Claude Code tells you about
-cd ./workspaces/drill-workspace-01
+# 4. In the Codespace, start session log and inject the fault
 script -q -a ./session.log
+# Paste the break command from the scenario file, then debug
 
-# 5. Do the task
+# 5. When done, back in Claude Code
+> Evaluate my fix.
 
-# 6. When done, go back to Claude Code
-> evaluate my fix
-
-# 7. Read the feedback, then
-> next scenario
+# 6. Next drill
+> Generate the next drill scenario.
 ```
