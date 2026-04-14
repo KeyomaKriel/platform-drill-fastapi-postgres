@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Troubleshooting Interview Sheet</title>
+<style>
+  :root {
+    --start: #e74c3c;
+    --start-bg: #fdf0ef;
+    --start-border: #f5c6cb;
+    --stayup: #e67e22;
+    --stayup-bg: #fef5ec;
+    --stayup-border: #f8d7b0;
+    --traffic: #2980b9;
+    --traffic-bg: #eaf2f8;
+    --traffic-border: #b8d4e8;
+    --dep: #8e44ad;
+    --dep-bg: #f4ecf7;
+    --dep-border: #d5b8e2;
+    --neutral: #2c3e50;
+    --neutral-bg: #f8f9fa;
+    --neutral-border: #dee2e6;
+    --code-bg: #1e1e2e;
+    --code-fg: #cdd6f4;
+    --card-radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: #2c3e50;
+    background: #f0f2f5;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+
+  /* --- Sticky top bar --- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .topbar h1 {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .topbar nav {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .topbar nav a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: background .15s;
+  }
+  .topbar nav a:hover { background: rgba(255,255,255,.15); }
+  .topbar nav a.bucket-start  { border-left: 3px solid var(--start); }
+  .topbar nav a.bucket-stayup { border-left: 3px solid var(--stayup); }
+  .topbar nav a.bucket-traffic { border-left: 3px solid var(--traffic); }
+  .topbar nav a.bucket-dep    { border-left: 3px solid var(--dep); }
+
+  /* --- Layout --- */
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+
+  /* --- Hero / Compressed summary --- */
+  .hero {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+  .hero h2 { color: #fff; font-size: 18px; margin-bottom: 12px; }
+  .hero .rule { color: #a5d6a7; font-weight: 600; margin-bottom: 8px; }
+  .hero .loop { color: #90caf9; margin-bottom: 8px; }
+  .hero .guard { color: #ffcc80; font-size: 13px; }
+  .hero .guard span { display: inline-block; margin-right: 14px; white-space: nowrap; }
+  .hero .compressed {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.15);
+    font-size: 13px;
+    color: #b0b0b0;
+  }
+  .hero .compressed strong { color: #ccc; }
+
+  /* --- Frame buckets row --- */
+  .frame-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 800px) {
+    .frame-row { grid-template-columns: 1fr 1fr; }
+  }
+  .bucket-card {
+    border-radius: var(--card-radius);
+    padding: 10px 8px;
+    border-top: 4px solid;
+    min-width: 0;
+  }
+  .bucket-card h3 { font-size: 15px; margin-bottom: 6px; }
+  .bucket-card .question { font-style: italic; font-size: 13px; margin-bottom: 4px; opacity: .85; }
+  .bucket-card .say {
+    background: rgba(0,0,0,.05);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 12px;
+    margin-bottom: 4px;
+    line-height: 1.45;
+  }
+  .bucket-card .say::before { content: none; }
+  .bucket-card pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.4;
+    margin-bottom: 0;
+  }
+  .bucket-card ul {
+    font-size: 13px;
+    padding: 4px 6px 4px 20px;
+    margin-top: 4px;
+    background: rgba(0,0,0,.04);
+    border-radius: 4px;
+    border-left: 3px solid rgba(0,0,0,.15);
+  }
+  .bucket-card li { margin-bottom: 2px; }
+  .bucket-card li strong { color: #e8e8e8; }
+  .bucket-card .docs { font-size: 11px; color: rgba(0,0,0,.45); margin-top: 8px; font-style: italic; }
+
+  .b-start  { background: var(--start-bg);  border-color: var(--start); }
+  .b-stayup { background: var(--stayup-bg); border-color: var(--stayup); }
+  .b-traffic { background: var(--traffic-bg); border-color: var(--traffic); }
+  .b-dep    { background: var(--dep-bg);    border-color: var(--dep); }
+
+  .b-start h3  { color: var(--start); }
+  .b-stayup h3 { color: var(--stayup); }
+  .b-traffic h3 { color: var(--traffic); }
+  .b-dep h3    { color: var(--dep); }
+
+  .bucket-card .sym-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+  }
+  .bucket-card .sym-list li { margin-bottom: 4px; }
+  .bucket-card .sym-list a {
+    color: #5b7db5;
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 1px dotted #5b7db5;
+  }
+  .bucket-card .sym-list a:hover { border-bottom-style: solid; }
+  body.dark .bucket-card .sym-list a { color: #90caf9; border-bottom-color: #90caf9; }
+
+  /* --- Sections --- */
+  section { margin-bottom: 28px; }
+  section > h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ddd;
+  }
+
+  /* --- Triage loop --- */
+  .triage-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .triage-step {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .triage-step .num {
+    background: var(--neutral);
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* --- Nearest truth --- */
+  .truth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 700px) { .truth-grid { grid-template-columns: 1fr; } }
+  .truth-item {
+    background: #fff;
+    border-left: 4px solid;
+    border-radius: 0 var(--card-radius) var(--card-radius) 0;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .truth-item strong { display: block; margin-bottom: 2px; }
+
+  /* --- Do not over-infer --- */
+  .caution-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .caution-item {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: var(--card-radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* --- Symptom cards --- */
+  .likelihood-label {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 12px;
+  }
+  .likelihood-high { background: #e74c3c; color: #fff; }
+  .likelihood-moderate { background: #e67e22; color: #fff; }
+  .likelihood-low { background: #95a5a6; color: #fff; }
+
+  .symptom-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: box-shadow .15s;
+  }
+  .symptom-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+
+  .symptom-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    border-left: 4px solid;
+  }
+  .symptom-header .chevron {
+    font-size: 12px;
+    transition: transform .2s;
+    flex-shrink: 0;
+    color: #888;
+  }
+  .symptom-card.open .symptom-header .chevron { transform: rotate(90deg); }
+  .symptom-header h4 { font-size: 14px; flex: 1; }
+  .symptom-header .bucket-tag {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .tag-start  { background: var(--start-bg);  color: var(--start);  border: 1px solid var(--start-border); }
+  .tag-stayup { background: var(--stayup-bg); color: var(--stayup); border: 1px solid var(--stayup-border); }
+  .tag-traffic { background: var(--traffic-bg); color: var(--traffic); border: 1px solid var(--traffic-border); }
+  .tag-dep    { background: var(--dep-bg);    color: var(--dep);    border: 1px solid var(--dep-border); }
+
+  .sh-start  { border-left-color: var(--start); }
+  .sh-stayup { border-left-color: var(--stayup); }
+  .sh-traffic { border-left-color: var(--traffic); }
+  .sh-dep    { border-left-color: var(--dep); }
+  .sh-neutral { border-left-color: #95a5a6; }
+
+  .symptom-body {
+    display: none;
+    padding: 0 16px 16px 30px;
+    font-size: 13px;
+  }
+  .symptom-card.open .symptom-body { display: block; }
+
+  .symptom-body .say-block,
+  .fix-body .say-block {
+    background: #f1f8e9;
+    border-left: 3px solid #66bb6a;
+    padding: 8px 12px;
+    border-radius: 0 4px 4px 0;
+    margin: 8px 0;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .symptom-body .say-block::before,
+  .fix-body .say-block::before { content: none; }
+
+  .symptom-body pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.5;
+    margin: 8px 0;
+  }
+  .symptom-body .prove {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .symptom-body .prove::before { content: 'What these usually reveal: '; font-weight: 600; color: #333; }
+  .symptom-body h5 { font-size: 13px; margin: 10px 0 4px; }
+  .symptom-body ul { padding-left: 18px; margin-bottom: 6px; }
+  .symptom-body li { margin-bottom: 2px; }
+  .symptom-body .docs { font-size: 12px; color: #777; margin-top: 8px; font-style: italic; }
+
+  /* --- Branch links inside symptom cards --- */
+  .symptom-body a.fix-link {
+    color: #2980b9;
+    text-decoration: none;
+    border-bottom: 1px dotted #2980b9;
+  }
+  .symptom-body a.fix-link:hover {
+    color: #1a5276;
+    border-bottom-style: solid;
+  }
+
+  /* --- Support views --- */
+  .views-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 700px) { .views-grid { grid-template-columns: 1fr; } }
+  .view-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 14px 16px;
+  }
+  .view-card h4 { font-size: 14px; margin-bottom: 6px; }
+  .view-card .flow {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--neutral);
+    margin-bottom: 6px;
+  }
+  .view-card ul { font-size: 13px; padding-left: 18px; }
+  .view-card li { margin-bottom: 2px; }
+  .view-card .docs { font-size: 12px; color: #777; margin-top: 6px; font-style: italic; }
+
+  /* --- Verification --- */
+  .verify-steps {
+    counter-reset: verify;
+  }
+  .verify-step {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    padding: 10px 14px 10px 44px;
+    margin-bottom: 8px;
+    position: relative;
+    font-size: 13px;
+  }
+  .verify-step::before {
+    counter-increment: verify;
+    content: counter(verify);
+    position: absolute;
+    left: 14px;
+    top: 10px;
+    background: #27ae60;
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .verify-step strong { font-size: 14px; }
+  .verify-step code {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .verify-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: var(--card-radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+  }
+
+  /* --- Interview phrases --- */
+  .phrases {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .phrase {
+    background: #f1f8e9;
+    border-left: 3px solid #66bb6a;
+    padding: 8px 14px;
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  /* --- Commands reference --- */
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .cmd-group {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    overflow: hidden;
+  }
+  .cmd-group h4 {
+    background: #f8f9fa;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .cmd-group pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 10px 14px;
+    margin: 0;
+    white-space: pre;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  /* --- Expand/Collapse all --- */
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .controls button {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .controls button:hover { background: #f0f0f0; }
+
+  /* --- AI helper prompt blocks --- */
+  .ai-prompt {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-left: 3px solid #27ae60;
+    background: rgba(39,174,96,.06);
+    border-radius: 8px;
+  }
+  .ai-prompt-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #27ae60;
+    margin-bottom: 6px;
+  }
+  .ai-prompt pre {
+    font-size: 12px;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  body.dark .ai-prompt { background: rgba(39,174,96,.1); }
+
+  /* --- Fix / Resolution sections (dropdown cards) --- */
+  .fix-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--card-radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: box-shadow .15s;
+  }
+  .fix-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+
+  .fix-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    border-left: 4px solid #27ae60;
+  }
+  .fix-header .chevron {
+    font-size: 12px;
+    transition: transform .2s;
+    flex-shrink: 0;
+    color: #888;
+  }
+  .fix-card.open .fix-header .chevron { transform: rotate(90deg); }
+  .fix-header h3 { font-size: 14px; flex: 1; margin: 0; }
+
+  .fix-body {
+    display: none;
+    padding: 0 16px 16px 30px;
+    font-size: 13px;
+  }
+  .fix-card.open .fix-body { display: block; }
+
+  .fix-body .fix-means {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .fix-body .fix-means::before { content: 'What it usually means: '; font-weight: 600; color: #333; }
+  .fix-body pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.5;
+    margin: 8px 0;
+  }
+  .fix-body h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 12px 0 4px;
+  }
+  .fix-body ul {
+    font-size: 13px;
+    padding-left: 18px;
+    margin-bottom: 6px;
+  }
+  .fix-body li { margin-bottom: 3px; }
+  .fix-body .docs {
+    font-size: 12px;
+    color: #777;
+    margin-top: 10px;
+    font-style: italic;
+  }
+  .fix-body .back-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #2980b9;
+    text-decoration: none;
+    border-bottom: 1px dotted #2980b9;
+  }
+  .fix-body .back-link:hover { border-bottom-style: solid; }
+
+  /* --- Dark mode --- */
+  body.dark { background: #1a1a2e; color: #e0e0e0; }
+
+  body.dark .symptom-card, body.dark .fix-card, body.dark .view-card,
+  body.dark .cmd-group, body.dark .verify-step, body.dark .truth-item {
+    background: #20203a;
+    border-color: #333;
+  }
+  body.dark .symptom-card:hover, body.dark .fix-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  body.dark .triage-step { background: #20203a; border-color: #333; }
+  body.dark .controls button { background: #20203a; border-color: #444; color: #e0e0e0; }
+  body.dark .controls button:hover { background: #2a2a48; }
+
+  body.dark section > h2 { border-bottom-color: #444; }
+  body.dark .symptom-header .chevron, body.dark .fix-header .chevron { color: #999; }
+
+  body.dark .bucket-card { background: rgba(255,255,255,.05); }
+  body.dark .bucket-card .say { background: rgba(255,255,255,.06); }
+  body.dark .bucket-card ul { background: rgba(255,255,255,.05); border-left-color: rgba(255,255,255,.15); }
+  body.dark .bucket-card .docs { color: rgba(255,255,255,.4); }
+
+  body.dark .caution-item { background: #3a3000; border-color: #665500; color: #ffd38a; }
+  body.dark .verify-warning { background: #3a3000; border-color: #665500; color: #ffd38a; }
+
+  body.dark .symptom-body .say-block,
+  body.dark .fix-body .say-block { background: #1a2e1a; border-left-color: #4caf50; }
+  body.dark .symptom-body .say-block::before,
+  body.dark .fix-body .say-block::before { color: #66bb6a; }
+  body.dark .fix-body a.fix-link { color: #90caf9; }
+  body.dark .symptom-body .prove { color: #aaa; }
+  body.dark .symptom-body .prove::before { color: #ccc; }
+  body.dark .symptom-body .docs { color: #888; }
+  body.dark .symptom-body a.fix-link { color: #7aa2ff; border-bottom-color: #7aa2ff; }
+  body.dark .symptom-body a.fix-link:hover { color: #a0c0ff; }
+
+  body.dark .fix-body .fix-means { color: #aaa; }
+  body.dark .fix-body .fix-means::before { color: #ccc; }
+  body.dark .fix-body .docs { color: #888; }
+  body.dark .fix-body .back-link { color: #7aa2ff; border-bottom-color: #7aa2ff; }
+
+  body.dark .cmd-group h4 { background: #282848; border-bottom-color: #444; color: #e0e0e0; }
+
+  body.dark .phrase { background: #1a2e1a; border-left-color: #4caf50; }
+
+  body.dark .view-card .docs { color: #888; }
+
+  .theme-toggle {
+    margin-left: auto;
+    background: none;
+    border: 1px solid rgba(255,255,255,.3);
+    color: #fff;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,.15); }
+
+  /* --- Print tweaks --- */
+  @media print {
+    .topbar { position: static; }
+    .symptom-card.open .symptom-body, .symptom-body, .fix-card.open .fix-body, .fix-body { display: block !important; }
+    body { background: #fff; font-size: 11px; }
+    .container { padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>K8s Troubleshooting</h1>
+  <nav>
+    <a href="#frame" class="bucket-start">Frame</a>
+    <a href="#orientation">Orient</a>
+    <a href="#triage">Triage</a>
+    <a href="#truth">Truth Source</a>
+    <a href="#caution">Cautions</a>
+    <a href="#symptoms-high" class="bucket-start">Symptoms</a>
+    <a href="#domains">Domains</a>
+    <a href="#views">Views</a>
+    <a href="#entry-path-view">Entry Path</a>
+    <a href="#verify">Verify</a>
+    <a href="#commands">Commands</a>
+  </nav>
+  <button class="theme-toggle" onclick="toggleTheme()">Dark</button>
+</div>
+
+<div class="container">
+
+<!-- Hero -- execution model + compressed summary -->
+<div class="hero">
+  <h2>Execution Model</h2>
+  <div class="rule"><strong>Rule:</strong> Symptom first, root cause second.</div>
+  <div class="loop"><strong>Loop:</strong> classify the symptom &rarr; inspect the nearest layer/object &rarr; route by evidence &rarr; make the smallest justified fix &rarr; verify end to end.</div>
+  <div class="guard"><strong>Guard:</strong>
+    <span>CrashLoopBackOff &ne; cause</span>
+    <span>Running &ne; healthy</span>
+    <span>Ready &ne; ingress works</span>
+    <span>Service exists &ne; endpoints exist</span>
+    <span>Ingress exists &ne; external routing works</span>
+  </div>
+  <div class="say-block">I’m going to check the workload health first, because if the pods are unhealthy that is the fastest explanation for why the API stopped responding. Once I know the pods are healthy, I’ll test the traffic path.</div>
+</div>
+
+<!-- Core Frame -- Four Buckets -->
+<section id="frame">
+  <h2>Core Frame</h2>
+  <div class="frame-row">
+
+    <!-- 1. Start -->
+    <div class="bucket-card b-start">
+      <h3>1. Start</h3>
+      <div class="question">Was the pod created, scheduled, and able to start its container?</div>
+      <ul class="sym-list">
+        <li><a href="#sym-no-pod" class="fix-link">No pod</a></li>
+        <li><a href="#sym-pending" class="fix-link">Pod Pending</a></li>
+        <li><a href="#sym-container-creating" class="fix-link">ContainerCreating</a></li>
+        <li><a href="#sym-image-pull" class="fix-link">ErrImagePull / ImagePullBackOff</a></li>
+        <li><a href="#sym-create-config-error" class="fix-link">CreateContainerConfigError</a></li>
+        <li><a href="#sym-init-container" class="fix-link">Init container failure</a></li>
+        <li><a href="#sym-wrong-version" class="fix-link">Wrong version running</a></li>
+      </ul>
+    </div>
+
+    <!-- 2. Stay Up -->
+    <div class="bucket-card b-stayup">
+      <h3>2. Stay Up</h3>
+      <div class="question">Did the app keep running and become Ready?</div>
+      <ul class="sym-list">
+        <li><a href="#sym-crashloop" class="fix-link">CrashLoopBackOff</a></li>
+        <li><a href="#sym-not-ready" class="fix-link">Running but 0/1 Ready</a></li>
+        <li><a href="#sym-restarts" class="fix-link">Restarts increasing</a></li>
+        <li><a href="#sym-oom" class="fix-link">OOMKilled / exit 137</a></li>
+        <li><a href="#sym-multi-container" class="fix-link">Multi-container log confusion</a></li>
+      </ul>
+    </div>
+
+    <!-- 3. Receive Traffic -->
+    <div class="bucket-card b-traffic">
+      <h3>3. Receive Traffic</h3>
+      <div class="question">Can traffic reach the app through the K8s routing path?</div>
+      <ul class="sym-list">
+        <li><a href="#sym-service-fails" class="fix-link">Service path fails</a></li>
+        <li><a href="#sym-endpoints-empty" class="fix-link">Endpoints empty</a></li>
+        <li><a href="#sym-external-fails" class="fix-link">External route fails</a></li>
+        <li><a href="#sym-localhost-only" class="fix-link">Works inside container only</a></li>
+      </ul>
+    </div>
+
+    <!-- 4. Reach Dep -->
+    <div class="bucket-card b-dep">
+      <h3>4. Reach Dep</h3>
+      <div class="question">Can the app reach what it depends on?</div>
+      <ul class="sym-list">
+        <li><a href="#sym-dep-fails" class="fix-link">Feature fails on DB/API</a></li>
+        <li><a href="#sym-dns" class="fix-link">DNS / hostname failure</a></li>
+        <li><a href="#sym-forbidden" class="fix-link">Forbidden / Unauthorized</a></li>
+        <li><a href="#sym-networkpolicy" class="fix-link">Traffic silently blocked</a></li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- 30-Second Orientation -->
+<section id="orientation">
+  <h2>30-Second Orientation</h2>
+  <div class="view-card">
+    <h4>Before deep debugging</h4>
+    <div class="flow">Find the cluster/context, namespace, entry path, and config source before guessing.</div>
+    <pre>kubectl config current-context
+kubectl config get-contexts
+kubectl config use-context &lt;context-name&gt;
+kubectl config view --minify
+kubectl get ns
+kubectl config set-context --current --namespace=&lt;ns&gt;
+
+kubectl get ingress -A
+kubectl get svc -A
+kubectl get deploy -A</pre>
+  </div>
+</section>
+
+<!-- Default Triage Loop -->
+<section id="triage">
+  <h2>Default Triage Loop</h2>
+  <p style="font-size:13px;color:#666;margin-bottom:10px;">Use this when the symptom is unclear or you just sat down.</p>
+  <div class="triage-steps">
+    <div class="triage-step"><span class="num">1</span> kubectl get pods -n &lt;ns&gt;</div>
+    <div class="triage-step"><span class="num">2</span> kubectl get deploy -n &lt;ns&gt;</div>
+    <div class="triage-step"><span class="num">3</span> Pod unhealthy? &rarr; describe pod + logs + --previous</div>
+    <div class="triage-step"><span class="num">4</span> Deployment not progressing? &rarr; describe deploy + rollout status</div>
+    <div class="triage-step"><span class="num">5</span> Pod Running/Ready? &rarr; get svc + get endpoints</div>
+    <div class="triage-step"><span class="num">6</span> Service works internally? &rarr; check ingress / external route</div>
+    <div class="triage-step"><span class="num">7</span> App still fails? &rarr; dependency path from inside pod</div>
+    <div class="triage-step"><span class="num">8</span> Make one fix</div>
+    <div class="triage-step"><span class="num">9</span> Verify end to end</div>
+  </div>
+</section>
+
+<!-- Nearest Truth Source -->
+<section id="truth">
+  <h2>Nearest Truth Source</h2>
+  <div class="truth-grid">
+    <div class="truth-item" style="border-left-color:var(--start)"><strong>Pod not running</strong>describe pod + logs</div>
+    <div class="truth-item" style="border-left-color:var(--start)"><strong>Deployment not progressing</strong>describe deploy + rollout status</div>
+    <div class="truth-item" style="border-left-color:var(--traffic)"><strong>Pod Running/Ready but app unreachable</strong>Service / endpoints</div>
+    <div class="truth-item" style="border-left-color:var(--traffic)"><strong>Service works but external path fails</strong>Ingress</div>
+    <div class="truth-item" style="border-left-color:var(--dep)"><strong>App responds but feature fails</strong>Dependency path from inside pod</div>
+  </div>
+</section>
+
+<!-- Do Not Over-Infer -->
+<section id="caution">
+  <h2>Do Not Over-Infer</h2>
+  <div class="caution-grid">
+    <div class="caution-item">CrashLoopBackOff does not tell you the cause</div>
+    <div class="caution-item">Running does not mean healthy</div>
+    <div class="caution-item">Ready does not prove ingress works</div>
+    <div class="caution-item">Existing Service does not mean it has usable endpoints</div>
+    <div class="caution-item">Ingress object existing does not mean external routing works</div>
+    <div class="caution-item">Wrong context or namespace can make a healthy app look missing</div>
+  </div>
+</section>
+
+<!-- Fast Symptom Map -->
+<section id="symptoms-high">
+  <h2>Fast Symptom Map</h2>
+
+  <div class="controls">
+    <button onclick="toggleAll(true)">Expand All</button>
+    <button onclick="toggleAll(false)">Collapse All</button>
+  </div>
+
+  <!-- HIGH LIKELIHOOD -->
+  <div class="likelihood-label likelihood-high">High Likelihood</div>
+
+  <!-- Nothing looks right / wrong namespace or context -->
+  <div class="symptom-card" id="sym-nothing-right">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Nothing looks right / expected objects seem missing</h4>
+      <span class="bucket-tag" style="background:#f5f5f5;color:#666;border:1px solid #ccc;">Sanity check first</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl config current-context
+kubectl get ns
+kubectl get all -A | head -n 80
+kubectl get deploy,svc,ingress -A | grep -i &lt;app-name&gt;</pre>
+      <div class="prove">whether you're looking at the wrong cluster or wrong namespace rather than a broken workload.</div>
+      <div class="say-block">Before I assume the app is broken, I want to prove I'm in the right context and namespace and that I'm looking at the right objects.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong namespace &rarr; switch commands to the namespace that actually contains the app</li>
+        <li>wrong cluster/context &rarr; fix kube context before continuing</li>
+        <li>object name assumption wrong &rarr; search actual deploy/service/ingress names first</li>
+      </ul>
+          <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this looks like wrong context, wrong namespace, wrong object name, or a real workload problem
+2. the key signal
+3. the next 1-2 commands
+4. what I should check next
+
+Do not guess beyond the evidence.
+
+Symptom: Nothing looks right / expected objects seem missing
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- No pod / expected pod missing -->
+  <div class="symptom-card" id="sym-no-pod">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>No pod / expected pod missing</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl get deploy -n &lt;ns&gt;
+kubectl describe deploy &lt;deploy&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">whether the Deployment exists and is creating pods, or whether the workload is missing entirely.</div>
+      <div class="say-block">I don't see the expected pod. Before assuming it's broken, I want to check whether the Deployment exists, whether it's in the right namespace, and whether the ReplicaSet is actually trying to create pods &mdash; this tells me if the problem is in the repo, the deploy pipeline, or the cluster.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>Deployment missing or not found &rarr; wrong namespace, not applied, deleted</li>
+        <li>Deployment exists but 0 replicas &rarr; check spec.replicas, or check if scaled to zero</li>
+        <li>Deployment exists but ReplicaSet not creating pods &rarr; <a class="fix-link" href="#domain-resource-scheduling">check events for scheduling or resource issues</a>, or <a class="fix-link" href="#domain-config-env">config/secret/volume ref errors</a></li>
+        <li>Wrong labels or selectors &rarr; <a class="fix-link" href="#domain-service-routing">pod template labels don't match</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether the Deployment is missing, scaled to zero, or failing to create pods
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: No pod / expected pod missing
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Deployments, ReplicaSets, Debug Pods.</div>
+    </div>
+  </div>
+
+  <!-- Pod Pending -->
+  <div class="symptom-card" id="sym-pending">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod Pending</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section: scheduling reason
+kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
+      <div class="prove">why the scheduler can't place the pod.</div>
+      <div class="say-block">The pod exists but is Pending, so the scheduler can't place it. Describe events will name the exact constraint &mdash; resource pressure, taints, affinity, or storage. This is worth understanding because it affects whether the fix is in the manifest (requests/limits) or in cluster capacity.</div>
+      <h5>Then branch by what describe shows:</h5>
+      <ul>
+        <li>scheduling / resource pressure &rarr; <a class="fix-link" href="#domain-resource-scheduling">check node capacity, taints, affinity</a></li>
+        <li>PVC / storage binding &rarr; <a class="fix-link" href="#domain-resource-scheduling">kubectl get pvc -n &lt;ns&gt;</a></li>
+        <li>taints / affinity / node placement &rarr; <a class="fix-link" href="#domain-resource-scheduling">kubectl describe node</a></li>
+      </ul>
+      <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to scheduling pressure, taints/affinity, node placement, or PVC/storage
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Pod Pending
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Pods, Pod Lifecycle, Persistent Volumes, Resource Management for Pods and Containers.</div>
+    </div>
+  </div>
+
+  <!-- Pod stuck ContainerCreating / image pull / create config error -->
+  <div class="symptom-card" id="sym-container-creating">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod stuck ContainerCreating / image pull / create config error</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section names the specific failure
+kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
+      <div class="prove">which container creation step is failing and why.</div>
+      <div class="say-block">The pod is scheduled but the container can't start. Describe events will name the exact failure &mdash; image pull, config reference, or volume. These are usually contract issues between the Deployment spec and the objects it depends on, so I want to trace the reference chain.</div>
+      <h5>Then branch by what describe shows:</h5>
+      <ul>
+        <li>image pull failure &rarr; <a class="fix-link" href="#domain-image-pull">check image spec in deployment</a></li>
+        <li>container creation failure &rarr; <a class="fix-link" href="#domain-config-env">check config/secret/volume refs</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. which container creation step is failing
+2. whether this looks like image pull, config/secret/env, or volume related
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Pod stuck ContainerCreating / image pull / create config error
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Pods, Pod Lifecycle, Images, ConfigMaps, Secrets.</div>
+    </div>
+  </div>
+
+  <!-- ErrImagePull -->
+  <div class="symptom-card" id="sym-image-pull">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>ErrImagePull / ImagePullBackOff</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section shows the pull error
+kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].image}'</pre>
+      <div class="prove">the exact image reference the cluster is trying to pull, and why it can't.</div>
+      <div class="say-block">The image can't be pulled, so I want to compare the image spec in the Deployment against what's actually available. This is the contract between the build pipeline and the deploy manifest &mdash; a mismatch here means something changed on one side but not the other.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong image name or tag &rarr; <a class="fix-link" href="#domain-image-pull">typo, wrong registry, tag doesn't exist</a></li>
+        <li>registry auth problem &rarr; <a class="fix-link" href="#domain-image-pull">imagePullSecrets configured?</a></li>
+        <li>pull policy &rarr; <a class="fix-link" href="#domain-image-pull">imagePullPolicy vs what's loaded locally</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this looks like wrong image name/tag, registry auth, or pull policy
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Symptom: ErrImagePull / ImagePullBackOff
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Pods, Pod Lifecycle, Images (container images reference).</div>
+    </div>
+  </div>
+
+  <!-- CreateContainerConfigError -->
+  <div class="symptom-card" id="sym-create-config-error">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>CreateContainerConfigError / CreateContainerError</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Events section names the broken ref
+kubectl get configmap -n &lt;ns&gt;
+kubectl get secret -n &lt;ns&gt;</pre>
+      <div class="prove">which specific ConfigMap, Secret, or volume reference is missing or invalid.</div>
+      <div class="say-block">The container can't be created due to a config reference. I need describe to name the exact missing or invalid object &mdash; this is a contract issue between the Deployment and the config layer. The durable fix is in the manifests, not a one-off create.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>missing Secret / ConfigMap &rarr; <a class="fix-link" href="#domain-config-env">does the named object exist?</a></li>
+        <li>bad env reference &rarr; <a class="fix-link" href="#domain-config-env">envFrom or valueFrom pointing at wrong key?</a></li>
+        <li>bad volume or mount &rarr; <a class="fix-link" href="#domain-config-env">volume name mismatch, wrong path</a></li>
+        <li>bad command / args &rarr; <a class="fix-link" href="#domain-startup-crash">entrypoint override broken</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to missing ConfigMap/Secret, bad env key/reference, bad volume/mount, or broken command/args
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Symptom: CreateContainerConfigError / CreateContainerError
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Pods, Debug Running Pods, ConfigMaps, Secrets.</div>
+    </div>
+  </div>
+
+  <!-- CrashLoopBackOff -->
+  <div class="symptom-card" id="sym-crashloop">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>CrashLoopBackOff</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <p style="color:var(--stayup);font-weight:600;margin-bottom:6px;">Important: this is a symptom, not the root cause.</p>
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State section: exit code, reason</pre>
+      <div class="prove">what the app printed before it died. The logs route you to the actual root cause.</div>
+      <div class="say-block">CrashLoopBackOff is a symptom, not the cause. The logs will route me to the actual failure domain &mdash; config, dependency, DNS, OOM, or code. I won't guess &mdash; I'll let the logs tell me, because the fix is completely different for each.</div>
+      <h5>Then branch by what logs show:</h5>
+      <ul>
+        <li>config/env/secret error &rarr; <a class="fix-link" href="#domain-config-env">check env vars, configmap, secret values</a></li>
+        <li>connection refused / host not found &rarr; <a class="fix-link" href="#domain-app-level">dependency</a> or <a class="fix-link" href="#domain-dns">DNS problem</a> (branch to Reach Dep)</li>
+        <li>app stack trace / boot failure &rarr; <a class="fix-link" href="#domain-startup-crash">code or entrypoint problem</a></li>
+        <li>no logs + exit 137 &rarr; <a class="fix-link" href="#domain-resource-scheduling">OOMKilled</a> (check describe pod Last State)</li>
+        <li>probe-driven restart &rarr; <a class="fix-link" href="#domain-probe-failure">check probe config in describe</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Treat CrashLoopBackOff as a symptom, not the root cause.
+
+Tell me:
+1. the most important signal from logs / previous logs / describe
+2. whether this points more to config/env, dependency, DNS, OOMKilled, probe failure, or app startup crash
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: CrashLoopBackOff
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Pod Lifecycle, Debug Running Pods, Configure Liveness Readiness and Startup Probes, DNS for Services and Pods, Resource Management for Pods and Containers.</div>
+    </div>
+  </div>
+
+  <!-- Running but 0/1 Ready -->
+  <div class="symptom-card" id="sym-not-ready">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Running but 0/1 Ready</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Conditions section + readiness probe spec
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">the readiness probe configuration and whether the app is failing it or just not serving yet.</div>
+      <div class="say-block">The container is alive but not passing readiness, which means it's been removed from Service endpoints and developers can't reach it. I want the probe spec from describe and app errors from logs &mdash; the mismatch is usually between the probe path/port and what the app actually serves.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>readiness probe path/port wrong &rarr; <a class="fix-link" href="#domain-probe-failure">compare probe spec vs what app actually serves</a></li>
+        <li>app boot incomplete &rarr; <a class="fix-link" href="#domain-probe-failure">logs show slow startup, needs startupProbe or longer initialDelaySeconds</a></li>
+        <li>dependency reachable enough to start but not enough to serve &rarr; <a class="fix-link" href="#domain-app-level">partial failure in logs</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether readiness is failing due to wrong probe path, wrong probe port, startup timing, or a real app problem
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Running but 0/1 Ready
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Debug Running Pods.</div>
+    </div>
+  </div>
+
+  <!-- Pod healthy, Service path fails -->
+  <div class="symptom-card" id="sym-service-fails">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod Running/Ready, but Service path fails</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;      # check selector
+kubectl get pods -n &lt;ns&gt; --show-labels</pre>
+      <div class="prove">whether the Service actually has backends, and whether the selector matches pod labels.</div>
+      <div class="say-block">The pod looks fine, so the break is between the Service and the Pod. I want endpoints first to see whether this is a selector or port contract issue, because that's the kind of mismatch that makes a deployment look healthy while still failing for developers.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>endpoints empty &rarr; <a class="fix-link" href="#domain-service-routing">selector doesn't match pod labels, or pods are not Ready</a></li>
+        <li>endpoints present but wrong port &rarr; <a class="fix-link" href="#domain-service-routing">compare svc port/targetPort with container port</a></li>
+        <li>service exists but points nowhere useful &rarr; <a class="fix-link" href="#domain-service-routing">selector matches wrong pods</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to selector mismatch, empty endpoints, wrong targetPort, wrong named port, or wrong backend pods
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Pod Running/Ready, but Service path fails
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Services, Service, EndpointSlices.</div>
+    </div>
+  </div>
+
+  <!-- Endpoints empty -->
+  <div class="symptom-card" id="sym-endpoints-empty">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Endpoints / EndpointSlices empty or wrong</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;      # Selector field
+kubectl get pods -n &lt;ns&gt; --show-labels       # compare against selector</pre>
+      <div class="prove">whether the selector matches and whether matching pods are Ready.</div>
+      <div class="say-block">Empty endpoints means the Service selector doesn't match any Ready pods. I want to compare the selector against actual pod labels character-for-character &mdash; this is a label contract between the Deployment and the Service, and any drift here silently breaks the traffic path.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>selector mismatch &rarr; <a class="fix-link" href="#domain-service-routing">label key/value typo between svc and deployment</a></li>
+        <li>pods not Ready &rarr; <a class="fix-link" href="#domain-probe-failure">route to Stay up (readiness problem)</a></li>
+        <li>backend set wrong &rarr; <a class="fix-link" href="#domain-service-routing">selector matches unintended pods</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to selector mismatch, pods not Ready, or the Service selecting the wrong backend
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Endpoints / EndpointSlices empty or wrong
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Services, EndpointSlices, Service.</div>
+    </div>
+  </div>
+
+  <!-- App responds but feature fails -->
+  <div class="symptom-card" id="sym-dep-fails">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>App responds, but feature fails when calling DB / API / storage</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;                          # look for connection errors
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;VAR&gt;  # check config values
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;dep-service&gt;.&lt;ns&gt;.svc.cluster.local</pre>
+      <div class="prove">whether the app has the right config and can actually reach the dependency at network level.</div>
+      <div class="say-block">The app is up but something it depends on is broken &mdash; from the developer's perspective, the service looks deployed but doesn't actually work. Logs will show the specific error, then I'll check env vars and connectivity to trace whether this is config, DNS, or a dependency being down.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong env / secret value &rarr; <a class="fix-link" href="#domain-config-env">value exists but is wrong (typo, wrong secret key)</a></li>
+        <li>DNS failure &rarr; <a class="fix-link" href="#domain-dns">hostname doesn't resolve (wrong name, wrong namespace)</a></li>
+        <li>connection refused &rarr; <a class="fix-link" href="#domain-app-level">dependency is down or wrong port</a></li>
+        <li>RBAC / service account issue &rarr; <a class="fix-link" href="#domain-rbac">kubectl auth can-i checks</a></li>
+        <li>NetworkPolicy blocking &rarr; <a class="fix-link" href="#domain-networkpolicy">kubectl get networkpolicy -n &lt;ns&gt;</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points more to wrong env/config, DNS, connection refused, RBAC/service account, NetworkPolicy, or storage dependency failure
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: App responds, but feature fails when calling DB / API / storage
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution, Using RBAC Authorization, Service Accounts, Network Policies, Persistent Volumes.</div>
+    </div>
+  </div>
+
+  <!-- MODERATE LIKELIHOOD -->
+  <div class="likelihood-label likelihood-moderate" id="symptoms-moderate" style="margin-top:20px;">Moderate Likelihood</div>
+
+  <!-- Init container failure -->
+  <div class="symptom-card" id="sym-init-container">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Init container failure</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                  # Init Containers section
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;init-container-name&gt;</pre>
+      <div class="prove">which init container failed and why.</div>
+      <div class="say-block">The init container is blocking the main container from starting &mdash; the app will never become Ready until this completes. I need the init container's specific logs to see whether it's a dependency wait, a bad command, or a config issue. If there are multiple init containers, I need to identify which one is failing.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>dependency setup failure &rarr; <a class="fix-link" href="#domain-startup-crash">init container waiting for something that isn't ready</a></li>
+        <li>bad image / command / mount &rarr; <a class="fix-link" href="#domain-startup-crash">wrong image, bad script, missing volume</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. which init container is failing
+2. whether this looks like dependency wait failure, bad image/command, or missing mount/config
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Init container failure
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Running Pods, Pod Lifecycle, Init Containers.</div>
+    </div>
+  </div>
+
+  <!-- Running, Ready, but restarts increasing -->
+  <div class="symptom-card" id="sym-restarts">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Running, Ready, but restarts increasing</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State, liveness probe config, restart count
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
+      <div class="prove">whether restarts are probe-driven or crash-driven, and what happened in the last run.</div>
+      <div class="say-block">Restarts are climbing, so something is killing the container after it starts &mdash; this causes intermittent failures for developers because the pod cycles between healthy and unavailable. I want the liveness probe config and the previous logs to determine whether this is probe-driven, OOM, or a genuine crash.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>liveness probe failure &rarr; <a class="fix-link" href="#domain-probe-failure">probe path/port/timing wrong</a></li>
+        <li>intermittent crash &rarr; <a class="fix-link" href="#domain-startup-crash">error in previous logs</a></li>
+        <li>OOM &rarr; <a class="fix-link" href="#domain-resource-scheduling">Last State shows OOMKilled, exit 137</a></li>
+        <li>app error after boot &rarr; <a class="fix-link" href="#domain-startup-crash">works at start then fails under load or after timeout</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether restarts look probe-driven, crash-driven, or OOM-related
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Running, Ready, but restarts increasing
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Assign Memory Resources to Containers and Pods.</div>
+    </div>
+  </div>
+
+  <!-- OOMKilled -->
+  <div class="symptom-card" id="sym-oom">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>OOMKilled / exit 137</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State shows OOMKilled
+kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].resources}'</pre>
+      <div class="prove">the memory limit vs what the app needs.</div>
+      <div class="say-block">Exit 137 is OOMKilled &mdash; the container exceeded its memory limit. I want to compare the limit in the manifest against what the app actually needs, especially at startup. The durable fix is adjusting resource limits in the manifest based on observed usage, not just bumping the number.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>memory limit too low &rarr; <a class="fix-link" href="#domain-resource-scheduling">raise limits.memory</a></li>
+        <li>boot spike &rarr; <a class="fix-link" href="#domain-resource-scheduling">app allocates heavily at startup then settles</a></li>
+        <li>no limit set but node is under pressure &rarr; <a class="fix-link" href="#domain-resource-scheduling"><code>kubectl describe node</code>, check Conditions</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this looks like memory limit too low, startup memory spike, or node pressure
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Symptom: OOMKilled / exit 137
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Assign Memory Resources to Containers and Pods, Node-pressure Eviction, Pod Lifecycle.</div>
+    </div>
+  </div>
+
+  <!-- Service works internally, external fails -->
+  <div class="symptom-card" id="sym-external-fails">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Service works internally, external route fails</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
+kubectl get pods -n ingress-nginx            # is the controller healthy?</pre>
+      <div class="prove">whether the ingress rule is correct and the controller is running.</div>
+      <div class="say-block">Internal service path works, so the break is at the Ingress layer &mdash; the last hop before the user-visible URL. I want the Ingress spec and controller status, because this is where the contract between the platform routing config and the Service definition has to match exactly.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong host / path &rarr; <a class="fix-link" href="#domain-ingress">ingress rules don't match the request</a></li>
+        <li>wrong backend service or port &rarr; <a class="fix-link" href="#domain-ingress">service.name or service.port.number wrong</a></li>
+        <li>ingress controller issue &rarr; <a class="fix-link" href="#domain-ingress">controller pod not running or misconfigured</a></li>
+        <li>ingressClassName missing or wrong &rarr; <a class="fix-link" href="#domain-ingress">add or fix ingressClassName</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to ingress host/path mismatch, wrong backend service/port, bad ingressClassName, or ingress controller health
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Service works internally, external route fails
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Ingress, Ingress Controllers, Debug Services.</div>
+    </div>
+  </div>
+
+  <!-- DNS failures -->
+  <div class="symptom-card" id="sym-dns">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"Name or service not known", lookup failures, wrong hostname behaviour</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;hostname&gt;
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- cat /etc/resolv.conf
+kubectl get svc -n &lt;ns&gt;                     # verify actual service names</pre>
+      <div class="prove">whether the DNS name is correct and resolvable from the pod.</div>
+      <div class="say-block">This is a DNS failure &mdash; the app can't resolve the hostname of something it depends on. I want to test resolution from inside the pod and compare the hostname against the actual Service name, because this is usually a naming contract issue between the ConfigMap and the Service definition.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>bad service DNS name &rarr; <a class="fix-link" href="#domain-dns">typo, wrong service name</a></li>
+        <li>wrong namespace assumption &rarr; <a class="fix-link" href="#domain-dns">need &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</a></li>
+        <li>hostname correct but DNS broken &rarr; <a class="fix-link" href="#domain-dns">check coredns pods in kube-system</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to wrong service name, wrong namespace assumption, missing FQDN, or real cluster DNS trouble
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Name or service not known / lookup failures / wrong hostname behaviour
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: DNS for Services and Pods, Debugging DNS Resolution.</div>
+    </div>
+  </div>
+
+  <!-- App runs but wrong version -->
+  <div class="symptom-card" id="sym-wrong-version">
+    <div class="symptom-header sh-start" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>App runs, but behaviour does not match the expected version</h4>
+      <span class="bucket-tag tag-start">Start</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get deploy &lt;deploy&gt; -n &lt;ns&gt; -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; | head</pre>
+      <div class="prove">whether the workload is running the wrong image or stale tag even though the pod starts successfully.</div>
+      <div class="say-block">The pod is healthy, but I want to confirm we're actually running the intended image. A mutable tag like <code>latest</code> or a stale cached image can make the deployment look successful while running the wrong code &mdash; explicit version tags in the manifest prevent this.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>wrong tag pinned in Deployment &rarr; fix image tag</li>
+        <li>mutable tag ambiguity like <code>latest</code> &rarr; use explicit version tag</li>
+        <li>expected code path missing &rarr; image built from wrong commit or wrong Dockerfile context</li>
+      </ul>
+          <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this looks like wrong image tag, stale mutable tag, or image built from the wrong code/context
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Symptom: App runs, but behaviour does not match the expected version
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pod Running but app only works from inside the container -->
+  <div class="symptom-card" id="sym-localhost-only">
+    <div class="symptom-header sh-traffic" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Pod is Running, but app only works from inside the container</h4>
+      <span class="bucket-tag tag-traffic">Receive Traffic</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl port-forward pod/&lt;pod&gt; 8080:&lt;container-port&gt; -n &lt;ns&gt;
+curl localhost:8080/&lt;path&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">whether the app itself serves locally but is bound incorrectly for Kubernetes traffic.</div>
+      <div class="say-block">If the app works only from inside the container, it's likely listening on 127.0.0.1 instead of 0.0.0.0. This is a common default that works in local dev but breaks in Kubernetes, because the kubelet and Service routing need to reach the container from outside its network namespace.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>app bound to 127.0.0.1 / localhost &rarr; change bind address to <code>0.0.0.0</code></li>
+        <li>containerPort documented wrong &rarr; align manifest with actual listening port</li>
+        <li>probe hits a port/path the app is not really serving &rarr; fix probe and/or app config</li>
+      </ul>
+          <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to binding on 127.0.0.1 instead of 0.0.0.0, wrong containerPort, or wrong path/port assumptions
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Pod is Running, but app only works from inside the container
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-container pod / wrong logs -->
+  <div class="symptom-card" id="sym-multi-container">
+    <div class="symptom-header sh-stayup" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Logs are confusing or empty in a multi-container pod</h4>
+      <span class="bucket-tag tag-stayup">Stay Up</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;container-name&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; -c &lt;container-name&gt; --previous</pre>
+      <div class="prove">whether you're reading logs from the actual failing container.</div>
+      <div class="say-block">This pod has multiple containers, so I want to make sure I'm reading logs from the right one before drawing conclusions.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>sidecar logs fine but app container failing &rarr; use <code>-c</code> for the app container</li>
+        <li>init container was the failing one &rarr; inspect init container logs separately</li>
+      </ul>
+          <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether I am looking at the wrong container
+2. whether the failing container is the app container, sidecar, or init container
+3. the next 1-2 commands
+4. what output would confirm the right logging target
+
+Do not guess beyond the evidence.
+
+Symptom: Logs are confusing or empty in a multi-container pod
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOWER LIKELIHOOD -->
+  <div class="likelihood-label likelihood-low" id="symptoms-low" style="margin-top:20px;">Lower Likelihood</div>
+
+  <!-- Forbidden -->
+  <div class="symptom-card" id="sym-forbidden">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Forbidden / Unauthorized</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # check serviceAccountName
+kubectl auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">which service account the pod uses and what permissions it has.</div>
+      <div class="say-block">This is an auth failure &mdash; the pod's service account doesn't have the permissions it needs. I want to walk the RBAC chain: ServiceAccount, RoleBinding, Role &mdash; and find where the link is broken, because each piece is defined in a manifest and the fix should be there.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>missing RBAC permission &rarr; <a class="fix-link" href="#domain-rbac">create or fix Role/RoleBinding</a></li>
+        <li>wrong service account &rarr; <a class="fix-link" href="#domain-rbac">pod spec references wrong SA</a></li>
+        <li>wrong identity assumptions &rarr; <a class="fix-link" href="#domain-rbac">SA exists but bindings are in wrong namespace</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to missing RBAC permission, wrong service account, or bindings in the wrong namespace
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Forbidden / Unauthorized
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Using RBAC Authorization, Service Accounts, Authenticating, Authorization Overview.</div>
+    </div>
+  </div>
+
+  <!-- NetworkPolicy -->
+  <div class="symptom-card" id="sym-networkpolicy">
+    <div class="symptom-header sh-dep" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Traffic silently blocked despite objects looking correct</h4>
+      <span class="bucket-tag tag-dep">Reach Dep</span>
+    </div>
+    <div class="symptom-body">
+      <pre>kubectl get networkpolicy -n &lt;ns&gt;
+kubectl describe networkpolicy &lt;policy&gt; -n &lt;ns&gt;
+kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- nc -zv &lt;target-host&gt; &lt;target-port&gt;</pre>
+      <div class="prove">whether a NetworkPolicy is blocking the traffic path.</div>
+      <div class="say-block">Everything looks correct but traffic is being dropped silently &mdash; this is the hardest failure to debug because there's no error message. I want to check NetworkPolicies and test connectivity from inside the pod, because a default-deny with a missing allow rule will block traffic without any signal in logs or events.</div>
+      <h5>Then check:</h5>
+      <ul>
+        <li>default-deny policy with no matching allow rule &rarr; <a class="fix-link" href="#domain-networkpolicy">add allow rule</a></li>
+        <li>allow rule exists but podSelector or namespaceSelector is wrong &rarr; <a class="fix-link" href="#domain-networkpolicy">fix selectors</a></li>
+        <li>egress policy blocking outbound traffic &rarr; <a class="fix-link" href="#domain-networkpolicy">add egress allow</a></li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether this points to NetworkPolicy blocking ingress or egress
+2. the key signal
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Traffic silently blocked despite objects looking correct
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Network Policies, Cluster Networking.</div>
+    </div>
+  </div>
+
+  <!-- Rollout stuck -->
+  <div class="symptom-card" id="sym-rollout-stuck">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Rollout stuck or deployment not progressing</h4>
+      <span class="bucket-tag" style="background:#f5f5f5;color:#666;border:1px solid #ccc;">Route to bucket</span>
+    </div>
+    <div class="symptom-body">
+      <p style="color:#666;font-weight:600;margin-bottom:6px;">Not a root cause by itself; inspect the new Pods.</p>
+      <pre>kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;
+kubectl get replicaset -n &lt;ns&gt;              # is the new RS scaling up?
+kubectl get pods -n &lt;ns&gt;                    # are new pods stuck?</pre>
+      <div class="prove">where in the rollout the deployment is stuck.</div>
+      <div class="say-block">A stuck rollout isn't the root cause &mdash; the new pods are failing and the rolling update strategy is preserving old pods to maintain availability. I want to find the new pods and route into the right bucket, because the fix is on the new pod spec, not on the rollout itself.</div>
+      <h5>Route to:</h5>
+      <ul>
+        <li><strong style="color:var(--start)">Start</strong>, if new Pods cannot start</li>
+        <li><strong style="color:var(--stayup)">Stay up</strong>, if new Pods crash or fail probes</li>
+        <li><strong style="color:var(--traffic)">Receive Traffic</strong>, if Pods are healthy but not serving</li>
+        <li><strong style="color:var(--dep)">Reach Dep</strong>, if the app is up but broken against dependencies</li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Treat this as a routing symptom, not the root cause.
+
+Tell me:
+1. where the rollout is stuck
+2. whether this should route to Start, Stay Up, Receive Traffic, or Reach Dep
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Rollout stuck or deployment not progressing
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Deployments, Debug Pods.</div>
+    </div>
+  </div>
+
+  <!-- Job/CronJob -->
+  <div class="symptom-card" id="sym-job">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>Job / CronJob issue</h4>
+      <span class="bucket-tag" style="background:#f5f5f5;color:#666;border:1px solid #ccc;">Route to bucket</span>
+    </div>
+    <div class="symptom-body">
+      <p style="color:#666;font-weight:600;margin-bottom:6px;">Same root-cause buckets as Pods.</p>
+      <pre>kubectl get jobs -n &lt;ns&gt;
+kubectl describe job &lt;job&gt; -n &lt;ns&gt;
+kubectl get pods -n &lt;ns&gt; --selector=job-name=&lt;job&gt;
+kubectl logs &lt;job-pod&gt; -n &lt;ns&gt;</pre>
+      <div class="prove">whether the job pod started, ran, and completed or failed.</div>
+      <div class="say-block">I'll treat the job pod like any other pod &mdash; same triage flow applies.</div>
+      <h5>Route to:</h5>
+      <ul>
+        <li><strong style="color:var(--start)">Start</strong>, if Job Pod cannot start</li>
+        <li><strong style="color:var(--stayup)">Stay up</strong>, if Job Pod crashes</li>
+        <li><strong style="color:var(--dep)">Reach Dep</strong>, if job logic fails against dependencies</li>
+      </ul>
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. whether the job pod cannot start, crashes while running, or fails against a dependency
+2. which bucket this routes into
+3. the next 1-2 commands
+4. the smallest justified fix if already clear
+
+Do not guess beyond the evidence.
+
+Symptom: Job / CronJob issue
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Jobs, CronJobs, Debug Pods, Debug Running Pods.</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- Failure Domains -->
+<section id="domains">
+  <h2>Failure Domains</h2>
+  <p style="font-size:13px;color:#666;margin-bottom:16px;">Symptoms route you here. Each domain covers: why you're here, what to run, how to read the output, how to fix, and how to verify. After any fix, run the <a href="#verify" style="color:#2980b9;">verification commands</a> to confirm the full path works end to end.</p>
+
+  <div class="controls">
+    <button onclick="toggleAllFixes(true)">Expand All</button>
+    <button onclick="toggleAllFixes(false)">Collapse All</button>
+  </div>
+
+  <!-- 1. Startup / Crash -->
+  <div class="fix-card" id="domain-startup-crash">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>1. Startup / Crash</h3>
+      <span class="bucket-tag tag-stayup" style="margin-left:auto;">Stay Up</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Logs show an app-level crash: unhandled exception, missing module, bad syntax, stack trace, or exit code 1. The container process itself is failing. If logs point to a wrong config value or unreachable dependency, route to <a class="fix-link" href="#domain-config-env">Config / Secret / Env</a> or <a class="fix-link" href="#domain-app-level">App-Level</a> instead.</div>
+
+      <div class="say-block">The logs show the app is crashing on startup with [error]. This is the app itself failing, not a config or dependency issue. I want to fix this in the source &mdash; the manifest or Dockerfile &mdash; so the deploy path stays clean.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # State, Last State, exit codes, Events
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous                 # last crashed attempt
+kubectl logs &lt;pod&gt; -c &lt;container&gt; -n &lt;ns&gt;             # init containers or sidecars</pre>
+
+      <h4>Exit code reference</h4>
+      <ul>
+        <li><code>0</code> &mdash; Clean exit (unexpected for long-running). Check <code>restartPolicy</code>, command/args.</li>
+        <li><code>1</code> &mdash; Application error. <strong>"Exit code 1 &mdash; the app itself is crashing."</strong> Read the logs.</li>
+        <li><code>127</code> &mdash; Command not found. Binary missing or wrong <code>command</code> override in deployment.</li>
+        <li><code>137</code> &mdash; OOMKilled (128+9). Route to <a class="fix-link" href="#domain-resource-scheduling">Resource / Scheduling</a>.</li>
+        <li><code>143</code> &mdash; SIGTERM. Usually liveness kill &rarr; route to <a class="fix-link" href="#domain-probe-failure">Probe Failure</a>.</li>
+      </ul>
+
+      <h4>Init container failures</h4>
+      <p>If the pod shows <code>Init:0/1</code> or <code>Init:CrashLoopBackOff</code>: <strong>"The init container hasn't completed. The main container won't start until it succeeds."</strong></p>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # find init container name
+kubectl logs &lt;pod&gt; -c &lt;init-container&gt; -n &lt;ns&gt;
+kubectl get svc -n &lt;ns&gt;                                # what init is waiting on</pre>
+
+      <h4>Likely fixes</h4>
+      <ul>
+        <li>Bad image or broken binary &rarr; <code>kubectl rollout undo deploy/&lt;deploy&gt; -n &lt;ns&gt;</code></li>
+        <li>Bad command/args override &rarr; <code>kubectl get deploy -o yaml | grep -A5 "command\|args"</code> &mdash; remove or correct the override with <code>kubectl apply -f manifests/</code></li>
+        <li>App crash from bad config &rarr; fix the ConfigMap/Secret (see <a class="fix-link" href="#domain-config-env">Config / Secret / Env</a>), then <code>kubectl rollout restart</code></li>
+      </ul>
+
+      <h4>Verify</h4>
+      <pre>kubectl get pods -n &lt;ns&gt;              # Running, restarts stop climbing
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;            # clean startup, no errors</pre>
+      <div class="say-block">Restarts have stopped, pod is staying Running, logs are clean. I also want to verify the user-visible path works end to end &mdash; curl the health and data endpoints through Ingress.</div>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal from logs / previous logs / describe
+2. whether this is really an app startup crash rather than config, dependency, probe, or OOM
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix if the evidence is already sufficient
+
+Do not guess beyond the evidence.
+
+Domain: Startup / Crash
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Running Pods, Determine the Reason for Pod Failure.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 2. Image Pull / Container Creation -->
+  <div class="fix-card" id="domain-image-pull">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>2. Image Pull / Container Creation</h3>
+      <span class="bucket-tag tag-start" style="margin-left:auto;">Start</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Pod shows <code>ImagePullBackOff</code>, <code>ErrImagePull</code>, <code>ErrImageNeverPull</code>, <code>CreateContainerConfigError</code>, or <code>CreateContainerError</code>.</div>
+
+      <div class="say-block">The pod is stuck at [status]. Let me check the Events section to see exactly what failed &mdash; this is usually a contract mismatch between the build output and what the Deployment spec references.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl get pod &lt;pod&gt; -n &lt;ns&gt; -o jsonpath='{.spec.containers[0].image}'
+kubectl rollout history deploy/&lt;deploy&gt; -n &lt;ns&gt;       # find last known-good image</pre>
+
+      <h4>What the output implies</h4>
+      <ul>
+        <li><strong>Image pull failures</strong> &mdash; Events show <code>Failed to pull image</code>. Compare against known-good image. Check tag, registry, <code>imagePullPolicy</code>.</li>
+        <li><strong><code>CreateContainerConfigError</code></strong> &mdash; Pod references a Secret or ConfigMap that doesn't exist. Events name the missing object.</li>
+        <li><strong><code>CreateContainerError</code></strong> &mdash; Entrypoint or command doesn't exist in image. Check <code>command</code>/<code>args</code> in pod spec.</li>
+        <li><code>ErrImageNeverPull</code> &mdash; <code>imagePullPolicy: Never</code> but image not on node. Common in kind/k3d.</li>
+      </ul>
+
+      <h4>Likely fixes</h4>
+      <pre># Fix image name or tag
+kubectl set image deployment/&lt;deploy&gt; &lt;container&gt;=&lt;correct-image&gt;:&lt;tag&gt; -n &lt;ns&gt;
+
+# Rollback entirely
+kubectl rollout undo deploy/&lt;deploy&gt; -n &lt;ns&gt;
+
+# Missing ConfigMap/Secret causing CreateContainerConfigError
+kubectl create configmap &lt;cm&gt; --from-literal=KEY=value -n &lt;ns&gt;
+kubectl create secret generic &lt;secret&gt; --from-literal=KEY=value -n &lt;ns&gt;</pre>
+
+      <h4>Verify</h4>
+      <pre>kubectl get pods -n &lt;ns&gt; -w             # pod moves past error, reaches Running</pre>
+      <div class="say-block">Pod is past the error state and running. I want to confirm the user-visible endpoints work too, not just that the pod started.</div>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is image pull, missing image auth, imagePullPolicy, or container creation/config failure
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: Image Pull / Container Creation
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Images, Pull an Image from a Private Registry.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 3. Probe Failure -->
+  <div class="fix-card" id="domain-probe-failure">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>3. Probe Failure</h3>
+      <span class="bucket-tag tag-stayup" style="margin-left:auto;">Stay Up</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Pod is Running but not Ready (<code>0/1</code>), or Running with RESTARTS climbing. Readiness failure removes the pod from Service endpoints. Liveness failure kills and restarts the container.</div>
+
+      <div class="say-block">The pod is Running but [not Ready / restarts are climbing]. Let me check which probe is failing and what it's targeting &mdash; this is a contract between the probe spec and what the app actually serves, and getting it wrong silently removes the pod from the traffic path.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # probe spec + Conditions
+kubectl get pod &lt;pod&gt; -n &lt;ns&gt; -o jsonpath='{.spec.containers[0].readinessProbe}'
+kubectl get pod &lt;pod&gt; -n &lt;ns&gt; -o jsonpath='{.spec.containers[0].livenessProbe}'</pre>
+
+      <h4>Test what the app actually responds to</h4>
+      <pre>kubectl port-forward pod/&lt;pod&gt; 8080:&lt;container-port&gt; -n &lt;ns&gt;
+curl -i localhost:8080/health
+curl -i localhost:8080/healthz
+curl -i localhost:8080/readyz</pre>
+
+      <h4>What the output implies</h4>
+      <ul>
+        <li>Wrong probe path &mdash; path returns 404, different path returns 200. <strong>"Probe targets [path] but the app responds on [other path]."</strong></li>
+        <li>Wrong probe port &mdash; <code>connection refused</code> on probe port. <strong>"Probe targets port [X] but app listens on [Y]."</strong></li>
+        <li><code>initialDelaySeconds</code> too short &mdash; fails briefly then passes. Increase delay.</li>
+        <li>App genuinely unhealthy &mdash; probe is correct, app has a real problem. Check logs &rarr; <a class="fix-link" href="#domain-app-level">App-Level</a>.</li>
+      </ul>
+
+      <h4>Likely fixes</h4>
+      <pre># Fix the probe path/port/timing in the manifest, then re-apply:
+kubectl apply -f manifests/&lt;deployment-file&gt;.yaml</pre>
+
+      <h4>Verify</h4>
+      <pre>kubectl get pods -n &lt;ns&gt;                  # 1/1 Ready, or restarts stop
+kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;       # endpoints populate</pre>
+      <div class="say-block">Pod is 1/1 Ready, endpoints are populated, and the user-visible path returns expected responses. The probe contract now matches what the app serves.</div>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is readiness, liveness, or startup probe failure
+3. whether the likely issue is wrong path, wrong port, bad timing, or a real app problem
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: Probe Failure
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Configure Liveness, Readiness and Startup Probes.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 4. Config / Secret / Env -->
+  <div class="fix-card" id="domain-config-env">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>4. Config / Secret / Env</h3>
+      <span class="bucket-tag" style="margin-left:auto;background:#f5f5f5;color:#666;border:1px solid #ccc;">Cross-cutting</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Events show a missing ConfigMap or Secret, logs reveal a wrong or missing value, or <code>CreateContainerConfigError</code> points to a missing config reference. Covers: missing objects, wrong reference names, wrong keys, wrong values.</div>
+
+      <div class="say-block">This is a configuration problem. I need to check what the pod references versus what actually exists, and compare the values. Config mismatches are the most common failure domain because they are a contract between several manifests &mdash; the durable fix is always in the repo, not a one-off edit.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl get configmap -n &lt;ns&gt;
+kubectl get secret -n &lt;ns&gt;
+kubectl get deployment &lt;deploy&gt; -n &lt;ns&gt; -o yaml | grep -A2 -E 'configMapRef|secretRef'</pre>
+
+      <h4>What the output implies</h4>
+      <ul>
+        <li><strong>Events:</strong> <code>configmap "X" not found</code> or <code>secret "X" not found</code>. <strong>"Events name the exact missing resource."</strong> Compare character-for-character.</li>
+        <li><strong>envFrom references:</strong> Compare character-for-character against what exists. <strong>"The deployment references [name] but the actual object is [other name]."</strong></li>
+      </ul>
+
+      <h4>Check values inside existing objects</h4>
+      <pre>kubectl get configmap &lt;cm&gt; -n &lt;ns&gt; -o yaml
+kubectl get secret &lt;secret&gt; -n &lt;ns&gt; -o jsonpath='{.data.&lt;key&gt;}' | base64 -d
+kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | sort</pre>
+
+      <h4>Likely fixes</h4>
+      <ul>
+        <li><strong>Wrong reference name or wrong value:</strong> fix in the manifest, then <code>kubectl apply -f manifests/&lt;file&gt;.yaml</code></li>
+        <li><strong>Missing object:</strong> <code>kubectl apply -f manifests/&lt;configmap-or-secret&gt;.yaml</code> (or <code>kubectl create</code> if no manifest exists)</li>
+        <li><strong>After any config change:</strong> <code>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;</code> &mdash; pods must restart to pick up new ConfigMap/Secret values</li>
+      </ul>
+
+      <h4>Verify</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;               # no Warning events
+kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | grep &lt;KEY&gt;   # correct values injected
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;                        # clean startup</pre>
+      <div class="say-block">No warning events, correct values injected, clean startup. I also want to verify the full user-visible path &mdash; health and data endpoints through Ingress &mdash; because a config fix that only half-works can pass pod-level checks while still failing for users.</div>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is missing ConfigMap/Secret, wrong reference name, wrong key, or wrong injected value
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: Config / Secret / Env
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: ConfigMaps, Secrets.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 5. Service Routing / Port / Endpoint -->
+  <div class="fix-card" id="domain-service-routing">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>5. Service Routing / Port / Endpoint</h3>
+      <span class="bucket-tag tag-traffic" style="margin-left:auto;">Receive Traffic</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Pods are Running and Ready but unreachable through the Service. The reachability path found empty endpoints or a port mismatch.</div>
+
+      <div class="say-block">Pods are healthy but I can't reach them through the Service. Let me check selectors, endpoints, and ports &mdash; this is the label and port contract between the Deployment and the Service, and any drift here silently breaks the developer-visible path while pods look fine.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;
+kubectl describe svc &lt;svc&gt; -n &lt;ns&gt;
+kubectl get pods -n &lt;ns&gt; --show-labels
+kubectl port-forward svc/&lt;svc&gt; 8080:&lt;svc-port&gt; -n &lt;ns&gt;</pre>
+
+      <h4>What the output implies</h4>
+      <ul>
+        <li><strong>Endpoints empty (<code>&lt;none&gt;</code>):</strong> <strong>"Endpoints are empty &mdash; the Service selector matches zero Ready pods."</strong> Compare selector against pod labels character-for-character.</li>
+        <li><strong>Wrong targetPort:</strong> Must match the container's listening port. <code>kubectl get pod -o jsonpath='{.spec.containers[0].ports[0].containerPort}'</code></li>
+        <li><strong>Pods not Ready:</strong> Even if selector matches, only <code>1/1</code> Ready pods appear in endpoints. Fix readiness first &rarr; <a class="fix-link" href="#domain-probe-failure">Probe Failure</a>.</li>
+      </ul>
+
+      <h4>Likely fixes</h4>
+      <pre># Fix the selector or targetPort in the manifest, then re-apply:
+kubectl apply -f manifests/&lt;service-file&gt;.yaml
+
+# Note: kubectl apply merges map fields. If a patch added an extra
+# selector key the manifest doesn't mention, apply won't remove it.
+# Use kubectl replace -f to fully replace, or kubectl edit to remove
+# the extra key manually.</pre>
+
+      <h4>Verify</h4>
+      <pre>kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;               # pod IPs populated
+kubectl port-forward svc/&lt;svc&gt; 8080:&lt;svc-port&gt; -n &lt;ns&gt;
+curl -i localhost:8080/                            # valid response
+curl -s localhost/                                 # end-to-end through Ingress</pre>
+      <div class="say-block">Endpoints are populated, port-forward works, and the external curl returns a valid response through Ingress. The routing contract between Deployment labels, Service selector, and Ingress backend is consistent again.</div>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is selector mismatch, empty endpoints, wrong targetPort, wrong named port, or wrong backend pods
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: Service Routing / Port / Endpoint
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Service, Debug Services.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 6. DNS / Service Discovery / Namespace -->
+  <div class="fix-card" id="domain-dns">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>6. DNS / Service Discovery / Namespace</h3>
+      <span class="bucket-tag tag-dep" style="margin-left:auto;">Reach Dep</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Resources appear missing, DNS resolution fails, or logs show <code>Name or service not known</code>.</div>
+
+      <div class="say-block">I need to check whether I'm looking in the right place, and whether DNS resolution is working inside the cluster.</div>
+
+      <h4>Namespace confusion</h4>
+      <pre>kubectl get all -A
+kubectl get ns
+kubectl config view --minify | grep namespace</pre>
+      <ul>
+        <li>Wrong default namespace &rarr; <code>kubectl config set-context --current --namespace=&lt;correct-ns&gt;</code></li>
+        <li>Cross-namespace reference &rarr; use FQDN: <code>&lt;service&gt;.&lt;namespace&gt;.svc.cluster.local</code></li>
+      </ul>
+
+      <h4>DNS / service discovery</h4>
+      <pre>kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;hostname&gt;
+kubectl get svc -n &lt;ns&gt;</pre>
+      <p>Compare the hostname the app uses against actual Service names. <strong>"The app is trying to reach [hostname] but the actual service is named [other name]."</strong></p>
+
+      <h4>If no hostnames resolve at all</h4>
+      <pre>kubectl get pods -n kube-system -l k8s-app=kube-dns
+kubectl get networkpolicy -n &lt;ns&gt;</pre>
+      <p>A missing DNS egress NetworkPolicy will silently break all name resolution &rarr; <a class="fix-link" href="#domain-networkpolicy">NetworkPolicy</a>.</p>
+
+      <h4>Verify</h4>
+      <pre>kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;service&gt;   # returns valid cluster IP</pre>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is wrong namespace, wrong service name, missing FQDN, or cluster DNS trouble
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: DNS / Service Discovery / Namespace
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: DNS for Services and Pods.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 7. Resource / Scheduling / Storage -->
+  <div class="fix-card" id="domain-resource-scheduling">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>7. Resource / Scheduling / Storage</h3>
+      <span class="bucket-tag tag-start" style="margin-left:auto;">Start</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Pod is <code>Pending</code>, exit code is 137 (OOMKilled), or PVC is stuck in <code>Pending</code>.</div>
+
+      <div class="say-block">The pod is [Pending / OOMKilled / has a storage issue]. Let me find the specific constraint that's blocking it.</div>
+
+      <h4>Pending pods</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;                    # Events: scheduling reason
+kubectl get nodes
+kubectl describe node &lt;node&gt;
+kubectl top nodes</pre>
+      <ul>
+        <li><code>Insufficient cpu/memory</code> &rarr; lower requests in deploy spec</li>
+        <li><code>no nodes available</code> &rarr; taint/affinity/selector mismatch</li>
+        <li><code>unbound immediate PersistentVolumeClaim</code> &rarr; see Storage below</li>
+      </ul>
+
+      <h4>OOMKilled (exit 137)</h4>
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;          # Last State shows OOMKilled
+kubectl get pod &lt;pod&gt; -n &lt;ns&gt; -o jsonpath='{.spec.containers[0].resources.limits.memory}'</pre>
+      <p>Fix: increase <code>resources.limits.memory</code> in the manifest, then <code>kubectl apply -f manifests/&lt;deployment-file&gt;.yaml</code>.</p>
+
+      <h4>Storage (PVC issues)</h4>
+      <pre>kubectl get pvc -n &lt;ns&gt;
+kubectl describe pvc &lt;pvc&gt; -n &lt;ns&gt;
+kubectl get storageclass
+kubectl get pv</pre>
+      <ul>
+        <li><strong>PVC Pending:</strong> <code>no persistent volumes available</code> &rarr; check <code>storageClassName</code>, capacity, access modes</li>
+        <li>PVC fields are mostly immutable &mdash; delete and recreate if spec is wrong</li>
+      </ul>
+
+      <h4>Verify</h4>
+      <pre>kubectl get pvc -n &lt;ns&gt;       # Bound
+kubectl get pods -n &lt;ns&gt;      # Running, Ready
+curl -s localhost/             # end-to-end</pre>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is scheduling pressure, taints/affinity, node placement, OOMKilled, or PVC/storage binding
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: Resource / Scheduling / Storage
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Resource Management for Pods and Containers, Persistent Volumes.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 8. Ingress / External Routing -->
+  <div class="fix-card" id="domain-ingress">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>8. Ingress / External Routing</h3>
+      <span class="bucket-tag tag-traffic" style="margin-left:auto;">Receive Traffic</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Service works via port-forward but the external URL fails. If Service/endpoints are broken, go to <a class="fix-link" href="#domain-service-routing">Service Routing</a> first.</div>
+
+      <div class="say-block">I can reach the app through port-forward, so the Service and pods are fine. The problem is in the Ingress layer &mdash; the last hop before the user-visible URL. I want to check the Ingress spec against the installed controller and the Service it points to.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ing&gt; -n &lt;ns&gt;
+kubectl get ingressclass
+kubectl get pods -n ingress-nginx</pre>
+
+      <h4>What the output implies</h4>
+      <ul>
+        <li><strong>ADDRESS blank:</strong> Ingress controller hasn't admitted this resource. Check <code>ingressClassName</code> matches installed controller.</li>
+        <li><strong>Backend port mismatch:</strong> Ingress backend port must match Service <code>port</code>, not <code>targetPort</code>. <strong>"The ingress backend points to port [X] but the service is on port [Y]."</strong></li>
+        <li><strong>Host/path:</strong> If <code>Host:</code> is set, requests need matching Host header. <code>pathType: Exact</code> with <code>/api</code> won't match <code>/</code>.</li>
+        <li><strong>Controller health:</strong> <code>kubectl get pods -n ingress-nginx</code> must be Running/Ready.</li>
+      </ul>
+
+      <h4>Likely fixes</h4>
+      <pre># Fix the backend service/port, ingressClassName, or path in the manifest, then re-apply:
+kubectl apply -f manifests/&lt;ingress-file&gt;.yaml</pre>
+
+      <h4>Verify</h4>
+      <pre>kubectl get ingress -n &lt;ns&gt;              # ADDRESS populated
+kubectl describe ingress &lt;ing&gt; -n &lt;ns&gt;   # Backends show correct service
+curl -s localhost/                        # end-to-end</pre>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is wrong host/path rule, wrong backend service/port, bad ingressClassName, or ingress controller health
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: Ingress / External Routing
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Ingress, Ingress Controllers.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 9. NetworkPolicy / Traffic Restriction -->
+  <div class="fix-card" id="domain-networkpolicy">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>9. NetworkPolicy / Traffic Restriction</h3>
+      <span class="bucket-tag tag-dep" style="margin-left:auto;">Reach Dep</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Everything looks correct &mdash; pods Running, Ready, endpoints populated &mdash; but traffic silently fails or times out with no error message.</div>
+
+      <div class="say-block">Everything looks healthy but traffic is failing silently. When all the obvious things check out, NetworkPolicy is the first thing I check &mdash; a default-deny with a missing allow rule produces zero error signals, which makes it the hardest failure domain to debug without knowing to look for it.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl get networkpolicy -n &lt;ns&gt;
+kubectl describe networkpolicy -n &lt;ns&gt;
+kubectl get pods -n &lt;ns&gt; --show-labels</pre>
+
+      <h4>Common broken patterns</h4>
+      <ul>
+        <li>Allow rule <code>podSelector</code> doesn't match any running pods (label typo)</li>
+        <li>Allow rule <code>namespaceSelector</code> wrong &mdash; for ingress-nginx: <code>kubernetes.io/metadata.name: ingress-nginx</code></li>
+        <li>Missing port specification in allow rule</li>
+        <li>No DNS egress rule &mdash; <strong>"pods can't resolve hostnames at all"</strong></li>
+        <li>Egress deny with no rule allowing app-to-database traffic</li>
+      </ul>
+
+      <h4>Quick isolation test (interview/sandbox only)</h4>
+      <pre>kubectl get networkpolicy -n &lt;ns&gt; -o name
+kubectl delete networkpolicy &lt;policy-name&gt; -n &lt;ns&gt;
+curl localhost/                                     # test after each deletion</pre>
+      <p>If traffic works after deleting a specific policy, that was the blocker. Re-apply a corrected version.</p>
+
+      <h4>Likely fixes</h4>
+      <ul>
+        <li>Wrong <code>podSelector</code> &rarr; fix in the manifest, then <code>kubectl apply -f manifests/&lt;networkpolicy-file&gt;.yaml</code></li>
+        <li>Missing DNS egress rule &rarr; add to the manifest and <code>kubectl apply</code></li>
+        <li>Missing app-to-database rule &rarr; add to the manifest and <code>kubectl apply</code></li>
+      </ul>
+
+      <h4>Verify</h4>
+      <pre>kubectl get networkpolicy -n &lt;ns&gt;
+curl -s localhost/                        # traffic flows end-to-end</pre>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is ingress blocking, egress blocking, default-deny with no matching allow, or a selector mismatch in the policy
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: NetworkPolicy
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Network Policies.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 10. RBAC / Service Account / Permission -->
+  <div class="fix-card" id="domain-rbac">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>10. RBAC / Service Account / Permission</h3>
+      <span class="bucket-tag tag-dep" style="margin-left:auto;">Reach Dep</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Forbidden or Unauthorized errors. A service account can't perform an action. This bypasses the main pod-state flow.</div>
+
+      <div class="say-block">I see a Forbidden error. I need to walk the RBAC chain &mdash; ServiceAccount, RoleBinding, Role &mdash; and find the broken link. Each piece is defined declaratively in a manifest, so the fix belongs there, not in an ad-hoc kubectl create.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; &lt;verb&gt; &lt;resource&gt; -n &lt;ns&gt;
+kubectl get sa,role,rolebinding -n &lt;ns&gt;
+kubectl get rolebinding &lt;binding&gt; -n &lt;ns&gt; -o yaml
+kubectl get role &lt;role&gt; -n &lt;ns&gt; -o yaml</pre>
+
+      <h4>Walk the chain &mdash; find the broken link</h4>
+      <ul>
+        <li><strong>RoleBinding subjects:</strong> <code>name</code> must exactly match SA name. <code>namespace</code> must match where SA lives.</li>
+        <li><strong>RoleBinding roleRef:</strong> Must match an existing Role. <code>roleRef</code> is immutable &mdash; delete and recreate if wrong.</li>
+        <li><strong>Role rules &mdash; all three must be correct:</strong>
+          <ul>
+            <li><code>apiGroups</code>: <code>[""]</code> for core (pods, services, configmaps), <code>["apps"]</code> for deployments</li>
+            <li><code>resources</code>: must be plural (<code>["pods"]</code> not <code>["pod"]</code>)</li>
+            <li><code>verbs</code>: <code>["get","list","watch"]</code> not <code>["read"]</code></li>
+          </ul>
+        </li>
+      </ul>
+
+      <h4>Likely fixes</h4>
+      <pre># Fix in the manifest and re-apply:
+kubectl apply -f manifests/&lt;rbac-file&gt;.yaml
+
+# RoleRef is immutable — if wrong, delete and re-apply:
+kubectl delete rolebinding &lt;binding&gt; -n &lt;ns&gt;
+kubectl apply -f manifests/&lt;rbac-file&gt;.yaml</pre>
+
+      <h4>Verify</h4>
+      <pre>kubectl auth can-i --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; &lt;verb&gt; &lt;resource&gt; -n &lt;ns&gt;
+# Expected: yes</pre>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is missing permission, wrong service account, or binding in the wrong namespace
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: RBAC
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Using RBAC Authorization, Configure Service Accounts for Pods.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+  <!-- 11. Application-Level Dependency / Runtime -->
+  <div class="fix-card" id="domain-app-level">
+    <div class="fix-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h3>11. Application-Level Dependency / Runtime</h3>
+      <span class="bucket-tag tag-dep" style="margin-left:auto;">Reach Dep</span>
+    </div>
+    <div class="fix-body">
+      <div class="fix-means">Pods are Running and Ready, endpoints populated, but the app returns errors or doesn't respond. Kubernetes thinks everything is fine &mdash; this is an app-level issue.</div>
+
+      <div class="say-block">Everything looks healthy from a Kubernetes perspective &mdash; pods Running, endpoints populated, probes passing. But the app is returning errors, which means this is an application-level issue. Logs and runtime env vars should tell me whether the problem is config values, dependency connectivity, or app logic.</div>
+
+      <h4>Commands</h4>
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous
+kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | sort
+kubectl get configmap &lt;cm&gt; -n &lt;ns&gt; -o yaml
+kubectl get secret &lt;secret&gt; -n &lt;ns&gt; -o jsonpath='{.data.&lt;key&gt;}' | base64 -d</pre>
+
+      <h4>What logs typically show</h4>
+      <ul>
+        <li><code>connection refused</code> to DB host &rarr; wrong hostname or DB not running. <strong>"Let me check if the service exists."</strong> <code>kubectl get svc -n &lt;ns&gt;</code></li>
+        <li><code>password authentication failed</code> &rarr; wrong credentials. Compare decoded Secret against authoritative source.</li>
+        <li><code>database "X" does not exist</code> &rarr; wrong DB name in config. Compare pod env against Postgres ConfigMap.</li>
+        <li><code>Name or service not known</code> &rarr; DNS failure. Route to <a class="fix-link" href="#domain-dns">DNS</a>.</li>
+        <li>App returns 404 on expected paths &rarr; wrong base path or route config. Check env vars.</li>
+        <li>App bound to <code>127.0.0.1</code> &rarr; needs to bind to <code>0.0.0.0</code>. Check Dockerfile CMD or env vars for listen address.</li>
+      </ul>
+
+      <h4>Diagnostic pattern</h4>
+      <p><code>kubectl exec &lt;pod&gt; -- env | sort</code> to see runtime values. Compare each value against the authoritative source: <code>kubectl get svc</code> for hostnames, ConfigMap for DB name/user, decoded Secret for passwords.</p>
+
+      <h4>Likely fixes</h4>
+      <ul>
+        <li><strong>Wrong ConfigMap/Secret value:</strong> fix in the manifest, then <code>kubectl apply -f manifests/&lt;file&gt;.yaml</code>, then <code>kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;</code></li>
+        <li><strong>Schema not initialized:</strong> restart may trigger migrations if the app runs them on startup</li>
+      </ul>
+
+      <h4>Verify</h4>
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt;                   # no connection or auth errors
+kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- env | sort     # env vars correct
+curl -s localhost/                            # app responds through full path</pre>
+
+            <div class="ai-prompt">
+        <div class="ai-prompt-label">AI helper prompt</div>
+        <pre>Interpret this Kubernetes troubleshooting output concisely.
+
+Tell me:
+1. the key signal
+2. whether this is dependency down, wrong host/port, connection refused, partial startup dependency failure, or app logic failing against the dependency
+3. what it rules in or rules out
+4. the next 1-2 commands to confirm
+5. the smallest justified fix
+
+Do not guess beyond the evidence.
+
+Domain: App-Level dependency failure
+
+Output:
+&lt;paste raw command output here&gt;</pre>
+      </div>
+      <div class="docs">Docs: Debug Running Pods.</div>
+      <a class="back-link" href="#symptoms-high">&larr; Back to symptom map</a>
+    </div>
+  </div>
+
+</section>
+
+<!-- Support Views -->
+<section id="views">
+  <h2>Support Views</h2>
+  <div class="views-grid">
+    <div class="view-card">
+      <h4>Management View</h4>
+      <div class="flow">Deployment &rarr; ReplicaSet &rarr; Pods</div>
+      <ul>
+        <li>Are the right Pods being created?</li>
+        <li>Is the rollout progressing?</li>
+        <li>Is the expected replica set healthy?</li>
+      </ul>
+      <div class="docs">Docs: Deployments, ReplicaSets.</div>
+    </div>
+    <div class="view-card">
+      <h4>Health View</h4>
+      <div class="flow">kubelet / probes &rarr; Pod / container</div>
+      <ul>
+        <li>Did the app start?</li>
+        <li>Did it stay alive?</li>
+        <li>Is it Ready to receive traffic?</li>
+        <li>Is kubelet restarting it?</li>
+      </ul>
+      <div class="docs">Docs: Configure Liveness Readiness and Startup Probes, Pod Lifecycle, Debug Running Pods.</div>
+    </div>
+    <div class="view-card">
+      <h4>Traffic View</h4>
+      <div class="flow">Client &rarr; Ingress &rarr; Service &rarr; EndpointSlices / endpoints &rarr; Pod &rarr; app</div>
+      <ul>
+        <li>Is this an internal service-routing issue or an external-routing issue?</li>
+        <li>Is the Service actually pointing to healthy backends?</li>
+      </ul>
+      <div class="docs">Docs: Service, EndpointSlices, Debug Services, Ingress.</div>
+    </div>
+    <div class="view-card">
+      <h4>Dependencies View</h4>
+      <div class="flow">Config / Secret / DNS / DB / API / storage / identity &rarr; Pod / app</div>
+      <ul>
+        <li>Did the app get the inputs it needs?</li>
+        <li>Can it reach the systems it depends on?</li>
+        <li>Does it have the permissions it needs?</li>
+      </ul>
+      <div class="docs">Docs: DNS for Services and Pods, Using RBAC Authorization, Service Accounts, Persistent Volumes, Network Policies.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Entry Path View -->
+<section id="entry-path-view">
+  <h2>Entry Path View</h2>
+  <div class="views-grid">
+    <div class="view-card">
+      <h4>How to determine the app entry path</h4>
+      <div class="flow">Ingress? If yes, use host + path. If no, inspect Service type.</div>
+      <pre># 1. Is there an Ingress?
+kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;
+
+# 2. If not, inspect the Service
+kubectl get svc -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;</pre>
+      <ul>
+        <li><strong>Ingress</strong>: use host from Ingress rule and path from Ingress path</li>
+        <li><strong>LoadBalancer Service</strong>: use external IP/DNS + service port + app endpoint path</li>
+        <li><strong>NodePort Service</strong>: use node IP + nodePort + app endpoint path</li>
+        <li><strong>ClusterIP Service</strong>: internal only; use service DNS name or port-forward</li>
+        <li><strong>App endpoint path</strong>: get it from probe path, repo docs, curl scripts, or app routes</li>
+      </ul>
+    </div>
+
+    <div class="view-card">
+      <h4>Example curl patterns</h4>
+      <div class="flow">Use the object spec to build the exact curl command.</div>
+      <pre># Ingress with host rule
+curl -H "Host: &lt;host&gt;" http://&lt;ingress-ip&gt;&lt;path&gt;
+
+# Local ingress
+curl -H "Host: &lt;host&gt;" http://localhost&lt;path&gt;
+
+# LoadBalancer Service
+curl http://&lt;external-ip-or-dns&gt;:&lt;port&gt;&lt;path&gt;
+
+# NodePort Service
+curl http://&lt;node-ip&gt;:&lt;nodePort&gt;&lt;path&gt;
+
+# Internal-only ClusterIP Service
+kubectl port-forward svc/&lt;service&gt; 8080:&lt;service-port&gt; -n &lt;ns&gt;
+curl http://localhost:8080/&lt;path&gt;</pre>
+    </div>
+  </div>
+</section>
+
+<!-- Verification -->
+<section id="verify">
+  <h2>Verification Commands</h2>
+  <p style="font-size:13px;color:#666;margin-bottom:12px;">After any fix, verify in this order:</p>
+  <div class="verify-steps">
+    <div class="verify-step"><strong>Pod state</strong> &mdash; <code>kubectl get pods -n &lt;ns&gt;</code></div>
+    <div class="verify-step"><strong>Readiness</strong> &mdash; confirm 1/1 Ready, RESTARTS stable</div>
+    <div class="verify-step"><strong>Endpoints</strong> &mdash; <code>kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;</code></div>
+    <div class="verify-step"><strong>Service path</strong> &mdash; <code>kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;</code>, then <code>curl localhost:8080/health</code></div>
+    <div class="verify-step"><strong>Ingress path</strong> &mdash; <code>curl localhost/</code> (or <code>curl -H "Host: &lt;host&gt;" http://&lt;ingress-ip&gt;/</code>)</div>
+    <div class="verify-step"><strong>App end to end</strong> &mdash; <code>curl localhost/health</code> and <code>curl localhost/items</code></div>
+  </div>
+  <div class="verify-warning">Do not stop at "Pods are Running". Verify the full user-visible path: pods healthy, endpoints populated, Service port-forward works, and the external curl through Ingress returns expected responses. A fix that passes pod-level checks but fails for users isn't a fix.</div>
+</section>
+
+<!-- Core Commands -->
+<section id="commands">
+  <h2>Core Commands</h2>
+  <div class="cmd-grid">
+    <div class="cmd-group">
+      <h4>Pods</h4>
+      <pre>kubectl get pods -n &lt;ns&gt;
+kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt;
+kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Deployments</h4>
+      <pre>kubectl get deploy -n &lt;ns&gt;
+kubectl describe deploy &lt;deploy&gt; -n &lt;ns&gt;
+kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Services &amp; Endpoints</h4>
+      <pre>kubectl get svc -n &lt;ns&gt;
+kubectl describe svc &lt;service&gt; -n &lt;ns&gt;
+kubectl get endpoints &lt;service&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Ingress</h4>
+      <pre>kubectl get ingress -n &lt;ns&gt;
+kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Events</h4>
+      <pre>kubectl get events -n &lt;ns&gt; --sort-by=.lastTimestamp</pre>
+    </div>
+    <div class="cmd-group">
+      <h4>Connectivity</h4>
+      <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh
+kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;</pre>
+    </div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<script>
+function toggleAll(open) {
+  document.querySelectorAll('.symptom-card, .fix-card').forEach(card => {
+    if (open) card.classList.add('open');
+    else card.classList.remove('open');
+  });
+}
+function toggleAllFixes(open) {
+  document.querySelectorAll('.fix-card').forEach(card => {
+    if (open) card.classList.add('open');
+    else card.classList.remove('open');
+  });
+}
+
+function openFixFromHash() {
+  var id = location.hash.replace('#', '');
+  if (!id.startsWith('domain-') && !id.startsWith('fix-') && !id.startsWith('sym-')) return;
+  var card = document.getElementById(id);
+  if (!card) return;
+  card.classList.add('open');
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.querySelectorAll('a.fix-link').forEach(function(link) {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    history.pushState(null, '', this.getAttribute('href'));
+    openFixFromHash();
+  });
+});
+
+window.addEventListener('hashchange', openFixFromHash);
+openFixFromHash();
+
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  document.querySelector('.theme-toggle').textContent = dark ? 'Light' : 'Dark';
+}
+
+function toggleTheme() {
+  var dark = !document.body.classList.contains('dark');
+  applyTheme(dark);
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+}
+
+(function() {
+  var saved = localStorage.getItem('theme');
+  if (saved) {
+    applyTheme(saved === 'dark');
+  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    applyTheme(true);
+  }
+})();
+</script>
+</body>
+</html>
