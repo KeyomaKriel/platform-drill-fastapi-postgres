@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>K8s Troubleshooting Interview Sheet</title>
+<title>K8s Troubleshooting Sheet</title>
 <style>
   :root {
     --start: #e74c3c;
@@ -682,6 +682,7 @@
     <a href="#entry-path-view">Entry Path</a>
     <a href="#verify">Verify</a>
     <a href="#commands">Commands</a>
+    <a href="#responses">Responses</a>
   </nav>
   <button class="theme-toggle" onclick="toggleTheme()">Dark</button>
 </div>
@@ -700,7 +701,6 @@
     <span>Service exists &ne; endpoints exist</span>
     <span>Ingress exists &ne; external routing works</span>
   </div>
-  <div class="say-block">I’m going to check the workload health first, because if the pods are unhealthy that is the fastest explanation for why the API stopped responding. Once I know the pods are healthy, I’ll test the traffic path.</div>
 </div>
 
 <!-- Core Frame -- Four Buckets -->
@@ -2625,7 +2625,149 @@ kubectl describe ingress &lt;ingress&gt; -n &lt;ns&gt;</pre>
       <pre>kubectl exec -it &lt;pod&gt; -n &lt;ns&gt; -- sh
 kubectl port-forward svc/&lt;service&gt; 8080:&lt;port&gt; -n &lt;ns&gt;</pre>
     </div>
+    <div class="cmd-group">
+      <h4>Common Fix Moves</h4>
+      <pre>kubectl apply -f &lt;file&gt;
+kubectl rollout status deploy/&lt;deploy&gt; -n &lt;ns&gt;
+kubectl set image deploy/&lt;deploy&gt; &lt;container&gt;=&lt;image&gt; -n &lt;ns&gt;
+kubectl rollout undo deploy/&lt;deploy&gt; -n &lt;ns&gt;
+kubectl rollout restart deploy/&lt;deploy&gt; -n &lt;ns&gt;
+kubectl scale deploy/&lt;deploy&gt; --replicas=&lt;n&gt; -n &lt;ns&gt;</pre>
+    </div>
   </div>
+
+  <h2 style="margin-top:20px;">HTTP Signal Decoder</h2>
+  <div class="cmd-grid" style="grid-template-columns: repeat(5, 1fr);">
+    <div class="cmd-group">
+      <h4>404</h4>
+      <p style="font-size:13px;margin:0;">Route/path mismatch. Check app route, probe path, or Ingress path.</p>
+    </div>
+    <div class="cmd-group">
+      <h4>401 / 403</h4>
+      <p style="font-size:13px;margin:0;">Auth/RBAC issue. Check auth headers, ServiceAccount, <code>kubectl auth can-i</code>.</p>
+    </div>
+    <div class="cmd-group">
+      <h4>502</h4>
+      <p style="font-size:13px;margin:0;">Bad upstream response. Check endpoints, targetPort, pod health.</p>
+    </div>
+    <div class="cmd-group">
+      <h4>503</h4>
+      <p style="font-size:13px;margin:0;">No healthy backend. Check readiness, Service selector, endpoints.</p>
+    </div>
+    <div class="cmd-group">
+      <h4>504</h4>
+      <p style="font-size:13px;margin:0;">Upstream timeout. Check app slowness, dependency latency, Ingress timeout.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Symptom Responses -->
+<section id="responses">
+  <h2>Symptom Responses</h2>
+  <p style="font-size:13px;color:#666;margin-bottom:10px;">The most likely prompt shapes you'll hear, with a strong spoken response for each. Click to expand.</p>
+
+  <div class="say-block" style="margin-bottom:16px;">The safest reusable version: "I'll confirm the symptom first, then determine whether this is a startup, health, service-routing, or external reachability problem, and I'll stop at the first broken layer."</div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The API stopped working after a deployment change. Can you find out what's wrong?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">Since this started after a deployment change, I'm first going to confirm the symptom, then check whether the new pods are healthy and ready, and then verify the service and external routing still line up with what was rolled out.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The API has stopped responding. Can you figure out what is going on?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">I'll first confirm how the API is failing, then determine whether this is a workload health issue, a service-routing issue, or an external reachability issue.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The deployment completed, but the application is still unavailable. Please troubleshoot it."</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">A completed rollout does not mean the app is actually healthy, so I'm going to check pod state and readiness first, then verify whether the service has healthy endpoints.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"We rolled out a new version and now the app is not reachable. Can you find the issue?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">I'm thinking rollout-introduced breakage first, so I'll check whether the new version is starting cleanly, becoming ready, and still matching the service and ingress contracts.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The pods look like they are running, but the service is still not working. Can you take a look?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">If the pods are running but the service is failing, I'm immediately thinking readiness, selector mismatch, targetPort mismatch, or the app not actually listening where Kubernetes expects.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The API is returning 503s from the external endpoint. Can you work out where the problem is?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">A 503 from the external endpoint makes me think the edge can't find healthy backends, so I'll trace the path from ingress to service to ready pods and see where it breaks.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"A developer says their change was deployed successfully, but the app is still failing health checks. Can you investigate?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">That points me first to probe configuration versus actual app behavior, so I'll inspect the pod state, the probe settings, and whether the app is serving the expected path and port.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The application is stuck during startup and never becomes available. Can you diagnose the issue?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">That sounds like a startup-side problem, so I'll go straight to pod status, events, init containers if any, and logs to see what is preventing the app from coming up.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"Users say the app URL is broken, but the team believes the pods are healthy. Can you debug the path from outside in?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">If the pods are healthy but the URL is broken, I'm thinking the failure is higher up the path, so I'll verify ingress or external routing first and then confirm the service wiring behind it.</div>
+    </div>
+  </div>
+
+  <div class="symptom-card">
+    <div class="symptom-header sh-neutral" onclick="this.parentElement.classList.toggle('open')">
+      <span class="chevron">&#9654;</span>
+      <h4>"The pod is running, but requests are timing out. Can you investigate where the traffic is breaking?"</h4>
+    </div>
+    <div class="symptom-body">
+      <div class="say-block">A running pod does not prove the app is reachable, so I'll test the path layer by layer and work out whether the break is inside the container, at the service hop, or at the external entry point.</div>
+    </div>
+  </div>
+
 </section>
 
 </div><!-- /container -->

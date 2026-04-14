@@ -192,12 +192,12 @@ This is the default behaviour when the user asks for the next drill scenario.
 
 1. Create `codespace/drills/codespace-drills/round-NN/drill-<NN>-scenario.md` containing:
    - Setup instructions (which app, verify healthy first)
-   - The base64-encoded break command to paste in the Codespace
    - Session log start command
    - A vague, realistic symptom prompt suitable for a technical interview
    - 15-minute timer
+   - A note: "The fault has already been injected. Start debugging."
 
-   **CRITICAL: The user reads this file. It must contain ZERO clues about the fault type, failure domain, what the break does, or what to look for. The base64-encoded command exists specifically so the user cannot read it. Do not include any text, comments, headings, or context in this file that hints at what is broken. The symptom prompt must be vague. The file title must be generic (e.g. "Debugging (Django App)"). No domain names, no fault descriptions, no signal hints. No operational notes that describe the fault's behaviour — no "wait for pods to...", no "wait for the rollout to...", no "the new pods will...". The ONLY acceptable line is: "Wait 30 seconds after injecting before starting." — with no description of what happens during the wait.**
+   **CRITICAL: The user reads this file. It must contain ZERO clues about the fault type, failure domain, what the break does, or what to look for. The symptom prompt must be vague. The file title must be generic (e.g. "Debugging (Django App)"). No domain names, no fault descriptions, no signal hints. No operational notes that describe the fault's behaviour.**
 
 2. Create `codespace/drills/codespace-drills/round-NN/drill-<NN>-scenario-answer.md` containing:
    - App name, failure domain, tier
@@ -210,15 +210,27 @@ This is the default behaviour when the user asks for the next drill scenario.
    - Evaluation criteria table (8 dimensions, Needs Work / Solid / Strong)
    - Graduated hints (3 levels: directional, more specific, pointed)
 
+**Fault injection method:**
+
+Claude Code injects the fault directly into the Codespace via SSH. The user does not paste or see any break command.
+
+1. SSH into the Codespace.
+2. Edit the manifest file(s) inside the app directory (e.g. `sed -i` on the relevant YAML file).
+3. Apply the changed manifest: `kubectl apply -f <file> -n <ns>`.
+4. Wait for the fault to manifest (e.g. rollout proceeds, pods restart).
+5. Verify the fault is live (curl returns error, pods in bad state, etc.).
+6. Only after confirming the fault is live, tell the user "Ready." and nothing else.
+
+The fault lives in the actual manifest files in the Codespace — the user discovers it by reading the repo and inspecting the cluster, just like a real interview.
+
 **Fault design rules:**
 
 - Read the selected app's actual manifests to design the break. Do not assume values from other apps.
-- Use `kubectl` commands (patch, set image, set env, delete, scale) to break something in the running cluster.
 - Only break ONE thing per scenario.
+- The fault must be in a manifest file, not just in live cluster state. Edit the file, then apply it.
 - The fault must be diagnosable and fixable in ~10–20 minutes using repo inspection and standard kubectl commands.
-- Base64-encode the break command so the user cannot read it in the approval prompt.
-- Include `&& clear` at the end of the encoded command.
-- After encoding, verify the decoded command is correct.
+- Do not leave any visible trace of the injection in the user's terminal (SSH commands run from Claude Code, not from the Codespace terminal).
+- After injection, verify the fault is manifesting before telling the user it's ready.
 
 **Failure domain selection:**
 
@@ -228,10 +240,11 @@ This is the default behaviour when the user asks for the next drill scenario.
 
 **Visibility rules:**
 
-- **Do NOT reveal, hint at, or discuss the fault type, failure domain, or what the break does in the visible response.** Just create the files silently.
-- On success, respond with a minimal confirmation such as ‘Done.’ Do not include any fault details.
+- **Do NOT reveal, hint at, or discuss the fault type, failure domain, or what the break does in the visible response.**
+- After injecting and verifying the fault is live, respond with "Ready." and nothing else.
 - **The scenario file (`drill-<NN>-scenario.md`) is user-facing.** It must contain zero clues. All fault details, domain info, signals, and answer content go ONLY in the answer file (`drill-<NN>-scenario-answer.md`), which the user does not read until evaluation.
 - **The answer file content must never appear in Claude Code’s visible output.** Use a subagent to write it, or write it silently. Do not echo its contents.
+- **SSH commands used for fault injection must not be shown to the user.** Run them silently. Do not display the commands or their output in the conversation.
 
 ### Failure domain likelihood tiers
 

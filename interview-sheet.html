@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Sheet &mdash; K8s Troubleshooting</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --text: #eef2ff;
+      --muted: #b8c2e0;
+      --line: #2b396d;
+      --accent: #7aa2ff;
+      --green: #90f0c8;
+      --warn: #ffd38a;
+      --danger: #ff9b9b;
+      --purple: #c4a0ff;
+      --shadow: 0 12px 32px rgba(0,0,0,.28);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top left, rgba(122,162,255,.14), transparent 30%),
+                  radial-gradient(circle at top right, rgba(144,240,200,.10), transparent 25%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    h1 { margin: 0 0 6px; font-size: clamp(22px, 4vw, 32px); line-height: 1.1; }
+    h2 { font-size: 18px; margin: 24px 0 10px; color: var(--green); }
+    h3 { font-size: 15px; margin: 0 0 6px; }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .say {
+      border-left: 3px solid var(--green);
+      background: rgba(144,240,200,.06);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 15px;
+      font-style: italic;
+      margin: 10px 0;
+    }
+
+    .say-warn {
+      border-left: 3px solid var(--danger);
+      background: rgba(255,155,155,.06);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 15px;
+      font-style: italic;
+      margin: 10px 0;
+    }
+
+    pre {
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #0a0f1d;
+      border: 1px solid var(--line);
+      overflow: auto;
+      color: #d9e3ff;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .step-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      counter-reset: step;
+    }
+    .step-list li {
+      counter-increment: step;
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      align-items: flex-start;
+    }
+    .step-list li::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(122,162,255,.15);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .step-list code {
+      background: rgba(122,162,255,.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+
+    .sym-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 600px) { .sym-grid { grid-template-columns: 1fr; } }
+
+    .sym-item {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .sym-item:hover { border-color: var(--accent); }
+    .sym-item .trigger {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--warn);
+      margin-bottom: 4px;
+    }
+    .sym-item .action {
+      font-size: 13px;
+      color: var(--muted);
+      display: none;
+    }
+    .sym-item.open .action { display: block; }
+    .sym-item .arrow {
+      font-size: 11px;
+      color: var(--accent);
+      transition: transform .2s;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .sym-item.open .arrow { transform: rotate(90deg); }
+
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 600px) { .cmd-grid { grid-template-columns: 1fr; } }
+    .cmd-item {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .cmd-item pre {
+      margin: 0;
+      padding: 8px;
+      font-size: 13px;
+      border: none;
+      background: #0a0f1d;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="card">
+    <h1>Interview Sheet</h1>
+    <p class="hero-sub">One page. Fallback loop, spoken frame, core commands, symptom map. Nothing else.</p>
+  </div>
+
+  <!-- SPOKEN FRAME -->
+  <h2>Spoken frame</h2>
+  <div class="card">
+    <div class="say">"I'm going to check the workload first, then the traffic path, then dependencies. So first I'll look at pods and see whether this is a startup or readiness problem. If the pods are healthy, I'll move to service and endpoints. If that looks fine, I'll check ingress or the external path."</div>
+  </div>
+
+  <!-- IF THEY SAY NO -->
+  <div class="card">
+    <h3>If they ask you to close your reference material</h3>
+    <div class="say-warn">"I've closed it. I'll work directly from the cluster state and talk through my reasoning."</div>
+  </div>
+
+  <!-- FALLBACK LOOP -->
+  <h2>Fallback loop</h2>
+  <div class="card">
+    <ol class="step-list">
+      <li><code>kubectl get pods -n &lt;ns&gt;</code> &mdash; check pod state first. Are they Running + Ready?</li>
+      <li>If a pod looks bad: <code>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;</code> and <code>kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</code></li>
+      <li>If pods look healthy: <code>kubectl get svc -n &lt;ns&gt;</code> and <code>kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;</code></li>
+      <li>If service looks fine but external path fails: <code>kubectl get ingress -n &lt;ns&gt;</code> and <code>kubectl describe ingress &lt;ing&gt;</code></li>
+      <li>If app is up but feature fails: check logs, env, and dependency reachability</li>
+    </ol>
+  </div>
+
+  <!-- CORE COMMANDS -->
+  <h2>Core commands</h2>
+  <div class="cmd-grid">
+    <div class="cmd-item">
+      <pre>kubectl get pods -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-item">
+      <pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-item">
+      <pre>kubectl logs &lt;pod&gt; -n &lt;ns&gt; --previous</pre>
+    </div>
+    <div class="cmd-item">
+      <pre>kubectl get svc -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-item">
+      <pre>kubectl get endpoints &lt;svc&gt; -n &lt;ns&gt;</pre>
+    </div>
+    <div class="cmd-item">
+      <pre>kubectl get ingress -n &lt;ns&gt;</pre>
+    </div>
+  </div>
+
+  <!-- SYMPTOM MAP -->
+  <h2>Symptom map</h2>
+  <div class="sym-grid">
+
+    <div class="sym-item" onclick="this.classList.toggle('open')">
+      <div class="trigger"><span class="arrow">&#9654;</span>CrashLoopBackOff or restarts climbing</div>
+      <div class="action"><code>kubectl logs</code> and <code>kubectl describe pod</code>. Logs route you to the actual cause: config, dependency, DNS, OOM, or code.</div>
+    </div>
+
+    <div class="sym-item" onclick="this.classList.toggle('open')">
+      <div class="trigger"><span class="arrow">&#9654;</span>Running but not Ready (0/1)</div>
+      <div class="action"><code>kubectl describe pod</code> &mdash; check readiness probe spec and Events. Probe path/port mismatch is the most common cause.</div>
+    </div>
+
+    <div class="sym-item" onclick="this.classList.toggle('open')">
+      <div class="trigger"><span class="arrow">&#9654;</span>Service failing / 502 / 503</div>
+      <div class="action"><code>kubectl get endpoints</code> and <code>kubectl describe svc</code>. Empty endpoints = selector mismatch or pods not Ready.</div>
+    </div>
+
+    <div class="sym-item" onclick="this.classList.toggle('open')">
+      <div class="trigger"><span class="arrow">&#9654;</span>External route failing (internal works)</div>
+      <div class="action"><code>kubectl get ingress</code> and <code>kubectl describe ingress</code>. Check ingressClassName, backend service name, backend port.</div>
+    </div>
+
+    <div class="sym-item" onclick="this.classList.toggle('open')">
+      <div class="trigger"><span class="arrow">&#9654;</span>Feature failing but app is up</div>
+      <div class="action">Check logs for dependency errors. Then <code>kubectl exec -- env</code> and compare config values against actual service names and credentials.</div>
+    </div>
+
+</div>
+</body>
+</html>
