@@ -1,6 +1,6 @@
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:12 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get pods -n [4md[24m[24mdrill[?1l>[?2004l
@@ -10,7 +10,7 @@ platform-drill-api-65677fdc88-x6v85   0/1     CrashLoopBackOff   5 (2m3s ago)   
 postgres-6bd68d5dd4-mxmj4             1/1     Running            1 (21h ago)    21h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:13 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[1m[31mt[1m[31mk[0m[39m[1m[31mk[1m[31ml[0m[39m[1m[31mk[0m[39m[0m[39m [0m[39mk[0m[39mu[0m[39mb[0m[39me[0m[39mc[0m[39mt[0m[39mk=[8D[1m[31mk[1m[31mu[1m[31mb[1m[31me[1m[31mc[1m[31mt[1m[31mk[0m[39m [1m[31mt[0m[39m[0m[39m [0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get endpoints -n [4md[24m[24mdrill[?1l>[?2004l
@@ -21,7 +21,7 @@ platform-drill-api                         3d3h
 postgres             10.244.113.144:5432   3d3h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:13 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get    logs     get [4md[24m[24mdeploy -n [4md[24m[24mdrill[?1l>[?2004l
@@ -31,7 +31,7 @@ platform-drill-api   0/1     1            0           3d3h
 postgres             1/1     1            1           3d3h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:16 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31md[0m[39m[1m[31md[1m[31mt[0m[39m[1m[31mt[1m[31ml[0m[39m[1m[31mt[0m[39m[0m[39m [1m[31md[0m[39m[0m[39m [1m[31mc[0m[39m[0m[39m [1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4ms[24m[24msvc -n [4md[24m[24mdrill[?1l>[?2004l
@@ -41,7 +41,7 @@ platform-drill-api   ClusterIP   10.96.55.57     <none>        80/TCP     3d3h
 postgres             ClusterIP   10.96.199.142   <none>        5432/TCP   3d3h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:17 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m logs [7mplatform-drill-api-65677fdc88-x6v85[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m6[27m5[27m6[27m7[27m7[27mf[27md[27mc[27m8[27m8[27m-[27mx[27m6[27mv[27m8[27m5 -n [4md[24m[24mdrill[?1l>[?2004l
@@ -83,7 +83,7 @@ psycopg.OperationalError: failed to resolve host 'postgres-db': [Errno -2] Name 
 ERROR:    Application startup failed. Exiting.
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:18 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m[1m[31mk[1m[31mu[1m[31mb[1m[31me[1m[31mc[1m[31mt[1m[31ml[1m[31mk[0m[39m [8D[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[0m[32ml[39m[0m[39m  get [4ms[24m[24msvc platform-drill-api -o json[?1l>[?2004l
@@ -131,7 +131,7 @@ ERROR:    Application startup failed. Exiting.
 }
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:22 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4ms[24m[24msvc postgres -o json[?1l>[?2004l
@@ -179,7 +179,7 @@ ERROR:    Application startup failed. Exiting.
 }
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:23 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get [4md[24m[24mdeploy -n [4md[24m[24mdrill[?1l>[?2004l
@@ -189,7 +189,7 @@ platform-drill-api   0/1     1            0           3d3h
 postgres             1/1     1            1           3d3h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:24 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe [4md[24m[24mdeploy platform-drill-api[?1l>[?2004l
@@ -254,7 +254,7 @@ NewReplicaSet:   platform-drill-api-65677fdc88 (1/1 replicas created)
 Events:          <none>
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:24 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe [4md[24m[24mdepll oy postgres -n [4md[24m[24mdrill[?1l>[?2004l
@@ -301,7 +301,7 @@ NewReplicaSet:   postgres-6bd68d5dd4 (1/1 replicas created)
 Events:          <none>
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:25 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe pod [7mplatform-drill-api-65677fdc88-t42p8[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m6[27m5[27m6[27m7[27m7[27mf[27md[27mc[27m8[27m8[27m-[27mt[27m4[27m2[27mp[27m8[?1l>[?2004l
@@ -309,7 +309,7 @@ Events:          <none>
 ]2;kubectl describe pod platform-drill-api-65677fdc88-t42p8]1;kubectlError from server (NotFound): pods "platform-drill-api-65677fdc88-t42p8" not found
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:27 [0m[38;2;60;56;54m [0m
 [1;38;2;204;36;29m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get pods -n [4md[24m[24mdrill[?1l>[?2004l
@@ -319,7 +319,7 @@ platform-drill-api-65677fdc88-x6v85   0/1     CrashLoopBackOff   8 (3m53s ago)  
 postgres-6bd68d5dd4-mxmj4             1/1     Running            1 (22h ago)     22h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:28 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe pod [7mplatform-drill-api-65677fdc88-x6v85[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m6[27m5[27m6[27m7[27m7[27mf[27md[27mc[27m8[27m8[27m-[27mx[27m6[27mv[27m8[27m5[?1l>[?2004l
@@ -428,7 +428,7 @@ Events:
   Warning  BackOff    33s (x28 over 19m)   kubelet            Back-off restarting failed container platform-drill-api in pod platform-drill-api-65677fdc88-x6v85_drill(b4bc3450-c8fc-405d-b55b-7f055d796460)
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:28 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m logs [7mplatform-drill-api-65677fdc88-x6v85[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m6[27m5[27m6[27m7[27m7[27mf[27md[27mc[27m8[27m8[27m-[27mx[27m6[27mv[27m8[27m5[?1l>[?2004l
@@ -470,7 +470,7 @@ psycopg.OperationalError: failed to resolve host 'postgres-db': [Errno -2] Name 
 ERROR:    Application startup failed. Exiting.
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:29 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m logs [7mplatform-drill-api-65677fdc88-x6v85[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m6[27m5[27m6[27m7[27m7[27mf[27md[27mc[27m8[27m8[27m-[27mx[27m6[27mv[27m8[27m5 --previous[?1l>[?2004l
@@ -512,7 +512,7 @@ psycopg.OperationalError: failed to resolve host 'postgres-db': [Errno -2] Name 
 ERROR:    Application startup failed. Exiting.
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:29 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe pod [7mplatform-drill-api-65677fdc88-x6v85[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m6[27m5[27m6[27m7[27m7[27mf[27md[27mc[27m8[27m8[27m-[27mx[27m6[27mv[27m8[27m5 -n [4md[24m[24mdrill[?1l>[?2004l
@@ -621,7 +621,7 @@ Events:
   Normal   Pulled     2m19s (x10 over 23m)  kubelet            Container image "platform-drill-api:local" already present on machine and can be accessed by the pod
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:31 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mn[0m[39m[1m[31mk[1m[31mu[0m[39m[0m[39m [1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get configmap -n [4md[24m[24mdrill[?1l>[?2004l
@@ -632,7 +632,7 @@ kube-root-ca.crt   1      3d3h
 postgres-config    2      3d3h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:32 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get configmap [4ma[24m[4ma[4mp[24m[4mp[4mp[24m[24ma[24mp[24mp-config -n [4md[24m[24mdrill -o yaml[?1l>[?2004l
@@ -655,7 +655,7 @@ metadata:
   uid: 9e577e56-5315-48fd-846a-7fd94fda443d
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:32 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m edit configmap [4ma[24m[4ma[4mp[24m[4mp[4mp[24m[24ma[24mp[24mp-config -n [4md[24m[24mdrill[?1l>[?2004l
@@ -940,7 +940,7 @@ metadata:
 [61;1H[?1049l[?2026lconfigmap/app-config edited
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:34 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4mr[24m[24mrollout [4mr[24m[4mr[4me[24m[24mr[24mestart [4md[24m[24mdeploy /platform-drill-api -n [4md[24m[24mdrilll [?1l>[?2004l
@@ -948,7 +948,7 @@ metadata:
 ]2;kubectl rollout restart deploy/platform-drill-api -n drill]1;kubectldeployment.apps/platform-drill-api restarted
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:34 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get pi ods -n [4md[24m[24mdrill[?1l>[?2004l
@@ -959,7 +959,7 @@ platform-drill-api-65677fdc88-x6v85   0/1     CrashLoopBackOff   10 (33s ago)   
 postgres-6bd68d5dd4-mxmj4             1/1     Running            1 (22h ago)    22h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:34 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m get endpoints -n [4md[24m[24mdrill[?1l>[?2004l
@@ -970,7 +970,7 @@ platform-drill-api   10.244.113.150:8000   3d3h
 postgres             10.244.113.144:5432   3d3h
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:35 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m [4md[24m[24mdescribe pod [7mplatform-drill-api-557c4bf784-6n7z2[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m5[27m5[27m7[27mc[27m4[27mb[27mf[27m7[27m8[27m4[27m-[27m6[27mn[27m7[27mz[27m2 -n [4md[24m[24mdrill[?1l>[?2004l
@@ -1073,7 +1073,7 @@ Events:
   Normal  Started    108s  kubelet            Container started
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:36 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m exec [7mplatform-drill-api-557c4bf784-6n7z2[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m5[27m5[27m7[27mc[27m4[27mb[27mf[27m7[27m8[27m4[27m-[27m6[27mn[27m7[27mz[27m2 -n [4md[24m[24mdrill --env    env | [32mg[39m[32mg[32mr[39m[1m[31mg[1m[31mr[1m[31me[0m[39m[0m[32mg[0m[32mr[0m[32me[32mp[39m POSTGRES_DB[?1l>[?2004l
@@ -1082,7 +1082,7 @@ Events:
 [01;31m[KPOSTGRES_DB[m[K=platformdrill
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:37 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h[32mk[39m[1m[31mk[1m[31mu[0m[39m[1m[31mk[1m[31mu[1m[31mb[0m[39m[1m[31mb[1m[31me[0m[39m[1m[31me[1m[31mc[0m[39m[1m[31mc[1m[31mt[0m[39m[0m[32mk[0m[32mu[0m[32mb[0m[32me[0m[32mc[0m[32mt[32ml[39m logs [7mplatform-drill-api-557c4bf784-6n7z2[27m[35D[27mp[27ml[27ma[27mt[27mf[27mo[27mr[27mm[27m-[27md[27mr[27mi[27ml[27ml[27m-[27ma[27mp[27mi[27m-[27m5[27m5[27m7[27mc[27m4[27mb[27mf[27m7[27m8[27m4[27m-[27m6[27mn[27m7[27mz[27m2 -n [4md[24m[24mdrill[?1l>[?2004l
@@ -1149,7 +1149,7 @@ INFO:     10.244.113.128:39510 - "GET /health HTTP/1.1" 200 OK
 INFO:     10.244.113.128:39512 - "GET /health HTTP/1.1" 200 OK
 [1m[7m%[27m[1m[0m                                                                                                                        
  
-]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/tim/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
+]2;tim@Timothys-MacBook-Pro:~/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02]1;..-workspace-02]7;file://Timothys-MacBook-Pro.local/Users/keyoma/code/platform-drill-fastapi-postgres/workspaces/drill-workspace-02\
 [0m[27m[24m[J
 [38;2;214;93;14m[48;2;214;93;14;38;2;251;241;199m󰀵 tim [48;2;215;153;33;38;2;214;93;14m[38;2;251;241;199m …/drill-workspace-02 [48;2;104;157;106;38;2;215;153;33m[38;2;251;241;199m  main ? [48;2;69;133;136;38;2;104;157;106m[38;2;251;241;199m  v3.12.6 [48;2;102;92;84;38;2;69;133;136m[48;2;60;56;54;38;2;102;92;84m[38;2;251;241;199m  14:37 [0m[38;2;60;56;54m [0m
 [1;38;2;152;151;26m[0m [K[?1h=[?2004h
